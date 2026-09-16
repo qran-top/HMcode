@@ -5,6 +5,8 @@ import { EncryptionResults } from './components/EncryptionResults';
 import { LayersTable } from './components/LayersTable';
 import { DecryptView } from './components/DecryptView';
 import { CompactLayersIndicator } from './components/CompactLayersIndicator';
+import { Footer, PolicyModalType } from './components/Footer';
+import { LegalModal } from './components/LegalModal';
 import { analyzeWord } from './cipherData';
 import { Eraser } from 'lucide-react';
 
@@ -12,6 +14,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table'>('encrypt');
   const [inputText, setInputText] = useState('بقرة');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
+  const [activeLegalModal, setActiveLegalModal] = useState<PolicyModalType>(null);
 
   // Detailed analysis of letters in the input string
   const details = useMemo(() => {
@@ -49,7 +52,11 @@ export function App() {
   return (
     <div className="min-h-screen bg-stone-100 text-stone-900 flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-stone-900" dir="rtl">
       {/* Header with simple title without long explanation */}
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenInstructions={() => setActiveLegalModal('instructions')}
+      />
 
       {/* Main Container */}
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 flex-1 space-y-4">
@@ -79,18 +86,21 @@ export function App() {
 
               {/* Input container with Clear button prominently positioned on the right side */}
               <div className="flex items-stretch gap-2">
-                {inputText && (
-                  <button
-                    type="button"
-                    id="clear-input-btn"
-                    onClick={handleClear}
-                    className="shrink-0 px-3.5 sm:px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm inline-flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-                    title="مسح النص بالكامل"
-                  >
-                    <Eraser className="w-4 h-4 text-rose-600" />
-                    <span>مسح</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  id="clear-input-btn"
+                  onClick={handleClear}
+                  disabled={!inputText}
+                  className={`shrink-0 px-3.5 sm:px-4 py-2 rounded-xl font-bold text-sm inline-flex items-center gap-1.5 transition-all ${
+                    inputText
+                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
+                      : 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+                  }`}
+                  title="مسح النص بالكامل"
+                >
+                  <Eraser className="w-4 h-4 text-rose-600" />
+                  <span>مسح</span>
+                </button>
 
                 <textarea
                   id="arabic-input"
@@ -142,6 +152,15 @@ export function App() {
           </div>
         )}
       </main>
+
+      {/* Footer with Legal, Policies, Instructions & AI Honest Attribution */}
+      <Footer onOpenModal={(type) => setActiveLegalModal(type)} />
+
+      {/* Modal Dialog for Policies & Instructions */}
+      <LegalModal
+        type={activeLegalModal}
+        onClose={() => setActiveLegalModal(null)}
+      />
     </div>
   );
 }

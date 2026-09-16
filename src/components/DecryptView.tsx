@@ -8,6 +8,13 @@ import {
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
 import {
+  quranicDictionary,
+  QuranicWordMeta,
+  getQuranTopAyahUrl,
+  getQuranTopSearchUrl,
+} from '../utils/quranicDictionary';
+import { QuranicMatchBadge } from './QuranicMatchBadge';
+import {
   Copy,
   Check,
   Eraser,
@@ -18,6 +25,8 @@ import {
   Filter,
   Sparkles,
   ArrowLeftRight,
+  ExternalLink,
+  Search,
 } from 'lucide-react';
 
 export function DecryptView() {
@@ -25,9 +34,11 @@ export function DecryptView() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
   const [onlyShowDictionaryWords, setOnlyShowDictionaryWords] = useState(false);
+  const [onlyQuranicWords, setOnlyQuranicWords] = useState(false);
   const [isReversed, setIsReversed] = useState<boolean>(false);
   const [dictLoaded, setDictLoaded] = useState(arabicDictionary.isLoaded());
   const [dictLoadProgress, setDictLoadProgress] = useState(arabicDictionary.getProgress());
+  const [quranicCount, setQuranicCount] = useState<number>(quranicDictionary.getWordCount());
 
   // Async chunked generation for decrypted words
   const [generatedList, setGeneratedList] = useState<string[]>([]);
@@ -42,6 +53,14 @@ export function DecryptView() {
       setDictLoaded(done);
     });
     return unsubscribe;
+  }, []);
+
+  // Subscribe to Quranic dictionary
+  useEffect(() => {
+    const unsub = quranicDictionary.subscribe((_, count) => {
+      setQuranicCount(count);
+    });
+    return unsub;
   }, []);
 
   // Strict input sanitizer: allow ONLY valid cipher letters, space, or newline
@@ -210,6 +229,17 @@ export function DecryptView() {
     return statusMap;
   }, [processedCombinations, dictLoaded]);
 
+  // Quranic vocabulary check map for high performance
+  const quranicStatus = useMemo(() => {
+    const statusMap = new Map<string, QuranicWordMeta | null>();
+    for (const word of processedCombinations) {
+      if (!statusMap.has(word)) {
+        statusMap.set(word, quranicDictionary.getWordDetails(word));
+      }
+    }
+    return statusMap;
+  }, [processedCombinations, quranicCount]);
+
   // Count dictionary matches
   const dictionaryMatchesCount = useMemo(() => {
     let count = 0;
@@ -219,17 +249,36 @@ export function DecryptView() {
     return count;
   }, [dictionaryStatus]);
 
-  // Filtering: allows characters anywhere inside the word (middle, start, or end) + optional dictionary-only filter
+  // Count Quranic vocabulary matches
+  const quranicMatchesCount = useMemo(() => {
+    let count = 0;
+    for (const meta of quranicStatus.values()) {
+      if (meta) count++;
+    }
+    return count;
+  }, [quranicStatus]);
+
+  // Filtering: allows characters anywhere inside the word (middle, start, or end) + optional dictionary/Quranic filter
   const normalizedFilter = cleanText(combinationFilter).trim();
   const filteredCombinations = useMemo(() => {
     return processedCombinations.filter((c) => {
+      if (onlyQuranicWords && !quranicStatus.get(c)) {
+        return false;
+      }
       if (onlyShowDictionaryWords && !dictionaryStatus.get(c)) {
         return false;
       }
       if (!normalizedFilter) return true;
       return c.includes(normalizedFilter);
     });
-  }, [processedCombinations, normalizedFilter, onlyShowDictionaryWords, dictionaryStatus]);
+  }, [
+    processedCombinations,
+    normalizedFilter,
+    onlyShowDictionaryWords,
+    onlyQuranicWords,
+    dictionaryStatus,
+    quranicStatus,
+  ]);
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -254,18 +303,21 @@ export function DecryptView() {
 
         {/* Input container with Clear button prominently positioned on the right side */}
         <div className="flex items-stretch gap-2">
-          {cipherInput && (
-            <button
-              type="button"
-              id="clear-cipher-input-btn"
-              onClick={() => setCipherInput('')}
-              className="shrink-0 px-3.5 sm:px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm inline-flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-              title="مسح النص المشفر بالكامل"
-            >
-              <Eraser className="w-4 h-4 text-rose-600" />
-              <span>مسح</span>
-            </button>
-          )}
+          <button
+            type="button"
+            id="clear-cipher-input-btn"
+            onClick={() => setCipherInput('')}
+            disabled={!cipherInput}
+            className={`shrink-0 px-3.5 sm:px-4 py-2 rounded-xl font-bold text-sm inline-flex items-center gap-1.5 transition-all ${
+              cipherInput
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
+                : 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+            }`}
+            title="مسح النص المشفر بالكامل"
+          >
+            <Eraser className="w-4 h-4 text-rose-600" />
+            <span>مسح</span>
+          </button>
 
           <input
             id="cipher-input"
@@ -384,12 +436,21 @@ export function DecryptView() {
                 {totalCombinationsPossible.toLocaleString('ar-EG')} إجمالي
               </span>
 
+              {/* Quranic Lexicon Matches Tag */}
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold">
+                <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                <span>المفردات القرآنية:</span>
+                <span className="font-extrabold text-amber-950">
+                  {quranicMatchesCount} كلمة
+                </span>
+              </div>
+
               {/* Dictionary Status Tag */}
               <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
                 <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                <span>القاموس العربي الشامل:</span>
+                <span>القاموس العربي:</span>
                 <span className="font-extrabold text-emerald-900">
-                  {dictLoaded ? `${dictionaryMatchesCount} كلمة متطابقة` : `جاري التحميل (${dictLoadProgress}%)`}
+                  {dictLoaded ? `${dictionaryMatchesCount} كلمة` : `تحميل (${dictLoadProgress}%)`}
                 </span>
               </div>
             </div>
@@ -405,10 +466,26 @@ export function DecryptView() {
                     ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
                     : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-amber-50 hover:border-amber-200'
                 }`}
-                title="عكس ترتيب أحرف الكلمات بالكامل وفحصها بالقاموس العربي"
+                title="عكس ترتيب أحرف الكلمات بالكامل وفحصها بالقاموس والمعجم القرآني"
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
                 <span>الاحتمالات العكسية {isReversed ? '(مفعل)' : ''}</span>
+              </button>
+
+              {/* Quick toggle: show only Quranic vocabulary */}
+              <button
+                type="button"
+                id="quranic-decrypt-only-btn"
+                onClick={() => setOnlyQuranicWords(!onlyQuranicWords)}
+                className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                  onlyQuranicWords
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
+                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-amber-50 hover:border-amber-200'
+                }`}
+                title="عرض الكلمات التي تطابق مفردات في القرآن الكريم فقط (مثل وقب)"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                <span>مفردات قرآنية ({quranicMatchesCount})</span>
               </button>
 
               {/* Quick toggle: show only dictionary words */}
@@ -423,7 +500,7 @@ export function DecryptView() {
                 title="عرض الكلمات العربية المعتمدة في القاموس فقط"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>كلمات القاموس فقط ({dictionaryMatchesCount})</span>
+                <span>كلمات القاموس ({dictionaryMatchesCount})</span>
               </button>
 
               {/* Filter in any position */}
@@ -445,7 +522,7 @@ export function DecryptView() {
               <div className="flex items-center justify-between text-xs text-stone-500">
                 <span className="flex items-center gap-1.5">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                  <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع القاموس...</span>
+                  <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع القاموس والمعجم القرآني...</span>
                 </span>
                 <span className="font-bold text-stone-700">{progressPercent}%</span>
               </div>
@@ -459,7 +536,7 @@ export function DecryptView() {
           )}
 
           {/* Filter Match Summary */}
-          {(normalizedFilter || onlyShowDictionaryWords || isReversed) && (
+          {(normalizedFilter || onlyQuranicWords || onlyShowDictionaryWords || isReversed) && (
             <div className="flex items-center justify-between text-xs text-stone-600 bg-indigo-50/60 border border-indigo-200 px-3 py-1.5 rounded-lg flex-wrap gap-2">
               <span className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-indigo-600" />
@@ -467,6 +544,11 @@ export function DecryptView() {
                   {isReversed && (
                     <strong className="text-amber-800 ml-1">
                       (الوضع المعكوس للأحرف)
+                    </strong>
+                  )}
+                  {onlyQuranicWords && (
+                    <strong className="text-amber-900 ml-1">
+                      (المفردات القرآنية المعتمدة فقط)
                     </strong>
                   )}
                   {onlyShowDictionaryWords && (
@@ -486,10 +568,14 @@ export function DecryptView() {
           )}
 
           {/* Color Legend */}
-          <div className="flex items-center gap-4 text-xs text-stone-500 pt-1">
+          <div className="flex items-center gap-4 text-xs text-stone-500 pt-1 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3.5 h-3.5 rounded bg-amber-400 border border-amber-500 inline-block shadow-2xs" />
+              <strong className="text-amber-950">ذهبي:</strong> مفردة وردت في القرآن الكريم (مثل وقب في سورة الفلق)
+            </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-600 inline-block shadow-2xs" />
-              <strong className="text-emerald-900">أخضر بارز:</strong> كلمة عربية موثقة في القاموس
+              <strong className="text-emerald-900">أخضر:</strong> كلمة عربية موثقة في القاموس
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded bg-stone-100 border border-stone-300 inline-block" />
@@ -500,6 +586,7 @@ export function DecryptView() {
           {/* Combinations Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-96 overflow-y-auto p-1">
             {filteredCombinations.map((combo, idx) => {
+              const quranicMeta = quranicStatus.get(combo);
               const isDictWord = dictionaryStatus.get(combo);
               const hasFilterMatch = normalizedFilter && combo.includes(normalizedFilter);
 
@@ -507,42 +594,88 @@ export function DecryptView() {
                 <div
                   key={idx}
                   id={`decode-combo-${idx}`}
-                  className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-1 select-none ${
-                    isDictWord
+                  className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-1.5 select-none ${
+                    quranicMeta
+                      ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white text-amber-950 shadow-xs ring-1 ring-amber-300 font-black'
+                      : isDictWord
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-xs ring-1 ring-emerald-400 font-black'
                       : hasFilterMatch
                       ? 'border-indigo-400 bg-indigo-50/80 text-stone-900'
                       : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100 text-stone-800'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 overflow-hidden">
-                    {isDictWord && (
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      {quranicMeta ? (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-300 shrink-0 animate-pulse"
+                          title={`لفظ قرآني كريم بسورة ${quranicMeta.surahName}`}
+                        />
+                      ) : isDictWord ? (
+                        <span
+                          className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"
+                          title="كلمة عربية في القاموس"
+                        />
+                      ) : null}
                       <span
-                        className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"
-                        title="كلمة عربية في القاموس"
-                      />
-                    )}
-                    <span className="text-sm tracking-wider break-all font-bold">
-                      {combo}
-                    </span>
+                        className={`text-sm tracking-wider break-all font-bold ${
+                          quranicMeta ? 'text-amber-950 font-black text-base' : ''
+                        }`}
+                      >
+                        {combo}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(combo, `decode-combo-${idx}`)}
+                      className={`p-1 rounded transition-colors cursor-pointer shrink-0 ${
+                        quranicMeta
+                          ? 'text-amber-800 hover:bg-amber-100'
+                          : isDictWord
+                          ? 'text-emerald-700 hover:bg-emerald-100'
+                          : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200/60'
+                      }`}
+                      title="نسخ"
+                    >
+                      {copiedKey === `decode-combo-${idx}` ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-700" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(combo, `decode-combo-${idx}`)}
-                    className={`p-1 rounded transition-colors cursor-pointer shrink-0 ${
-                      isDictWord
-                        ? 'text-emerald-700 hover:bg-emerald-100'
-                        : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200/60'
-                    }`}
-                    title="نسخ"
-                  >
-                    {copiedKey === `decode-combo-${idx}` ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-700" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+                  {/* Quranic Surah Reference Badge */}
+                  {quranicMeta && (
+                    <div className="pt-1 border-t border-amber-200/60 flex items-center justify-between text-2xs text-amber-900 font-extrabold">
+                      {quranicMeta.occurrences > 1 ? (
+                        <a
+                          href={getQuranTopSearchUrl(quranicMeta.originalQuranicWord || combo)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 hover:underline hover:text-amber-950 transition-colors group/link"
+                          title={`بحث عن "${quranicMeta.originalQuranicWord || combo}" (${quranicMeta.occurrences} مواضع) بمحرك بحث قرآن توب`}
+                        >
+                          <Search className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                          <span>بحث قرآني ({quranicMeta.occurrences} مواضع)</span>
+                          <ExternalLink className="w-2.5 h-2.5 text-amber-700 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                        </a>
+                      ) : (
+                        <a
+                          href={getQuranTopAyahUrl(quranicMeta.surahNumber || quranicMeta.surahName, quranicMeta.ayahNum)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 hover:underline hover:text-amber-950 transition-colors group/link"
+                          title={`فتح وتلاوة الآية ${quranicMeta.ayahNum} من سورة ${quranicMeta.surahName} على موقع قرآن توب`}
+                        >
+                          <BookOpen className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                          <span>سورة {quranicMeta.surahName} (آية {quranicMeta.ayahNum})</span>
+                          <ExternalLink className="w-2.5 h-2.5 text-amber-700 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
