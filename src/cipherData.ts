@@ -160,12 +160,15 @@ export function normalizeArabicChar(char: string): string {
   if (!stripped) return '';
 
   const c = stripped[0];
-  if (['أ', 'إ', 'آ', 'ا'].includes(c)) return 'أ';
-  if (c === 'ى') return 'ي';
+  if (['أ', 'إ', 'آ', 'ا', 'ء', 'ى'].includes(c)) return 'أ'; // ى and ء mapped to أ (Layer 7) phonetically
   if (c === 'ة') return 'ه';
   if (c === 'ؤ') return 'و';
   if (c === 'ئ') return 'ي';
   return c;
+}
+
+export function getCipherBaseString(word: string): string {
+  return Array.from(cleanText(word)).map(normalizeArabicChar).join('');
 }
 
 export function cleanText(text: string): string {

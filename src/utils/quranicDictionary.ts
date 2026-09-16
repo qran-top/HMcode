@@ -219,9 +219,12 @@ function levenshteinDistance(a: string, b: string): number {
   return dp[m][n];
 }
 
+import { getCipherBaseString } from '../cipherData';
+
 class QuranicDictionaryService {
   private dataMap = new Map<string, [string, number, number, string]>();
   private normalizedMap = new Map<string, string>(); // norm -> original key in dataMap
+  private cipherBaseMap = new Map<string, string>(); // cipherBase -> original key in dataMap
   private wordsByLength = new Map<number, string[]>();
   private loaded: boolean = false;
   private loading: boolean = false;
@@ -244,6 +247,10 @@ class QuranicDictionaryService {
       const nw = normalizeArabicText(w);
       if (!this.normalizedMap.has(nw)) {
         this.normalizedMap.set(nw, w);
+      }
+      const cb = getCipherBaseString(w);
+      if (!this.cipherBaseMap.has(cb)) {
+        this.cipherBaseMap.set(cb, w);
       }
       const l = w.length;
       if (!this.wordsByLength.has(l)) {
@@ -299,7 +306,9 @@ class QuranicDictionaryService {
     const clean = word.trim();
     if (this.dataMap.has(clean)) return true;
     const nw = normalizeArabicText(clean);
-    return this.normalizedMap.has(nw);
+    if (this.normalizedMap.has(nw)) return true;
+    const cb = getCipherBaseString(clean);
+    return this.cipherBaseMap.has(cb);
   }
 
   /**
@@ -317,6 +326,14 @@ class QuranicDictionaryService {
       if (originalKey) {
         entry = this.dataMap.get(originalKey);
         matchedKey = originalKey;
+      } else {
+        // Fallback to phonetic cipher matching (e.g. كفأ matches كفى)
+        const cb = getCipherBaseString(clean);
+        const cbKey = this.cipherBaseMap.get(cb);
+        if (cbKey) {
+          entry = this.dataMap.get(cbKey);
+          matchedKey = cbKey;
+        }
       }
     }
 

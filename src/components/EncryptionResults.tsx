@@ -285,10 +285,10 @@ export function EncryptionResults({
 
   // Arabic Dictionary Status Map
   const dictionaryStatus = useMemo(() => {
-    const map = new Map<string, boolean>();
+    const map = new Map<string, string | null>();
     for (const combo of processedCombinations) {
       if (!map.has(combo)) {
-        map.set(combo, arabicDictionary.isWord(combo));
+        map.set(combo, arabicDictionary.getMatchedWord(combo));
       }
     }
     return map;
@@ -298,10 +298,10 @@ export function EncryptionResults({
   const exactDictList = useMemo(() => {
     const list: string[] = [];
     const seen = new Set<string>();
-    for (const [combo, isWord] of dictionaryStatus.entries()) {
-      if (isWord && !seen.has(combo)) {
+    for (const [combo, matchedWord] of dictionaryStatus.entries()) {
+      if (matchedWord && !seen.has(combo)) {
         seen.add(combo);
-        list.push(combo);
+        list.push(matchedWord);
       }
     }
     return list;
@@ -612,8 +612,9 @@ export function EncryptionResults({
                           ? 'text-emerald-950 text-base font-extrabold'
                           : 'text-stone-900'
                       }`}
+                      title={exactMeta ? `التركيب الأصلي: ${combo}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${combo}` : undefined}
                     >
-                      {combo}
+                      {exactMeta ? exactMeta.word : (typeof isDictWord === 'string' ? isDictWord : combo)}
                     </span>
                   </div>
 

@@ -1,9 +1,8 @@
-// High performance Arabic dictionary service
-// Loads a comprehensive Arabic dictionary (over 800,000 words) asynchronously in chunks.
-// Uses progressive background chunking so the UI thread NEVER freezes (0ms frame drop).
+import { getCipherBaseString } from '../cipherData';
 
 class DictionaryService {
   private wordSet: Set<string> = new Set();
+  private cipherBaseMap: Map<string, string> = new Map();
   private loaded: boolean = false;
   private loading: boolean = false;
   private loadProgress: number = 0;
@@ -56,7 +55,13 @@ class DictionaryService {
           const limit = Math.min(index + CHUNK_SIZE, total);
           for (let i = index; i < limit; i++) {
             const w = lines[i].trim();
-            if (w) this.wordSet.add(w);
+            if (w) {
+              this.wordSet.add(w);
+              const cb = getCipherBaseString(w);
+              if (!this.cipherBaseMap.has(cb)) {
+                this.cipherBaseMap.set(cb, w);
+              }
+            }
           }
           index = limit;
         }
@@ -81,10 +86,10 @@ class DictionaryService {
     }
   }
 
-  isWord(rawWord: string): boolean {
-    if (!rawWord) return false;
+  getMatchedWord(rawWord: string): string | null {
+    if (!rawWord) return null;
     const clean = rawWord.trim();
-    if (this.wordSet.has(clean)) return true;
+    if (this.wordSet.has(clean)) return clean;
 
     // Normalizations: check with/without hamzas or alif maqsura
     const norm = clean
@@ -92,9 +97,16 @@ class DictionaryService {
       .replace(/ى/g, 'ي')
       .replace(/ة/g, 'ه');
 
-    if (this.wordSet.has(norm)) return true;
+    if (this.wordSet.has(norm)) return norm;
+    
+    const cb = getCipherBaseString(clean);
+    if (this.cipherBaseMap.has(cb)) return this.cipherBaseMap.get(cb) || null;
 
-    return false;
+    return null;
+  }
+
+  isWord(rawWord: string): boolean {
+    return this.getMatchedWord(rawWord) !== null;
   }
 
   getWordCount(): number {
