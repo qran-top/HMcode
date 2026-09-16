@@ -23,7 +23,7 @@ interface EncryptionResultsProps {
   details: EncryptedLetterDetail[];
   selectedProbabilities: number[];
   onSetSelectedProbabilities: (probs: number[]) => void;
-  onToggleProbability: (index: number) => void;
+  onToggleProbability: (index: number, probIndex: number) => void;
 }
 
 export function EncryptionResults({
@@ -34,7 +34,6 @@ export function EncryptionResults({
 }: EncryptionResultsProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
-  const [isReversed, setIsReversed] = useState<boolean>(false);
   const [onlyQuranicMatches, setOnlyQuranicMatches] = useState<boolean>(false);
   const [onlyQuranicVocab, setOnlyQuranicVocab] = useState<boolean>(false);
   const [onlyDictWords, setOnlyDictWords] = useState<boolean>(false);
@@ -189,17 +188,30 @@ export function EncryptionResults({
   // Helper to reverse words
   const reverseString = (str: string) => Array.from(str).reverse().join('');
 
-  // Process combinations (supports reverse mode)
+  // Process combinations (combines normal and reversed)
   const processedCombinations = useMemo(() => {
-    return generatedList.map((combo) => (isReversed ? reverseString(combo) : combo));
-  }, [generatedList, isReversed]);
+    const list: { word: string; isReversed: boolean; original: string }[] = [];
+    const seen = new Set<string>();
+    for (const combo of generatedList) {
+      if (!seen.has(combo)) {
+        list.push({ word: combo, isReversed: false, original: combo });
+        seen.add(combo);
+      }
+      const rev = reverseString(combo);
+      if (!seen.has(rev)) {
+        list.push({ word: rev, isReversed: true, original: combo });
+        seen.add(rev);
+      }
+    }
+    return list;
+  }, [generatedList]);
 
   // Segment each combination into Quranic Opening Words as much as possible
   const segmentedMap = useMemo(() => {
     const map = new Map<string, QuranicSegmentationResult>();
-    for (const combo of processedCombinations) {
-      if (!map.has(combo)) {
-        map.set(combo, segmentIntoQuranicWords(combo));
+    for (const item of processedCombinations) {
+      if (!map.has(item.word)) {
+        map.set(item.word, segmentIntoQuranicWords(item.word));
       }
     }
     return map;
@@ -215,12 +227,12 @@ export function EncryptionResults({
   }, [segmentedMap]);
 
   // Handle selecting any combination as the active chosen probabilities
-  const handleSelectCombo = (combo: string) => {
-    const actualCombo = isReversed ? reverseString(combo) : combo;
+  // "combo" is the original normal-order string that generated the selection
+  const handleSelectCombo = (originalCombo: string) => {
     let comboLetterIdx = 0;
     const newProbs = details.map((d) => {
       if (d.isSpecialOrSpace) return 0;
-      const targetChar = actualCombo[comboLetterIdx++];
+      const targetChar = originalCombo[comboLetterIdx++];
       if (targetChar === d.prob2) return 1;
       return 0;
     });
@@ -230,9 +242,9 @@ export function EncryptionResults({
   // Exact Quranic Vocabulary Map
   const quranicVocabExactMap = useMemo(() => {
     const map = new Map<string, QuranicWordMeta | null>();
-    for (const combo of processedCombinations) {
-      if (!map.has(combo)) {
-        map.set(combo, quranicDictionary.getWordDetails(combo));
+    for (const item of processedCombinations) {
+      if (!map.has(item.word)) {
+        map.set(item.word, quranicDictionary.getWordDetails(item.word));
       }
     }
     return map;
@@ -241,9 +253,9 @@ export function EncryptionResults({
   // Nearest Quranic Vocabulary Map
   const quranicNearestMap = useMemo(() => {
     const map = new Map<string, QuranicNearestMatch | null>();
-    for (const combo of processedCombinations) {
-      if (!map.has(combo)) {
-        map.set(combo, quranicDictionary.findClosestQuranicWord(combo));
+    for (const item of processedCombinations) {
+      if (!map.has(item.word)) {
+        map.set(item.word, quranicDictionary.findClosestQuranicWord(item.word));
       }
     }
     return map;
@@ -251,36 +263,38 @@ export function EncryptionResults({
 
   // List of exact Quranic words found in combinations
   const exactQuranicList = useMemo(() => {
-    const list: { combo: string; meta: QuranicWordMeta }[] = [];
+    const list: { combo: string; meta: QuranicWordMeta; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-    for (const [combo, meta] of quranicVocabExactMap.entries()) {
-      if (meta && !seen.has(combo)) {
-        seen.add(combo);
-        list.push({ combo, meta });
+    for (const item of processedCombinations) {
+      const meta = quranicVocabExactMap.get(item.word);
+      if (meta && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ combo: item.word, meta, isReversed: item.isReversed, original: item.original });
       }
     }
     return list;
-  }, [quranicVocabExactMap]);
+  }, [processedCombinations, quranicVocabExactMap]);
 
   // List of nearest matches with good similarity
   const nearestQuranicList = useMemo(() => {
-    const list: { combo: string; nearest: QuranicNearestMatch }[] = [];
+    const list: { combo: string; nearest: QuranicNearestMatch; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-    for (const [combo, nearest] of quranicNearestMap.entries()) {
-      if (nearest && nearest.similarity < 100 && nearest.similarity >= 65 && !seen.has(combo)) {
-        seen.add(combo);
-        list.push({ combo, nearest });
+    for (const item of processedCombinations) {
+      const nearest = quranicNearestMap.get(item.word);
+      if (nearest && nearest.similarity < 100 && nearest.similarity >= 65 && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ combo: item.word, nearest, isReversed: item.isReversed, original: item.original });
       }
     }
     return list.sort((a, b) => b.nearest.similarity - a.nearest.similarity);
-  }, [quranicNearestMap]);
+  }, [processedCombinations, quranicNearestMap]);
 
   // Arabic Dictionary Status Map
   const dictionaryStatus = useMemo(() => {
     const map = new Map<string, string | null>();
-    for (const combo of processedCombinations) {
-      if (!map.has(combo)) {
-        map.set(combo, arabicDictionary.getMatchedWord(combo));
+    for (const item of processedCombinations) {
+      if (!map.has(item.word)) {
+        map.set(item.word, arabicDictionary.getMatchedWord(item.word));
       }
     }
     return map;
@@ -288,21 +302,20 @@ export function EncryptionResults({
 
   // List of exact Arabic dictionary words found in combinations
   const exactDictList = useMemo(() => {
-    const list: string[] = [];
+    const list: { word: string; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-    for (const [combo, matchedWord] of dictionaryStatus.entries()) {
-      if (matchedWord && !seen.has(combo)) {
-        seen.add(combo);
-        list.push(matchedWord);
+    for (const item of processedCombinations) {
+      const matched = dictionaryStatus.get(item.word);
+      if (matched && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ word: matched, isReversed: item.isReversed, original: item.original });
       }
     }
     return list;
-  }, [dictionaryStatus]);
+  }, [processedCombinations, dictionaryStatus]);
 
   // Current selected cipher text display & its Quranic segmentation
-  const displaySelectedCipher = isReversed
-    ? reverseString(customStringNoSpaces || customStringWithSpaces)
-    : customStringNoSpaces || customStringWithSpaces;
+  const displaySelectedCipher = customStringNoSpaces || customStringWithSpaces;
 
   const selectedCipherSegmentation = useMemo(() => {
     return segmentIntoQuranicWords(displaySelectedCipher);
@@ -320,21 +333,21 @@ export function EncryptionResults({
   // Filtering by substring, Quranic vocabulary, Arabic dictionary, or multi-letter opening words
   const normalizedFilter = cleanText(combinationFilter).trim();
   const filteredCombinations = useMemo(() => {
-    return processedCombinations.filter((combo) => {
+    return processedCombinations.filter((item) => {
       if (onlyQuranicVocab) {
-        const meta = quranicVocabExactMap.get(combo);
+        const meta = quranicVocabExactMap.get(item.word);
         if (!meta) return false;
       }
       if (onlyDictWords) {
-        const isDict = dictionaryStatus.get(combo);
+        const isDict = dictionaryStatus.get(item.word);
         if (!isDict) return false;
       }
       if (onlyQuranicMatches) {
-        const seg = segmentedMap.get(combo);
+        const seg = segmentedMap.get(item.word);
         if (!seg || seg.multiWordCount === 0) return false;
       }
       if (!normalizedFilter) return true;
-      return combo.includes(normalizedFilter);
+      return item.word.includes(normalizedFilter);
     });
   }, [
     processedCombinations,
@@ -415,22 +428,6 @@ export function EncryptionResults({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
-            {/* Reverse Combinations Toggle */}
-            <button
-              type="button"
-              id="reverse-cipher-combos-btn"
-              onClick={() => setIsReversed(!isReversed)}
-              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                isReversed
-                  ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
-                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
-              }`}
-              title="عكس ترتيب أحرف كل كلمة بالكامل وتقسيمها نورانياً"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-              <span>الاحتمالات العكسية {isReversed ? '(مفعل)' : ''}</span>
-            </button>
-
             {/* Filter: Only exact Quranic vocabulary */}
             <button
               type="button"
@@ -524,10 +521,9 @@ export function EncryptionResults({
         )}
 
         {/* Active Filter Indicator */}
-        {(normalizedFilter || onlyQuranicMatches || onlyQuranicVocab || onlyDictWords || isReversed) && (
+        {(normalizedFilter || onlyQuranicMatches || onlyQuranicVocab || onlyDictWords) && (
           <div className="flex items-center justify-between text-xs text-stone-600 bg-amber-50/60 border border-amber-200 px-3 py-1.5 rounded-lg flex-wrap gap-2">
             <span>
-              {isReversed && <strong className="text-amber-800 ml-1">(الوضع المعكوس)</strong>}
               {onlyQuranicVocab && (
                 <strong className="text-amber-900 ml-1">(المفردات القرآنية المعتمدة فقط)</strong>
               )}
@@ -569,19 +565,19 @@ export function EncryptionResults({
 
         {/* Combinations Grid with Quranic Vocabulary & Noorani Segmented Breakdown per Item */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto p-1">
-          {filteredCombinations.map((combo, idx) => {
-            const hasMatch = normalizedFilter && combo.includes(normalizedFilter);
-            const segmentation = segmentedMap.get(combo) || segmentIntoQuranicWords(combo);
+          {filteredCombinations.map((item, idx) => {
+            const hasMatch = normalizedFilter && item.word.includes(normalizedFilter);
+            const segmentation = segmentedMap.get(item.word) || segmentIntoQuranicWords(item.word);
             const hasMultiQuranic = segmentation.multiWordCount > 0;
-            const exactMeta = quranicVocabExactMap.get(combo);
-            const nearestMeta = quranicNearestMap.get(combo);
-            const isDictWord = dictionaryStatus.get(combo);
+            const exactMeta = quranicVocabExactMap.get(item.word);
+            const nearestMeta = quranicNearestMap.get(item.word);
+            const isDictWord = dictionaryStatus.get(item.word);
 
             return (
               <div
                 key={idx}
                 id={`combo-item-${idx}`}
-                className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-2 select-none group ${
+                className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-2 select-none group relative ${
                   exactMeta
                     ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white shadow-xs ring-1 ring-amber-300'
                     : isDictWord
@@ -593,6 +589,13 @@ export function EncryptionResults({
                     : 'border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300'
                 }`}
               >
+                {/* Reversed Indicator Badge */}
+                {item.isReversed && (
+                  <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90">
+                    معكوس
+                  </div>
+                )}
+                
                 {/* Header: Combo String, Quranic/Dictionary indicator & Copy Button */}
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1.5 overflow-hidden">
@@ -620,16 +623,16 @@ export function EncryptionResults({
                           ? 'text-emerald-950 text-base font-extrabold'
                           : 'text-stone-900'
                       }`}
-                      title={exactMeta ? `التركيب الأصلي: ${combo}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${combo}` : undefined}
+                      title={exactMeta ? `التركيب الأصلي: ${item.word}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${item.word}` : undefined}
                     >
-                      {exactMeta ? exactMeta.word : (typeof isDictWord === 'string' ? isDictWord : combo)}
+                      {exactMeta ? exactMeta.word : (typeof isDictWord === 'string' ? isDictWord : item.word)}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleSelectCombo(combo)}
+                      onClick={() => handleSelectCombo(item.original)}
                       className={`opacity-0 group-hover:opacity-100 transition-opacity text-2xs font-bold px-1.5 py-0.5 rounded cursor-pointer ${
                         exactMeta
                           ? 'text-amber-800 bg-amber-100 hover:bg-amber-200'
@@ -644,7 +647,7 @@ export function EncryptionResults({
 
                     <button
                       type="button"
-                      onClick={() => handleCopy(combo, `combo-${idx}`)}
+                      onClick={() => handleCopy(item.word, `combo-${idx}`)}
                       className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
                       title="نسخ هذا الاحتمال"
                     >
@@ -699,7 +702,7 @@ export function EncryptionResults({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
-              النص المشفر المعتمد (بدون فراغات) {isReversed && <span className="text-amber-600">(معكوس)</span>}:
+              النص المشفر المعتمد (بدون فراغات):
             </span>
             {selectedCipherSegmentation.multiWordCount > 0 && (
               <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-md">

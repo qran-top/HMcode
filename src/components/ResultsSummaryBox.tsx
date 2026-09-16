@@ -1,10 +1,10 @@
-import { QuranicWordMeta } from '../utils/quranicDictionary';
+import { QuranicWordMeta, getQuranTopSearchUrl } from '../utils/quranicDictionary';
 import { QuranicSegmentationResult } from '../cipherData';
-import { BookOpen, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { BookOpen, Sparkles, AlertCircle, Loader2, RefreshCcw } from 'lucide-react';
 
 interface ResultsSummaryBoxProps {
-  exactQuranicList: { combo: string; meta: QuranicWordMeta }[];
-  exactDictList: string[];
+  exactQuranicList: { combo: string; meta: QuranicWordMeta; isReversed?: boolean; original?: string }[];
+  exactDictList: { word: string; isReversed?: boolean; original?: string }[];
   nooraniMatchesCount: number;
   isGenerating: boolean;
   onSelectWord?: (word: string) => void;
@@ -49,30 +49,43 @@ export function ResultsSummaryBox({
           )}
 
         {exactQuranicList.map((item, idx) => (
-          <button
+          <a
             key={`quranic-${idx}`}
-            onClick={() => onSelectWord?.(item.combo)}
-            className="flex items-center gap-1 bg-amber-50 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors shadow-2xs"
-            title={`مفردة قرآنية: ${item.meta.word}`}
+            href={getQuranTopSearchUrl(item.meta.word)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onSelectWord?.(item.original || item.combo)}
+            className={`flex items-center gap-1 border px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shadow-2xs no-underline ${
+              item.isReversed 
+                ? 'bg-amber-100 border-amber-400 text-amber-900 border-dashed'
+                : 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+            }`}
+            title={`مفردة قرآنية ${item.isReversed ? '(معكوسة)' : ''}: ${item.meta.word}`}
           >
-            <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+            <BookOpen className={`w-3.5 h-3.5 ${item.isReversed ? 'text-amber-600' : 'text-amber-700'}`} />
             <span>{item.meta.word}</span>
-          </button>
+            {item.isReversed && <RefreshCcw className="w-3 h-3 text-amber-600 opacity-75" />}
+          </a>
         ))}
 
-        {exactDictList.map((word, idx) => {
+        {exactDictList.map((item, idx) => {
           // Avoid duplicating words that are already in Quranic list
-          if (exactQuranicList.some((q) => q.meta.word === word)) return null;
+          if (exactQuranicList.some((q) => q.meta.word === item.word && !!q.isReversed === !!item.isReversed)) return null;
 
           return (
             <button
               key={`dict-${idx}`}
-              onClick={() => onSelectWord?.(word)}
-              className="flex items-center gap-1 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors shadow-2xs"
-              title={`كلمة قاموسية: ${word}`}
+              onClick={() => onSelectWord?.(item.original || item.word)}
+              className={`flex items-center gap-1 border px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
+                item.isReversed
+                  ? 'bg-emerald-100 border-emerald-400 text-emerald-900 border-dashed'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100'
+              }`}
+              title={`كلمة قاموسية ${item.isReversed ? '(معكوسة)' : ''}: ${item.word}`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-              <span>{word}</span>
+              <BookOpen className={`w-3.5 h-3.5 ${item.isReversed ? 'text-emerald-600' : 'text-emerald-700'}`} />
+              <span>{item.word}</span>
+              {item.isReversed && <RefreshCcw className="w-3 h-3 text-emerald-600 opacity-75" />}
             </button>
           );
         })}

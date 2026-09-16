@@ -36,7 +36,6 @@ export function DecryptView() {
   const [combinationFilter, setCombinationFilter] = useState('');
   const [onlyShowDictionaryWords, setOnlyShowDictionaryWords] = useState(false);
   const [onlyQuranicWords, setOnlyQuranicWords] = useState(false);
-  const [isReversed, setIsReversed] = useState<boolean>(false);
   const [dictLoaded, setDictLoaded] = useState(arabicDictionary.isLoaded());
   const [dictLoadProgress, setDictLoadProgress] = useState(arabicDictionary.getProgress());
   const [quranicCount, setQuranicCount] = useState<number>(quranicDictionary.getWordCount());
@@ -212,19 +211,33 @@ export function DecryptView() {
   // Helper to reverse words
   const reverseString = (str: string) => Array.from(str).reverse().join('');
 
-  // Processed combinations (supports reversing words order)
+  // Processed combinations (supports both normal and reversed)
   const processedCombinations = useMemo(() => {
-    return generatedList.map((combo) => (isReversed ? reverseString(combo) : combo));
-  }, [generatedList, isReversed]);
+    const list: { word: string; isReversed: boolean; original: string }[] = [];
+    const seen = new Set<string>();
+    
+    for (const combo of generatedList) {
+      if (!seen.has(combo)) {
+        list.push({ word: combo, isReversed: false, original: combo });
+        seen.add(combo);
+      }
+      const rev = reverseString(combo);
+      if (!seen.has(rev)) {
+        list.push({ word: rev, isReversed: true, original: combo });
+        seen.add(rev);
+      }
+    }
+    return list;
+  }, [generatedList]);
 
-  // Dictionary check map for high performance (evaluates the current words, including reversed if selected)
+  // Dictionary check map for high performance
   const dictionaryStatus = useMemo(() => {
     const statusMap = new Map<string, string | null>();
     if (!dictLoaded) return statusMap;
 
-    for (const word of processedCombinations) {
-      if (!statusMap.has(word)) {
-        statusMap.set(word, arabicDictionary.getMatchedWord(word));
+    for (const item of processedCombinations) {
+      if (!statusMap.has(item.word)) {
+        statusMap.set(item.word, arabicDictionary.getMatchedWord(item.word));
       }
     }
     return statusMap;
@@ -233,9 +246,9 @@ export function DecryptView() {
   // Quranic vocabulary check map for high performance
   const quranicStatus = useMemo(() => {
     const statusMap = new Map<string, QuranicWordMeta | null>();
-    for (const word of processedCombinations) {
-      if (!statusMap.has(word)) {
-        statusMap.set(word, quranicDictionary.getWordDetails(word));
+    for (const item of processedCombinations) {
+      if (!statusMap.has(item.word)) {
+        statusMap.set(item.word, quranicDictionary.getWordDetails(item.word));
       }
     }
     return statusMap;
@@ -261,41 +274,43 @@ export function DecryptView() {
 
   // Compute exact lists for summary
   const exactQuranicList = useMemo(() => {
-    const list: { combo: string; meta: QuranicWordMeta }[] = [];
+    const list: { combo: string; meta: QuranicWordMeta; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-    for (const [combo, meta] of quranicStatus.entries()) {
-      if (meta && !seen.has(combo)) {
-        seen.add(combo);
-        list.push({ combo, meta });
+    for (const item of processedCombinations) {
+      const meta = quranicStatus.get(item.word);
+      if (meta && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ combo: item.word, meta, isReversed: item.isReversed, original: item.original });
       }
     }
     return list;
-  }, [quranicStatus]);
+  }, [processedCombinations, quranicStatus]);
 
   const exactDictList = useMemo(() => {
-    const list: string[] = [];
+    const list: { word: string; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-    for (const [combo, matchedWord] of dictionaryStatus.entries()) {
-      if (matchedWord && !seen.has(combo)) {
-        seen.add(combo);
-        list.push(matchedWord);
+    for (const item of processedCombinations) {
+      const matched = dictionaryStatus.get(item.word);
+      if (matched && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ word: matched, isReversed: item.isReversed, original: item.original });
       }
     }
     return list;
-  }, [dictionaryStatus]);
+  }, [processedCombinations, dictionaryStatus]);
 
   // Filtering: allows characters anywhere inside the word (middle, start, or end) + optional dictionary/Quranic filter
   const normalizedFilter = cleanText(combinationFilter).trim();
   const filteredCombinations = useMemo(() => {
-    return processedCombinations.filter((c) => {
-      if (onlyQuranicWords && !quranicStatus.get(c)) {
+    return processedCombinations.filter((item) => {
+      if (onlyQuranicWords && !quranicStatus.get(item.word)) {
         return false;
       }
-      if (onlyShowDictionaryWords && !dictionaryStatus.get(c)) {
+      if (onlyShowDictionaryWords && !dictionaryStatus.get(item.word)) {
         return false;
       }
       if (!normalizedFilter) return true;
-      return c.includes(normalizedFilter);
+      return item.word.includes(normalizedFilter);
     });
   }, [
     processedCombinations,
@@ -491,22 +506,6 @@ export function DecryptView() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Reverse Option Toggle */}
-              <button
-                type="button"
-                id="reverse-decrypt-combos-btn"
-                onClick={() => setIsReversed(!isReversed)}
-                className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                  isReversed
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
-                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-amber-50 hover:border-amber-200'
-                }`}
-                title="عكس ترتيب أحرف الكلمات بالكامل وفحصها بالقاموس والمعجم القرآني"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span>الاحتمالات العكسية {isReversed ? '(مفعل)' : ''}</span>
-              </button>
-
               {/* Quick toggle: show only Quranic vocabulary */}
               <button
                 type="button"
@@ -571,16 +570,11 @@ export function DecryptView() {
           )}
 
           {/* Filter Match Summary */}
-          {(normalizedFilter || onlyQuranicWords || onlyShowDictionaryWords || isReversed) && (
+          {(normalizedFilter || onlyQuranicWords || onlyShowDictionaryWords) && (
             <div className="flex items-center justify-between text-xs text-stone-600 bg-indigo-50/60 border border-indigo-200 px-3 py-1.5 rounded-lg flex-wrap gap-2">
               <span className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-indigo-600" />
                 <span>
-                  {isReversed && (
-                    <strong className="text-amber-800 ml-1">
-                      (الوضع المعكوس للأحرف)
-                    </strong>
-                  )}
                   {onlyQuranicWords && (
                     <strong className="text-amber-900 ml-1">
                       (المفردات القرآنية المعتمدة فقط)
@@ -620,16 +614,16 @@ export function DecryptView() {
 
           {/* Combinations Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-96 overflow-y-auto p-1">
-            {filteredCombinations.map((combo, idx) => {
-              const quranicMeta = quranicStatus.get(combo);
-              const isDictWord = dictionaryStatus.get(combo);
-              const hasFilterMatch = normalizedFilter && combo.includes(normalizedFilter);
+            {filteredCombinations.map((item, idx) => {
+              const quranicMeta = quranicStatus.get(item.word);
+              const isDictWord = dictionaryStatus.get(item.word);
+              const hasFilterMatch = normalizedFilter && item.word.includes(normalizedFilter);
 
               return (
                 <div
                   key={idx}
                   id={`decode-combo-${idx}`}
-                  className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-1.5 select-none ${
+                  className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-1.5 select-none relative ${
                     quranicMeta
                       ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white text-amber-950 shadow-xs ring-1 ring-amber-300 font-black'
                       : isDictWord
@@ -639,6 +633,13 @@ export function DecryptView() {
                       : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100 text-stone-800'
                   }`}
                 >
+                  {/* Reversed Indicator Badge */}
+                  {item.isReversed && (
+                    <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90 z-10">
+                      معكوس
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       {quranicMeta ? (
@@ -657,13 +658,13 @@ export function DecryptView() {
                           quranicMeta ? 'text-amber-950 font-black text-base' : ''
                         }`}
                       >
-                        {combo}
+                        {item.word}
                       </span>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleCopy(combo, `decode-combo-${idx}`)}
+                      onClick={() => handleCopy(item.word, `decode-combo-${idx}`)}
                       className={`p-1 rounded transition-colors cursor-pointer shrink-0 ${
                         quranicMeta
                           ? 'text-amber-800 hover:bg-amber-100'
@@ -686,11 +687,11 @@ export function DecryptView() {
                     <div className="pt-1 border-t border-amber-200/60 flex items-center justify-between text-2xs text-amber-900 font-extrabold">
                       {quranicMeta.occurrences > 1 ? (
                         <a
-                          href={getQuranTopSearchUrl(quranicMeta.originalQuranicWord || combo)}
+                          href={getQuranTopSearchUrl(quranicMeta.originalQuranicWord || item.word)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 hover:underline hover:text-amber-950 transition-colors group/link"
-                          title={`بحث عن "${quranicMeta.originalQuranicWord || combo}" (${quranicMeta.occurrences} مواضع) بمحرك بحث قرآن توب`}
+                          title={`بحث عن "${quranicMeta.originalQuranicWord || item.word}" (${quranicMeta.occurrences} مواضع) بمحرك بحث قرآن توب`}
                         >
                           <Search className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                           <span>بحث قرآني ({quranicMeta.occurrences} مواضع)</span>
