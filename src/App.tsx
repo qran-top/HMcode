@@ -115,19 +115,12 @@ export function App() {
 
             {/* Letter by letter analysis & Results */}
             {details.length > 0 && (
-              <>
-                <LetterAnalysisCard
-                  details={details}
-                  selectedProbabilities={currentProbabilities}
-                  onToggleProbability={handleToggleProbability}
-                />
-
-                <EncryptionResults
-                  details={details}
-                  selectedProbabilities={currentProbabilities}
-                  onSetSelectedProbabilities={setSelectedProbabilities}
-                />
-              </>
+              <EncryptionResults
+                details={details}
+                selectedProbabilities={currentProbabilities}
+                onSetSelectedProbabilities={setSelectedProbabilities}
+                onToggleProbability={handleToggleProbability}
+              />
             )}
           </div>
         )}

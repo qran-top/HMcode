@@ -15,30 +15,22 @@ import {
   QuranicWordMeta,
   QuranicNearestMatch,
 } from '../utils/quranicDictionary';
-import {
-  Copy,
-  Check,
-  Shuffle,
-  RefreshCw,
-  Layers,
-  Loader2,
-  AlertCircle,
-  ArrowLeftRight,
-  Sparkles,
-  BookOpen,
-  SpellCheck,
-} from 'lucide-react';
+import { Copy, Check, Shuffle, RefreshCw, Layers, Loader2, AlertCircle, ArrowLeftRight, Sparkles, BookOpen, SpellCheck } from 'lucide-react';
+import { ResultsSummaryBox } from './ResultsSummaryBox';
+import { LetterAnalysisCard } from './LetterAnalysisCard';
 
 interface EncryptionResultsProps {
   details: EncryptedLetterDetail[];
   selectedProbabilities: number[];
   onSetSelectedProbabilities: (probs: number[]) => void;
+  onToggleProbability: (index: number) => void;
 }
 
 export function EncryptionResults({
   details,
   selectedProbabilities,
   onSetSelectedProbabilities,
+  onToggleProbability,
 }: EncryptionResultsProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
@@ -357,7 +349,23 @@ export function EncryptionResults({
 
   return (
     <div className="space-y-4">
-      {/* 1. Quranic Combinations Lexicon (Vocabulary Matching) */}
+      {/* 0. Summary Box Immediately Below Input */}
+      <ResultsSummaryBox
+        exactQuranicList={exactQuranicList}
+        exactDictList={exactDictList}
+        nooraniMatchesCount={quranicMatchesCount}
+        isGenerating={isGenerating}
+        onSelectWord={handleSelectCombo}
+      />
+
+      {/* 1. LetterAnalysisCard (Moved here to sit below summary) */}
+      <LetterAnalysisCard
+        details={details}
+        selectedProbabilities={selectedProbabilities}
+        onToggleProbability={onToggleProbability}
+      />
+
+      {/* 2. Quranic Combinations Lexicon (Vocabulary Matching) */}
       <QuranicCombinationsLexicon
         exactMatches={exactQuranicList}
         nearestMatches={nearestQuranicList}

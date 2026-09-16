@@ -14,6 +14,7 @@ import {
   getQuranTopSearchUrl,
 } from '../utils/quranicDictionary';
 import { QuranicMatchBadge } from './QuranicMatchBadge';
+import { ResultsSummaryBox } from './ResultsSummaryBox';
 import {
   Copy,
   Check,
@@ -218,12 +219,12 @@ export function DecryptView() {
 
   // Dictionary check map for high performance (evaluates the current words, including reversed if selected)
   const dictionaryStatus = useMemo(() => {
-    const statusMap = new Map<string, boolean>();
+    const statusMap = new Map<string, string | null>();
     if (!dictLoaded) return statusMap;
 
     for (const word of processedCombinations) {
       if (!statusMap.has(word)) {
-        statusMap.set(word, arabicDictionary.isWord(word));
+        statusMap.set(word, arabicDictionary.getMatchedWord(word));
       }
     }
     return statusMap;
@@ -243,8 +244,8 @@ export function DecryptView() {
   // Count dictionary matches
   const dictionaryMatchesCount = useMemo(() => {
     let count = 0;
-    for (const isDict of dictionaryStatus.values()) {
-      if (isDict) count++;
+    for (const matchedWord of dictionaryStatus.values()) {
+      if (matchedWord) count++;
     }
     return count;
   }, [dictionaryStatus]);
@@ -257,6 +258,31 @@ export function DecryptView() {
     }
     return count;
   }, [quranicStatus]);
+
+  // Compute exact lists for summary
+  const exactQuranicList = useMemo(() => {
+    const list: { combo: string; meta: QuranicWordMeta }[] = [];
+    const seen = new Set<string>();
+    for (const [combo, meta] of quranicStatus.entries()) {
+      if (meta && !seen.has(combo)) {
+        seen.add(combo);
+        list.push({ combo, meta });
+      }
+    }
+    return list;
+  }, [quranicStatus]);
+
+  const exactDictList = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+    for (const [combo, matchedWord] of dictionaryStatus.entries()) {
+      if (matchedWord && !seen.has(combo)) {
+        seen.add(combo);
+        list.push(matchedWord);
+      }
+    }
+    return list;
+  }, [dictionaryStatus]);
 
   // Filtering: allows characters anywhere inside the word (middle, start, or end) + optional dictionary/Quranic filter
   const normalizedFilter = cleanText(combinationFilter).trim();
@@ -359,6 +385,15 @@ export function DecryptView() {
           </button>
         </div>
       </div>
+
+      {meaningfulLettersCount > 0 && (
+        <ResultsSummaryBox
+          exactQuranicList={exactQuranicList}
+          exactDictList={exactDictList}
+          nooraniMatchesCount={0}
+          isGenerating={isGenerating}
+        />
+      )}
 
       {/* Breakdown per letter with Line Breaks on Spaces */}
       {lines.length > 0 && (
