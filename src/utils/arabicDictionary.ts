@@ -35,7 +35,9 @@ class DictionaryService {
     this.loading = true;
 
     try {
-      const response = await fetch('/arabic_dictionary.txt');
+      const baseUrl = import.meta.env.BASE_URL || './';
+      const dictUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}arabic_dictionary.txt`;
+      const response = await fetch(dictUrl);
       if (!response.ok) {
         throw new Error('Failed to fetch dictionary');
       }

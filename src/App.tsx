@@ -10,7 +10,7 @@ import { Eraser } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table'>('encrypt');
-  const [inputText, setInputText] = useState('سلام');
+  const [inputText, setInputText] = useState('بقرة');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
 
   // Detailed analysis of letters in the input string
@@ -74,30 +74,33 @@ export function App() {
                 <div className="flex items-center gap-3">
                   {/* 7 Compact Rainbow Numbered Squares */}
                   <CompactLayersIndicator activeLayerNumbers={activeLayersInText} />
-
-                  {inputText && (
-                    <button
-                      type="button"
-                      id="clear-input-btn"
-                      onClick={handleClear}
-                      className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-rose-600 transition-colors cursor-pointer"
-                      title="مسح النص"
-                    >
-                      <Eraser className="w-3.5 h-3.5" />
-                      <span>مسح</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
-              <textarea
-                id="arabic-input"
-                rows={2}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="اكتب هنا بالعربية..."
-                className="w-full text-xl sm:text-2xl font-bold p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 resize-none transition-all"
-              />
+              {/* Input container with Clear button prominently positioned on the right side */}
+              <div className="flex items-stretch gap-2">
+                {inputText && (
+                  <button
+                    type="button"
+                    id="clear-input-btn"
+                    onClick={handleClear}
+                    className="shrink-0 px-3.5 sm:px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm inline-flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                    title="مسح النص بالكامل"
+                  >
+                    <Eraser className="w-4 h-4 text-rose-600" />
+                    <span>مسح</span>
+                  </button>
+                )}
+
+                <textarea
+                  id="arabic-input"
+                  rows={2}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="اكتب هنا بالعربية..."
+                  className="flex-1 text-xl sm:text-2xl font-bold p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 resize-none transition-all"
+                />
+              </div>
             </div>
 
             {/* Letter by letter analysis & Results */}

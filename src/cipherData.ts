@@ -327,3 +327,157 @@ export function getDecryptionCombinations(
   return results;
 }
 
+// -------------------------------------------------------------------
+// Quranic Initials / Noorani Letters & Words Dictionary
+// -------------------------------------------------------------------
+
+// The 14 unique Noorani / Quranic Initial Letters: (نص حكيم قاطع له سر)
+export const NOORANI_LETTERS = ['ن', 'ص', 'ح', 'ك', 'ي', 'م', 'ق', 'ا', 'ط', 'ع', 'ل', 'ه', 'س', 'ر'];
+export const NOORANI_LETTERS_SET = new Set(NOORANI_LETTERS);
+
+// The 14 Quranic Opening Words / Combinations (الفواتح القرآنية المقطعة):
+export const QURANIC_WORDS = [
+  'الم',
+  'المص',
+  'الر',
+  'المر',
+  'كهيعص',
+  'طه',
+  'طسم',
+  'طس',
+  'يس',
+  'ص',
+  'حم',
+  'عسق',
+  'ق',
+  'ن',
+];
+
+export const QURANIC_WORDS_SET = new Set(QURANIC_WORDS);
+
+export interface QuranicSegment {
+  text: string;
+  isQuranicWord: boolean; // Matches one of the 14 opening words (e.g., حم, طسم, كهيعص)
+  isMultiLetter: boolean; // Has length >= 2
+  isNooraniChar: boolean; // Matches individual Noorani letter
+}
+
+export interface QuranicSegmentationResult {
+  score: number;
+  multiWordCount: number;
+  quranicCoveredChars: number;
+  segments: QuranicSegment[];
+  formattedDisplay: string;
+}
+
+/**
+ * Segments any Arabic text into Quranic Initial Words (الم، طسم، حم، كهيعص...) as much as possible
+ * using dynamic programming with preference for longer Quranic multi-letter words.
+ */
+export function segmentIntoQuranicWords(text: string): QuranicSegmentationResult {
+  const n = text.length;
+  if (n === 0) {
+    return {
+      score: 0,
+      multiWordCount: 0,
+      quranicCoveredChars: 0,
+      segments: [],
+      formattedDisplay: '',
+    };
+  }
+
+  const memo = new Map<number, {
+    score: number;
+    multiWordCount: number;
+    quranicCoveredChars: number;
+    segments: QuranicSegment[];
+  }>();
+
+  function dp(i: number): {
+    score: number;
+    multiWordCount: number;
+    quranicCoveredChars: number;
+    segments: QuranicSegment[];
+  } {
+    if (i >= n) {
+      return { score: 0, multiWordCount: 0, quranicCoveredChars: 0, segments: [] };
+    }
+    if (memo.has(i)) {
+      return memo.get(i)!;
+    }
+
+    let best: {
+      score: number;
+      multiWordCount: number;
+      quranicCoveredChars: number;
+      segments: QuranicSegment[];
+    } | null = null;
+
+    // 1. Try matching any of the 14 Quranic Opening Words at position i
+    for (const qw of QURANIC_WORDS) {
+      if (text.startsWith(qw, i)) {
+        const next = dp(i + qw.length);
+        const isMulti = qw.length > 1;
+        // Prioritize longer multi-letter Quranic words heavily (e.g. كهيعص=250, المص=160, طسم=90, حم=40)
+        const wordWeight = isMulti ? (qw.length * qw.length * 15) : 3;
+        const score = wordWeight + next.score;
+        const multiWordCount = (isMulti ? 1 : 0) + next.multiWordCount;
+        const quranicCoveredChars = qw.length + next.quranicCoveredChars;
+
+        if (!best || score > best.score) {
+          best = {
+            score,
+            multiWordCount,
+            quranicCoveredChars,
+            segments: [
+              {
+                text: qw,
+                isQuranicWord: true,
+                isMultiLetter: isMulti,
+                isNooraniChar: true,
+              },
+              ...next.segments,
+            ],
+          };
+        }
+      }
+    }
+
+    // 2. Fallback to single character
+    const singleChar = text[i];
+    const isSingleNoorani = NOORANI_LETTERS_SET.has(singleChar);
+    const isSingleQuranicWord = QURANIC_WORDS_SET.has(singleChar);
+    const nextSingle = dp(i + 1);
+    const singleScore = (isSingleNoorani ? 2 : 0) + nextSingle.score;
+
+    if (!best || singleScore > best.score) {
+      best = {
+        score: singleScore,
+        multiWordCount: nextSingle.multiWordCount,
+        quranicCoveredChars: (isSingleNoorani ? 1 : 0) + nextSingle.quranicCoveredChars,
+        segments: [
+          {
+            text: singleChar,
+            isQuranicWord: isSingleQuranicWord,
+            isMultiLetter: false,
+            isNooraniChar: isSingleNoorani,
+          },
+          ...nextSingle.segments,
+        ],
+      };
+    }
+
+    memo.set(i, best);
+    return best;
+  }
+
+  const result = dp(0);
+  const formattedDisplay = result.segments.map((s) => s.text).join(' - ');
+
+  return {
+    ...result,
+    formattedDisplay,
+  };
+}
+
+
