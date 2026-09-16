@@ -1,23 +1,29 @@
 import { useState } from 'react';
-import { QuranicWordMeta, getQuranTopSearchUrl } from '../utils/quranicDictionary';
-import { BookOpen, Sparkles, Loader2, RefreshCcw, Check, ExternalLink } from 'lucide-react';
+import { QuranicWordMeta, QuranicNearestMatch, getQuranTopSearchUrl } from '../utils/quranicDictionary';
+import { BookOpen, Sparkles, Loader2, RefreshCcw, Check, ExternalLink, Search } from 'lucide-react';
 
 interface ResultsSummaryBoxProps {
   exactQuranicList: { combo: string; meta: QuranicWordMeta; isReversed?: boolean; original?: string }[];
   exactDictList: { word: string; isReversed?: boolean; original?: string }[];
   nooraniMatchesCount: number;
+  nearestQuranicList?: { combo: string; nearest: QuranicNearestMatch; isReversed?: boolean; original?: string }[];
   isGenerating: boolean;
   hasGenerated?: boolean;
   onSelectWord?: (word: string) => void;
+  onGenerate?: () => void;
+  totalCombinations?: number;
 }
 
 export function ResultsSummaryBox({
   exactQuranicList,
   exactDictList,
   nooraniMatchesCount,
+  nearestQuranicList = [],
   isGenerating,
   hasGenerated = false,
   onSelectWord,
+  onGenerate,
+  totalCombinations,
 }: ResultsSummaryBoxProps) {
   const [copiedWord, setCopiedWord] = useState<string | null>(null);
 
@@ -26,11 +32,12 @@ export function ResultsSummaryBox({
     (d) => !exactQuranicList.some((q) => q.meta.word === d.word && !!q.isReversed === !!d.isReversed)
   );
 
+  const topNearest = nearestQuranicList.slice(0, 10);
   const totalMeaningful = exactQuranicList.length + uniqueDictList.length;
-  const hasResults = totalMeaningful > 0 || nooraniMatchesCount > 0;
+  const hasResults = totalMeaningful > 0 || nooraniMatchesCount > 0 || topNearest.length > 0;
 
-  // Don't show if empty and not generating and has not generated yet
-  if (!hasResults && !isGenerating && !hasGenerated) {
+  // Don't show if empty and not generating and has not generated yet and no onGenerate
+  if (!hasResults && !isGenerating && !hasGenerated && !onGenerate) {
     return null;
   }
 
@@ -56,10 +63,10 @@ export function ResultsSummaryBox({
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-extrabold text-stone-900 flex items-center gap-2">
-              <span>النتائج المفهومة والمقبولة</span>
+              <span>النتائج المفهومة والمقبولة والتطابق القرآني</span>
               {hasResults && (
                 <span className="text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
-                  {totalMeaningful.toLocaleString('ar-EG')} كلمة
+                  {totalMeaningful > 0 ? `${totalMeaningful.toLocaleString('ar-EG')} كلمة مطابقة` : `${topNearest.length} مفردة مقاربة`}
                 </span>
               )}
             </h3>
@@ -68,28 +75,63 @@ export function ResultsSummaryBox({
                 ? 'جاري فحص وتوليد الاحتمالات ومطابقتها مع المعاجم العربية والقرآنية...'
                 : hasResults
                 ? 'انقر على أي كلمة لنسخها وتحديد خيارات تشفيرها تلقائياً'
-                : 'نتائج فحص المعاجم العربية والقرآنية'}
+                : 'فحص المعاجم العربية ومعجم ألفاظ القرآن الكريم'}
             </p>
           </div>
         </div>
 
-        {isGenerating ? (
-          <div className="flex items-center gap-1.5 text-xs text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-            <span>جارِ البحث في المعاجم...</span>
-          </div>
-        ) : (
-          copiedWord && (
-            <div className="flex items-center gap-1 text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-md animate-in fade-in">
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
-              <span>تم النسخ: {copiedWord}</span>
+        <div className="flex items-center gap-2">
+          {!hasGenerated && !isGenerating && onGenerate && (
+            <button
+              type="button"
+              onClick={onGenerate}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+              <span>توليد وعرض الاحتمالات</span>
+            </button>
+          )}
+
+          {isGenerating ? (
+            <div className="flex items-center gap-1.5 text-xs text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+              <span>جارِ البحث في المعاجم...</span>
             </div>
-          )
-        )}
+          ) : (
+            copiedWord && (
+              <div className="flex items-center gap-1 text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-md animate-in fade-in">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>تم النسخ: {copiedWord}</span>
+              </div>
+            )
+          )}
+        </div>
       </div>
 
       {/* Main Results Display */}
       <div className="pt-3">
+        {/* State 0: Not generated yet */}
+        {!isGenerating && !hasGenerated && onGenerate && (
+          <div className="p-3 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-stone-900">
+                {totalCombinations ? `يوجد ${totalCombinations.toLocaleString('ar-EG')} احتمال تشفيري ممكن لهذا النص` : 'جاهز لتوليد ومطابقة الاحتمالات'}
+              </p>
+              <p className="text-xs text-stone-600 mt-0.5">
+                اضغط الزر لتوليد قائمة الاحتمالات وفحص المفردات القرآنية المتطابقة وأقرب المفردات القرآنية شبهاً بالاحتمالات الحالية (مع نسبة التقارب).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onGenerate}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <Sparkles className="w-4 h-4 text-amber-200" />
+              <span>توليد وعرض الاحتمالات والتطابق القرآني</span>
+            </button>
+          </div>
+        )}
+
         {/* State 1: When generating and no results yet */}
         {isGenerating && !hasResults && (
           <div className="py-4 text-center text-xs sm:text-sm text-stone-500 flex items-center justify-center gap-2">
@@ -109,7 +151,7 @@ export function ResultsSummaryBox({
 
         {/* State 3: Display Found Meaningful Words */}
         {hasResults && (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {/* 1. Exact Quranic Words */}
             {exactQuranicList.length > 0 && (
               <div className="space-y-1.5">
@@ -164,9 +206,61 @@ export function ResultsSummaryBox({
               </div>
             )}
 
-            {/* 2. Arabic Dictionary Words */}
+            {/* 2. Nearest Quranic Vocabulary with Similarity Percentage */}
+            {topNearest.length > 0 && (
+              <div className="space-y-1.5 pt-1 border-t border-amber-100">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>أقرب المفردات القرآنية شبهًا بالاحتمالات الحالية (مع نسبة التقارب):</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {topNearest.map(({ combo, nearest }, idx) => {
+                    const sim = Math.round(nearest.similarity);
+                    const isCopied = copiedWord === nearest.originalQuranicWord;
+                    return (
+                      <div
+                        key={`nearest-${idx}`}
+                        className="inline-flex items-center bg-white border border-amber-200 hover:border-amber-400 rounded-xl px-2.5 py-1 text-xs gap-2 shadow-2xs transition-all"
+                      >
+                        <span className="font-bold text-stone-600 font-mono">{combo}</span>
+                        <span className="text-stone-300">←</span>
+                        <button
+                          type="button"
+                          onClick={() => handleWordClick(nearest.originalQuranicWord, combo)}
+                          className="font-extrabold text-amber-950 hover:underline cursor-pointer inline-flex items-center gap-1"
+                          title={`انقر لنسخ: ${nearest.originalQuranicWord}`}
+                        >
+                          {isCopied ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : null}
+                          <span>{nearest.originalQuranicWord}</span>
+                        </button>
+                        <span
+                          className={`text-3xs font-extrabold px-1.5 py-0.5 rounded-md ${
+                            sim >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {sim}%
+                        </span>
+                        <a
+                          href={getQuranTopSearchUrl(nearest.originalQuranicWord || nearest.word)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-stone-400 hover:text-amber-800"
+                          title="بحث قرآني"
+                        >
+                          <Search className="w-3 h-3" />
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Arabic Dictionary Words */}
             {uniqueDictList.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 pt-1 border-t border-stone-100">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
                   <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
                   <span>كلمات المعجم العربي ({uniqueDictList.length.toLocaleString('ar-EG')}):</span>
@@ -205,7 +299,7 @@ export function ResultsSummaryBox({
               </div>
             )}
 
-            {/* 3. Noorani Multi-Letter Opening Matches */}
+            {/* 4. Noorani Multi-Letter Opening Matches */}
             {nooraniMatchesCount > 0 && (
               <div className="pt-1">
                 <div className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-900 px-3 py-1 rounded-xl text-xs font-bold shadow-2xs">

@@ -10,11 +10,13 @@ import { arabicDictionary } from '../utils/arabicDictionary';
 import {
   quranicDictionary,
   QuranicWordMeta,
+  QuranicNearestMatch,
   getQuranTopAyahUrl,
   getQuranTopSearchUrl,
 } from '../utils/quranicDictionary';
 import { QuranicMatchBadge } from './QuranicMatchBadge';
 import { ResultsSummaryBox } from './ResultsSummaryBox';
+import { QuranicCombinationsLexicon } from './QuranicCombinationsLexicon';
 import {
   Copy,
   Check,
@@ -278,6 +280,31 @@ export function DecryptView() {
     return statusMap;
   }, [processedCombinations, quranicCount]);
 
+  // Quranic nearest vocabulary map
+  const quranicNearestMap = useMemo(() => {
+    const nearestMap = new Map<string, QuranicNearestMatch | null>();
+    for (const item of processedCombinations) {
+      if (!nearestMap.has(item.word)) {
+        nearestMap.set(item.word, quranicDictionary.findClosestQuranicWord(item.word));
+      }
+    }
+    return nearestMap;
+  }, [processedCombinations, quranicCount]);
+
+  // List of nearest matches with good similarity
+  const nearestQuranicList = useMemo(() => {
+    const list: { combo: string; nearest: QuranicNearestMatch; isReversed: boolean; original: string }[] = [];
+    const seen = new Set<string>();
+    for (const item of processedCombinations) {
+      const nearest = quranicNearestMap.get(item.word);
+      if (nearest && nearest.similarity < 100 && nearest.similarity >= 58 && !seen.has(item.word)) {
+        seen.add(item.word);
+        list.push({ combo: item.word, nearest, isReversed: item.isReversed, original: item.original });
+      }
+    }
+    return list.sort((a, b) => b.nearest.similarity - a.nearest.similarity);
+  }, [processedCombinations, quranicNearestMap]);
+
   // Count dictionary matches
   const dictionaryMatchesCount = useMemo(() => {
     let count = 0;
@@ -500,14 +527,32 @@ export function DecryptView() {
       </div>
 
       {/* Results Summary Box (shown when generated or for small input or while generating) */}
-      {meaningfulLettersCount > 0 && (hasGenerated || isGenerating || meaningfulLettersCount <= 2 || exactQuranicList.length > 0) && (
+      {meaningfulLettersCount > 0 && (
         <ResultsSummaryBox
           exactQuranicList={exactQuranicList}
           exactDictList={exactDictList}
           nooraniMatchesCount={0}
+          nearestQuranicList={nearestQuranicList}
           isGenerating={isGenerating}
-          hasGenerated={hasGenerated}
+          hasGenerated={hasGenerated || meaningfulLettersCount <= 2}
           onSelectWord={(word) => handleCopy(word, `summary-${word}`)}
+          onGenerate={handleTriggerDecryptGenerate}
+          totalCombinations={totalCombinationsPossible}
+        />
+      )}
+
+      {/* Quranic Combinations Lexicon (Vocabulary & Nearest Matching) */}
+      {meaningfulLettersCount > 0 && (
+        <QuranicCombinationsLexicon
+          exactMatches={exactQuranicList}
+          nearestMatches={nearestQuranicList}
+          onSelectCombo={(combo) => handleCopy(combo, `lexicon-${combo}`)}
+          onFilterExact={() => setOnlyQuranicWords(!onlyQuranicWords)}
+          isOnlyExactActive={onlyQuranicWords}
+          onGenerate={handleTriggerDecryptGenerate}
+          isGenerating={isGenerating}
+          hasGenerated={hasGenerated || meaningfulLettersCount <= 2}
+          totalCombinations={totalCombinationsPossible}
         />
       )}
 

@@ -316,7 +316,7 @@ export function EncryptionResults({
     const seen = new Set<string>();
     for (const item of processedCombinations) {
       const nearest = quranicNearestMap.get(item.word);
-      if (nearest && nearest.similarity < 100 && nearest.similarity >= 65 && !seen.has(item.word)) {
+      if (nearest && nearest.similarity < 100 && nearest.similarity >= 58 && !seen.has(item.word)) {
         seen.add(item.word);
         list.push({ combo: item.word, nearest, isReversed: item.isReversed, original: item.original });
       }
@@ -436,9 +436,12 @@ export function EncryptionResults({
         exactQuranicList={exactQuranicList}
         exactDictList={exactDictList}
         nooraniMatchesCount={quranicMatchesCount}
+        nearestQuranicList={nearestQuranicList}
         isGenerating={isGenerating}
-        hasGenerated={hasGenerated}
+        hasGenerated={hasGenerated || lettersCount <= 3}
         onSelectWord={handleSelectCombo}
+        onGenerate={startGeneration}
+        totalCombinations={totalCombinationsPossible}
       />
 
       {/* 1. LetterAnalysisCard (Moved here to sit below summary) */}
@@ -449,13 +452,17 @@ export function EncryptionResults({
       />
 
       {/* 2. Quranic Combinations Lexicon (Vocabulary Matching) */}
-      {(hasGenerated || lettersCount <= 3 || exactQuranicList.length > 0) && (
+      {lettersCount > 0 && (
         <QuranicCombinationsLexicon
           exactMatches={exactQuranicList}
           nearestMatches={nearestQuranicList}
           onSelectCombo={handleSelectCombo}
           onFilterExact={() => setOnlyQuranicVocab(!onlyQuranicVocab)}
           isOnlyExactActive={onlyQuranicVocab}
+          onGenerate={startGeneration}
+          isGenerating={isGenerating}
+          hasGenerated={hasGenerated || lettersCount <= 3}
+          totalCombinations={totalCombinationsPossible}
         />
       )}
 

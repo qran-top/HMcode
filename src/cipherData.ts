@@ -100,34 +100,10 @@ export const LAYER_RAINBOW_COLORS: Record<number, LayerColorTheme> = {
 
 export const CIPHER_LAYERS: LayerInfo[] = [
   {
-    layer: 1,
-    cipherLetters: ['ك', 'ر'],
-    arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
-    description: 'الطبقة الأولى: ك ر المقابلة لـ (ذ ض ظ غ)',
-  },
-  {
-    layer: 2,
-    cipherLetters: ['ط', 'ه'],
-    arabicLetters: ['ش', 'ت', 'ث', 'خ'],
-    description: 'الطبقة الثانية: ط ه المقابلة لـ (ش ت ث خ)',
-  },
-  {
-    layer: 3,
-    cipherLetters: ['ا', 'ل'],
-    arabicLetters: ['ف', 'ص', 'ق', 'ر'],
-    description: 'الطبقة الثالثة: ا ل المقابلة لـ (ف ص ق ر)',
-  },
-  {
-    layer: 4,
-    cipherLetters: ['ص', 'ي'],
-    arabicLetters: ['م', 'ن', 'س', 'ع'],
-    description: 'الطبقة الرابعة: ص ي المقابلة لـ (م ن س ع)',
-  },
-  {
-    layer: 5,
-    cipherLetters: ['ع', 'س'],
-    arabicLetters: ['ط', 'ي', 'ك', 'ل'],
-    description: 'الطبقة الخامسة: ع س المقابلة لـ (ط ي ك ل)',
+    layer: 7,
+    cipherLetters: ['ن', 'ق'],
+    arabicLetters: ['أ', 'ب', 'ج', 'د'],
+    description: 'الطبقة السابعة: ن ق المقابلة لـ (أ ب ج د)',
   },
   {
     layer: 6,
@@ -136,10 +112,34 @@ export const CIPHER_LAYERS: LayerInfo[] = [
     description: 'الطبقة السادسة: ح م المقابلة لـ (ه و ز ح)',
   },
   {
-    layer: 7,
-    cipherLetters: ['ن', 'ق'],
-    arabicLetters: ['أ', 'ب', 'ج', 'د'],
-    description: 'الطبقة السابعة: ن ق المقابلة لـ (أ ب ج د)',
+    layer: 5,
+    cipherLetters: ['ع', 'س'],
+    arabicLetters: ['ط', 'ي', 'ك', 'ل'],
+    description: 'الطبقة الخامسة: ع س المقابلة لـ (ط ي ك ل)',
+  },
+  {
+    layer: 4,
+    cipherLetters: ['ص', 'ي'],
+    arabicLetters: ['م', 'ن', 'س', 'ع'],
+    description: 'الطبقة الرابعة: ص ي المقابلة لـ (م ن س ع)',
+  },
+  {
+    layer: 3,
+    cipherLetters: ['ا', 'ل'],
+    arabicLetters: ['ف', 'ص', 'ق', 'ر'],
+    description: 'الطبقة الثالثة: ا ل المقابلة لـ (ف ص ق ر)',
+  },
+  {
+    layer: 2,
+    cipherLetters: ['ط', 'ه'],
+    arabicLetters: ['ش', 'ت', 'ث', 'خ'],
+    description: 'الطبقة الثانية: ط ه المقابلة لـ (ش ت ث خ)',
+  },
+  {
+    layer: 1,
+    cipherLetters: ['ك', 'ر'],
+    arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
+    description: 'الطبقة الأولى: ك ر المقابلة لـ (ذ ض ظ غ)',
   },
 ];
 
@@ -160,7 +160,7 @@ export function normalizeArabicChar(char: string): string {
   if (!stripped) return '';
 
   const c = stripped[0];
-  if (['أ', 'إ', 'آ', 'ا', 'ء', 'ى'].includes(c)) return 'أ'; // ى and ء mapped to أ (Layer 7) phonetically
+  if (['أ', 'إ', 'آ', 'ا', 'ء', 'ى'].includes(c)) return 'أ'; // ى and ء mapped to أ (Layer 1) phonetically
   if (c === 'ة') return 'ه';
   if (c === 'ؤ') return 'و';
   if (c === 'ئ') return 'ي';

@@ -10,9 +10,8 @@ export function LayersTable({
   highlightedLayerNumbers = [],
   onSelectLetter,
 }: LayersTableProps) {
-  // Ascending order from the bottom:
-  // Layer 7 at the top, down to Layer 1 at the very bottom
-  const displayLayers = [...CIPHER_LAYERS].reverse();
+  // Display order: Layer 7 at the top (أ ب ج د) down to Layer 1 (ذ ض ظ غ) at the bottom
+  const displayLayers = CIPHER_LAYERS;
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
@@ -26,7 +25,7 @@ export function LayersTable({
               الجدول المرجعي للطبقات السبع (28 حرفاً)
             </h2>
             <p className="text-2xs text-stone-500 mt-0.5">
-              مرتبة تصاعدياً من الأسفل (الطبقة 1 في الأسفل وتتصاعد إلى الطبقة 7 في الأعلى)
+              مرتبة من الطبقة 7 في الأعلى (أ ب ج د) نزولاً إلى الطبقة 1 (ذ ض ظ غ) في الأسفل
             </p>
           </div>
         </div>
