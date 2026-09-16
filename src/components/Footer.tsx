@@ -24,7 +24,7 @@ export function Footer({ onOpenModal }: FooterProps) {
 
   return (
     <footer className="mt-12 border-t border-stone-200/80 bg-white/70 backdrop-blur-xs text-stone-600 text-xs py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-6">
         {/* Attributions & Spiritual Dedication Banner */}
         <div className="p-4 rounded-2xl bg-linear-to-r from-amber-50/80 via-white to-emerald-50/80 border border-amber-200/60 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-right">
           <div className="space-y-1">

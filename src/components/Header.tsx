@@ -9,7 +9,7 @@ interface HeaderProps {
 export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderProps) {
   return (
     <header className="border-b border-stone-200 bg-white/90 backdrop-blur-md sticky top-0 z-30 shadow-xs">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-bold text-lg border border-stone-800 shadow-xs">

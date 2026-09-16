@@ -73,8 +73,9 @@ export function EncryptionResults({
   const customStringWithSpaces = details
     .map((d, i) => {
       if (d.isSpecialOrSpace) return d.originalChar;
+      const opts = d.cipherOptions && d.cipherOptions.length > 0 ? d.cipherOptions : [d.prob1, d.prob2];
       const choice = selectedProbabilities[i] ?? 0;
-      return choice === 0 ? d.prob1 : d.prob2;
+      return opts[choice] ?? opts[0] ?? '؟';
     })
     .join('');
 
@@ -83,14 +84,23 @@ export function EncryptionResults({
     .filter((d) => !d.isSpecialOrSpace)
     .map((d) => {
       const originalIdx = details.indexOf(d);
+      const opts = d.cipherOptions && d.cipherOptions.length > 0 ? d.cipherOptions : [d.prob1, d.prob2];
       const choice = selectedProbabilities[originalIdx] ?? 0;
-      return choice === 0 ? d.prob1 : d.prob2;
+      return opts[choice] ?? opts[0] ?? '؟';
     })
     .join('');
 
   const lettersOnly = details.filter((d) => !d.isSpecialOrSpace && d.layer);
   const lettersCount = lettersOnly.length;
-  const totalCombinationsPossible = lettersCount > 0 ? Math.pow(2, lettersCount) : 0;
+  const totalCombinationsPossible =
+    lettersCount > 0
+      ? lettersOnly.reduce((acc, item) => {
+          const uniqueChoices = new Set(
+            item.cipherOptions && item.cipherOptions.length > 0 ? item.cipherOptions : [item.prob1, item.prob2]
+          ).size;
+          return acc * Math.max(1, uniqueChoices);
+        }, 1)
+      : 0;
   const maxTarget = Math.min(totalCombinationsPossible, 2048);
 
   // On-demand generator function
@@ -129,7 +139,13 @@ export function EncryptionResults({
         }
 
         const item = lettersOnly[frame.index];
-        const choices = [item.prob1, item.prob2];
+        const choices = Array.from(
+          new Set(
+            item.cipherOptions && item.cipherOptions.length > 0
+              ? item.cipherOptions
+              : [item.prob1, item.prob2]
+          )
+        );
 
         if (frame.choiceIdx < choices.length) {
           const picked = choices[frame.choiceIdx];
@@ -202,7 +218,8 @@ export function EncryptionResults({
   const handleRandomize = () => {
     const randomized = details.map((d) => {
       if (d.isSpecialOrSpace) return 0;
-      return Math.random() > 0.5 ? 1 : 0;
+      const len = d.cipherOptions?.length || 2;
+      return Math.floor(Math.random() * len);
     });
     onSetSelectedProbabilities(randomized);
   };
@@ -210,8 +227,9 @@ export function EncryptionResults({
   const handleInvert = () => {
     const inverted = details.map((d, i) => {
       if (d.isSpecialOrSpace) return 0;
+      const len = d.cipherOptions?.length || 2;
       const current = selectedProbabilities[i] ?? 0;
-      return current === 0 ? 1 : 0;
+      return (current + 1) % len;
     });
     onSetSelectedProbabilities(inverted);
   };

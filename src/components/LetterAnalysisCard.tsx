@@ -68,7 +68,7 @@ export function LetterAnalysisCard({
                 <div
                   key={originalIndex}
                   id={`char-card-${originalIndex}`}
-                  className="w-36 sm:w-40 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
+                  className="w-36 sm:w-44 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
                 >
                   {/* Top: Letter and Layer Number with rainbow color */}
                   <div className="flex items-center justify-between">
@@ -85,33 +85,44 @@ export function LetterAnalysisCard({
                     </span>
                   </div>
 
-                  {/* Two probability buttons */}
-                  <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => onToggleProbability(originalIndex, 0)}
-                      className={`py-1.5 px-2 rounded-lg border text-center font-bold text-base transition-all cursor-pointer ${
-                        currentChoice === 0
-                          ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs`
-                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                      }`}
-                      title="الاحتمال الأول"
-                    >
-                      {item.prob1}
-                    </button>
+                  {/* Probability options buttons (dynamic for up to 9 slots) */}
+                  <div className="pt-1">
+                    {(() => {
+                      const options = item.cipherOptions && item.cipherOptions.length > 0
+                        ? item.cipherOptions
+                        : [item.prob1, item.prob2];
 
-                    <button
-                      type="button"
-                      onClick={() => onToggleProbability(originalIndex, 1)}
-                      className={`py-1.5 px-2 rounded-lg border text-center font-bold text-base transition-all cursor-pointer ${
-                        currentChoice === 1
-                          ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs`
-                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                      }`}
-                      title="الاحتمال الثاني"
-                    >
-                      {item.prob2}
-                    </button>
+                      return (
+                        <div
+                          className={`grid gap-1.5 ${
+                            options.length <= 2
+                              ? 'grid-cols-2'
+                              : options.length <= 4
+                              ? 'grid-cols-2 sm:grid-cols-4'
+                              : 'grid-cols-3'
+                          }`}
+                        >
+                          {options.map((optChar, optIdx) => {
+                            const isSelected = currentChoice === optIdx;
+                            return (
+                              <button
+                                key={optIdx}
+                                type="button"
+                                onClick={() => onToggleProbability(originalIndex, optIdx)}
+                                className={`py-1 px-1 rounded-lg border text-center font-bold text-sm sm:text-base font-['Amiri',serif] transition-all cursor-pointer ${
+                                  isSelected
+                                    ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs font-black scale-105`
+                                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                                }`}
+                                title={`الخيار ${optIdx + 1}: ${optChar}`}
+                              >
+                                {optChar}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );

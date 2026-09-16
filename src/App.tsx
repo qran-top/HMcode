@@ -73,7 +73,7 @@ export function App() {
       />
 
       {/* Main Container */}
-      <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 flex-1 space-y-4">
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 flex-1 space-y-4">
         {/* Tab 1: Encryption */}
         {activeTab === 'encrypt' && (
           <div className="space-y-4">

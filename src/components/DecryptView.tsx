@@ -89,19 +89,27 @@ export function DecryptView() {
         char,
         isSpace: true,
         matchingLayer: null,
+        matchingLayers: [] as typeof cipherLayers,
         candidates: [] as string[],
       };
     }
 
-    const matchingLayer = cipherLayers.find((l) =>
-      l.cipherLetters.includes(char)
+    const matchingLayers = cipherLayers.filter(
+      (l) =>
+        Array.isArray(l.cipherLetters) &&
+        l.cipherLetters.map((c) => (c || '').trim()).filter(Boolean).includes(char)
+    );
+    const matchingLayer = matchingLayers[0] || null;
+    const candidates = Array.from(
+      new Set(matchingLayers.flatMap((l) => l.arabicLetters).filter(Boolean))
     );
 
     return {
       char,
       isSpace: false,
-      matchingLayer: matchingLayer || null,
-      candidates: matchingLayer ? matchingLayer.arabicLetters.filter(Boolean) : ([] as string[]),
+      matchingLayer,
+      matchingLayers,
+      candidates,
     };
   });
 
@@ -109,6 +117,7 @@ export function DecryptView() {
   const activeLayersInDecrypt = useMemo(() => {
     const layers = new Set<number>();
     decodedItems.forEach((d) => {
+      (d.matchingLayers || []).forEach((ml) => layers.add(ml.layer));
       if (d.matchingLayer) layers.add(d.matchingLayer.layer);
     });
     return Array.from(layers);
@@ -135,7 +144,10 @@ export function DecryptView() {
   // Meaningful letters count without spaces for decoding
   const meaningfulItems = decodedItems.filter((d) => !d.isSpace && d.matchingLayer);
   const meaningfulLettersCount = meaningfulItems.length;
-  const totalCombinationsPossible = meaningfulLettersCount > 0 ? Math.pow(4, meaningfulLettersCount) : 0;
+  const totalCombinationsPossible =
+    meaningfulLettersCount > 0
+      ? meaningfulItems.reduce((acc, item) => acc * Math.max(1, item.candidates.length), 1)
+      : 0;
   // Cap target combinations to 2500 to keep DOM and memory extremely fast
   const maxTarget = Math.min(totalCombinationsPossible, 2500);
 
@@ -491,21 +503,35 @@ export function DecryptView() {
                 handleTriggerDecryptGenerate();
               }
             }}
-            placeholder="اكتب أو انقر أحرف التشفير الـ 14 فقط (واضغط Enter لتوليد الاحتمالات)..."
+            placeholder="اكتب أو انقر أحرف التشفير لفك التشفير (واضغط Enter لتوليد الاحتمالات)..."
             className="flex-1 text-xl sm:text-2xl font-bold p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right bg-stone-50/50"
           />
         </div>
 
         {/* Cipher Buttons for Direct Clicking with Rainbow Colors */}
         <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-stone-500 ml-1">أحرف التشفير المسموحة:</span>
+          <span className="text-xs text-stone-500 ml-1">أحرف التشفير:</span>
           {cipherLayers.map((l) => {
             const color = LAYER_RAINBOW_COLORS[l.layer];
+            const charsInLayer: string[] = [];
+            (l.cipherLetters || []).forEach((c) => {
+              const trimmed = (c || '').trim();
+              if (trimmed) {
+                const singleLetters = trimmed.replace(/[^ء-ي]/g, '').split('');
+                if (singleLetters.length > 0) {
+                  charsInLayer.push(...singleLetters);
+                } else {
+                  charsInLayer.push(trimmed);
+                }
+              }
+            });
+            const uniqueChars = Array.from(new Set(charsInLayer));
+            if (uniqueChars.length === 0) return null;
             return (
               <div key={l.layer} className="flex items-center gap-1">
-                {l.cipherLetters.map((c) => (
+                {uniqueChars.map((c, cIdx) => (
                   <button
-                    key={c}
+                    key={`${l.layer}-${c}-${cIdx}`}
                     type="button"
                     onClick={() => handleAppendChar(c)}
                     className={`w-7 h-7 rounded-lg font-bold text-sm flex items-center justify-center border transition-transform active:scale-95 cursor-pointer ${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-2xs`}
@@ -576,7 +602,12 @@ export function DecryptView() {
                 className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 border border-stone-100"
               >
                 {lineItems.map(({ originalIndex, detail: item }) => {
-                  const layerNum = item.matchingLayer?.layer ?? 0;
+                  const matchingList = item.matchingLayers && item.matchingLayers.length > 0
+                    ? item.matchingLayers
+                    : item.matchingLayer ? [item.matchingLayer] : [];
+                  const isMultiLayer = matchingList.length > 1;
+                  const primaryLayer = matchingList[0] || null;
+                  const layerNum = primaryLayer?.layer ?? 0;
                   const color = LAYER_RAINBOW_COLORS[layerNum] || {
                     activeBg: 'bg-stone-800',
                     activeText: 'text-white',
@@ -586,26 +617,35 @@ export function DecryptView() {
                   return (
                     <div
                       key={originalIndex}
-                      className="w-36 sm:w-44 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex flex-col justify-between gap-2"
+                      className="w-40 sm:w-48 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex flex-col justify-between gap-2"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1">
                         <span
                           className={`w-8 h-8 rounded-lg font-bold text-base flex items-center justify-center shadow-xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
                         >
                           {item.char}
                         </span>
-                        <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded-md ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
-                        >
-                          الطبقة {layerNum}
-                        </span>
+                        {isMultiLayer ? (
+                          <span
+                            className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300"
+                            title="هذا الحرف موجود في عدة طبقات!"
+                          >
+                            الطبقات: {matchingList.map((ml) => ml.layer).join(' + ')}
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-xs font-bold px-2 py-0.5 rounded-md ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                          >
+                            {layerNum > 0 ? `الطبقة ${layerNum}` : 'غير معروف'}
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-4 gap-1 text-center pt-1">
                         {item.candidates.map((cand, cIdx) => (
                           <div
                             key={cIdx}
-                            className="py-1 rounded bg-stone-50 border border-stone-200 text-stone-900 font-bold text-sm"
+                            className="py-1 rounded bg-stone-50 border border-stone-200 text-stone-900 font-bold text-sm font-['Amiri',serif]"
                           >
                             {cand}
                           </div>
