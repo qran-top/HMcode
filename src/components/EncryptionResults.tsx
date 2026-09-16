@@ -24,6 +24,8 @@ interface EncryptionResultsProps {
   selectedProbabilities: number[];
   onSetSelectedProbabilities: (probs: number[]) => void;
   onToggleProbability: (index: number, probIndex: number) => void;
+  generateSignal?: number;
+  onGenerationStateChange?: (state: { isGenerating: boolean; hasGenerated: boolean }) => void;
 }
 
 export function EncryptionResults({
@@ -31,6 +33,8 @@ export function EncryptionResults({
   selectedProbabilities,
   onSetSelectedProbabilities,
   onToggleProbability,
+  generateSignal,
+  onGenerationStateChange,
 }: EncryptionResultsProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
@@ -41,10 +45,12 @@ export function EncryptionResults({
   const [quranicDictCount, setQuranicDictCount] = useState<number>(quranicDictionary.getWordCount());
   const [arabicDictCount, setArabicDictCount] = useState<number>(arabicDictionary.getWordCount());
 
-  // Asynchronous chunked generation state
+  // Asynchronous chunked generation state & On-demand trigger
+  const [hasGenerated, setHasGenerated] = useState<boolean>(false);
   const [generatedList, setGeneratedList] = useState<string[]>([]);
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [visibleCount, setVisibleCount] = useState<number>(48);
   const generationRef = useRef<number>(0);
 
   // Subscribe to Quranic & Arabic dictionary changes/loading
@@ -52,8 +58,8 @@ export function EncryptionResults({
     const unsubQuranic = quranicDictionary.subscribe((_, count) => {
       setQuranicDictCount(count);
     });
-    const unsubArabic = arabicDictionary.subscribe((_, count) => {
-      setArabicDictCount(count);
+    const unsubArabic = arabicDictionary.subscribe((_progress, _done, count) => {
+      setArabicDictCount(count || arabicDictionary.getWordCount());
     });
     return () => {
       unsubQuranic();
@@ -87,12 +93,13 @@ export function EncryptionResults({
   const totalCombinationsPossible = lettersCount > 0 ? Math.pow(2, lettersCount) : 0;
   const maxTarget = Math.min(totalCombinationsPossible, 2048);
 
-  // Chunked Async Backtracking Generation to prevent browser lag & show progress bar
-  useEffect(() => {
+  // On-demand generator function
+  const startGeneration = () => {
     if (lettersCount === 0) {
       setGeneratedList([]);
       setProgressPercent(0);
       setIsGenerating(false);
+      setHasGenerated(true);
       return;
     }
 
@@ -100,6 +107,7 @@ export function EncryptionResults({
     setIsGenerating(true);
     setProgressPercent(0);
     setGeneratedList([]);
+    setVisibleCount(48);
 
     const results: string[] = [];
     const stack: { index: number; str: string; choiceIdx: number }[] = [
@@ -111,7 +119,7 @@ export function EncryptionResults({
 
       const startTime = performance.now();
 
-      while (stack.length > 0 && results.length < maxTarget && performance.now() - startTime < 8) {
+      while (stack.length > 0 && results.length < maxTarget && performance.now() - startTime < 12) {
         const frame = stack[stack.length - 1];
 
         if (frame.index === lettersOnly.length) {
@@ -140,25 +148,48 @@ export function EncryptionResults({
 
       const currentProgress = maxTarget > 0 ? Math.min(100, Math.round((results.length / maxTarget) * 100)) : 100;
       setProgressPercent(currentProgress);
-      setGeneratedList([...results]);
 
       if (results.length < maxTarget && stack.length > 0) {
         requestAnimationFrame(processChunk);
       } else {
+        // Complete! Only set final list to avoid intermediate re-render lock
+        setGeneratedList(results);
         setIsGenerating(false);
         setProgressPercent(100);
+        setHasGenerated(true);
       }
     }
 
-    const timer = setTimeout(() => {
-      requestAnimationFrame(processChunk);
-    }, 10);
+    requestAnimationFrame(processChunk);
+  };
 
-    return () => {
-      clearTimeout(timer);
-      generationRef.current = 0;
-    };
+  // Text change handler: auto-generate for small inputs (<= 3 letters = 8 combos),
+  // but for 4+ letters, decouple typing so typing stays 100% instant and butter-smooth!
+  useEffect(() => {
+    if (lettersCount <= 3) {
+      startGeneration();
+    } else {
+      generationRef.current++;
+      setIsGenerating(false);
+      setHasGenerated(false);
+      setGeneratedList([]);
+      setProgressPercent(0);
+      setVisibleCount(48);
+    }
   }, [lettersCount, details]);
+
+  // Listen to external generate signal (from Enter key or Generate button under Clear)
+  useEffect(() => {
+    if (generateSignal && generateSignal > 0) {
+      startGeneration();
+      // Keep viewport in place without scrolling down
+    }
+  }, [generateSignal]);
+
+  // Notify parent of generation status for button syncing
+  useEffect(() => {
+    onGenerationStateChange?.({ isGenerating, hasGenerated });
+  }, [isGenerating, hasGenerated, onGenerationStateChange]);
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -250,16 +281,20 @@ export function EncryptionResults({
     return map;
   }, [processedCombinations, quranicDictCount]);
 
-  // Nearest Quranic Vocabulary Map
+  // Nearest Quranic Vocabulary Map (Calculated on top 40 non-exact candidates to avoid UI locking)
   const quranicNearestMap = useMemo(() => {
     const map = new Map<string, QuranicNearestMatch | null>();
+    if (!hasGenerated || processedCombinations.length === 0) return map;
+    let computedCount = 0;
     for (const item of processedCombinations) {
-      if (!map.has(item.word)) {
+      if (computedCount >= 40) break;
+      if (!map.has(item.word) && !quranicVocabExactMap.get(item.word)) {
         map.set(item.word, quranicDictionary.findClosestQuranicWord(item.word));
+        computedCount++;
       }
     }
     return map;
-  }, [processedCombinations, quranicDictCount]);
+  }, [processedCombinations, quranicDictCount, quranicVocabExactMap, hasGenerated]);
 
   // List of exact Quranic words found in combinations
   const exactQuranicList = useMemo(() => {
@@ -330,10 +365,34 @@ export function EncryptionResults({
     return quranicDictionary.findClosestQuranicWord(displaySelectedCipher);
   }, [displaySelectedCipher, quranicDictCount]);
 
+  // Smart Priority Sorting (Option 4):
+  // 1. Exact Quranic Vocabulary matches first
+  // 2. Arabic Dictionary words second
+  // 3. Noorani multi-letter opening words third
+  // 4. Other combinations
+  const sortedCombinations = useMemo(() => {
+    const list = [...processedCombinations];
+    return list.sort((a, b) => {
+      const aQuranic = quranicVocabExactMap.get(a.word) ? 1 : 0;
+      const bQuranic = quranicVocabExactMap.get(b.word) ? 1 : 0;
+      if (aQuranic !== bQuranic) return bQuranic - aQuranic;
+
+      const aDict = dictionaryStatus.get(a.word) ? 1 : 0;
+      const bDict = dictionaryStatus.get(b.word) ? 1 : 0;
+      if (aDict !== bDict) return bDict - aDict;
+
+      const aMulti = (segmentedMap.get(a.word)?.multiWordCount ?? 0) > 0 ? 1 : 0;
+      const bMulti = (segmentedMap.get(b.word)?.multiWordCount ?? 0) > 0 ? 1 : 0;
+      if (aMulti !== bMulti) return bMulti - aMulti;
+
+      return 0;
+    });
+  }, [processedCombinations, quranicVocabExactMap, dictionaryStatus, segmentedMap]);
+
   // Filtering by substring, Quranic vocabulary, Arabic dictionary, or multi-letter opening words
   const normalizedFilter = cleanText(combinationFilter).trim();
   const filteredCombinations = useMemo(() => {
-    return processedCombinations.filter((item) => {
+    return sortedCombinations.filter((item) => {
       if (onlyQuranicVocab) {
         const meta = quranicVocabExactMap.get(item.word);
         if (!meta) return false;
@@ -350,15 +409,25 @@ export function EncryptionResults({
       return item.word.includes(normalizedFilter);
     });
   }, [
-    processedCombinations,
-    normalizedFilter,
-    onlyQuranicMatches,
+    sortedCombinations,
     onlyQuranicVocab,
     onlyDictWords,
-    segmentedMap,
+    onlyQuranicMatches,
+    normalizedFilter,
     quranicVocabExactMap,
     dictionaryStatus,
+    segmentedMap,
   ]);
+
+  // Batching / Pagination: display first 48 combinations to keep DOM super light
+  const displayedCombinations = useMemo(() => {
+    return filteredCombinations.slice(0, visibleCount);
+  }, [filteredCombinations, visibleCount]);
+
+  // Reset visibleCount when filter changes
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [combinationFilter, onlyQuranicVocab, onlyDictWords, onlyQuranicMatches]);
 
   return (
     <div className="space-y-4">
@@ -368,6 +437,7 @@ export function EncryptionResults({
         exactDictList={exactDictList}
         nooraniMatchesCount={quranicMatchesCount}
         isGenerating={isGenerating}
+        hasGenerated={hasGenerated}
         onSelectWord={handleSelectCombo}
       />
 
@@ -379,16 +449,18 @@ export function EncryptionResults({
       />
 
       {/* 2. Quranic Combinations Lexicon (Vocabulary Matching) */}
-      <QuranicCombinationsLexicon
-        exactMatches={exactQuranicList}
-        nearestMatches={nearestQuranicList}
-        onSelectCombo={handleSelectCombo}
-        onFilterExact={() => setOnlyQuranicVocab(!onlyQuranicVocab)}
-        isOnlyExactActive={onlyQuranicVocab}
-      />
+      {(hasGenerated || lettersCount <= 3 || exactQuranicList.length > 0) && (
+        <QuranicCombinationsLexicon
+          exactMatches={exactQuranicList}
+          nearestMatches={nearestQuranicList}
+          onSelectCombo={handleSelectCombo}
+          onFilterExact={() => setOnlyQuranicVocab(!onlyQuranicVocab)}
+          isOnlyExactActive={onlyQuranicVocab}
+        />
+      )}
 
       {/* 2. Combinations List with Noorani Dictionary & Quranic Vocabulary Matching */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
+      <div id="all-combinations-card" className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100">
           <div className="flex items-center gap-2 flex-wrap">
             <Layers className="w-4 h-4 text-stone-600" />
@@ -501,6 +573,32 @@ export function EncryptionResults({
           </div>
         </div>
 
+        {/* On-Demand Trigger Box for 4+ letters when not generated yet */}
+        {!hasGenerated && !isGenerating && lettersCount > 3 && (
+          <div className="p-6 rounded-2xl border border-dashed border-amber-300 bg-linear-to-b from-amber-50/70 via-white to-amber-50/70 text-center space-y-3.5 my-2">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center shadow-2xs">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h5 className="text-sm sm:text-base font-extrabold text-stone-900">
+                يوجد {totalCombinationsPossible.toLocaleString('ar-EG')} احتمال تشفيري ممكن
+              </h5>
+              <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
+                تم تفعيل التوليد عند الطلب لضمان سرعة واستجابة المتصفح الفائقة أثناء الكتابة. اضغط الزر لتوليد قائمة الاحتمالات وفرز الكلمات القرآنية والمعجمية.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="generate-encryption-combos-btn"
+              onClick={startGeneration}
+              className="inline-flex items-center gap-2 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs sm:text-sm font-bold px-6 py-2.5 rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-amber-200" />
+              <span>توليد وعرض قائمة الاحتمالات ({maxTarget} احتمال)</span>
+            </button>
+          </div>
+        )}
+
         {/* Progress Bar (visible during generation) */}
         {isGenerating && (
           <div className="space-y-1.5 py-1">
@@ -563,138 +661,168 @@ export function EncryptionResults({
           </span>
         </div>
 
-        {/* Combinations Grid with Quranic Vocabulary & Noorani Segmented Breakdown per Item */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto p-1">
-          {filteredCombinations.map((item, idx) => {
-            const hasMatch = normalizedFilter && item.word.includes(normalizedFilter);
-            const segmentation = segmentedMap.get(item.word) || segmentIntoQuranicWords(item.word);
-            const hasMultiQuranic = segmentation.multiWordCount > 0;
-            const exactMeta = quranicVocabExactMap.get(item.word);
-            const nearestMeta = quranicNearestMap.get(item.word);
-            const isDictWord = dictionaryStatus.get(item.word);
+        {/* Combinations Grid (shown when generated or during small input) */}
+        {(hasGenerated || isGenerating || lettersCount <= 3) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-96 overflow-y-auto p-1">
+            {displayedCombinations.map((item, idx) => {
+              const hasMatch = normalizedFilter && item.word.includes(normalizedFilter);
+              const segmentation = segmentedMap.get(item.word) || segmentIntoQuranicWords(item.word);
+              const hasMultiQuranic = segmentation.multiWordCount > 0;
+              const exactMeta = quranicVocabExactMap.get(item.word);
+              const nearestMeta = quranicNearestMap.get(item.word);
+              const isDictWord = dictionaryStatus.get(item.word);
 
-            return (
-              <div
-                key={idx}
-                id={`combo-item-${idx}`}
-                className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-2 select-none group relative ${
-                  exactMeta
-                    ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white shadow-xs ring-1 ring-amber-300'
-                    : isDictWord
-                    ? 'border-emerald-400 bg-emerald-50/70 shadow-2xs ring-1 ring-emerald-300 hover:bg-emerald-50'
-                    : hasMultiQuranic
-                    ? 'border-teal-300 bg-teal-50/70 shadow-2xs hover:bg-teal-50'
-                    : hasMatch
-                    ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
-                    : 'border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300'
-                }`}
-              >
-                {/* Reversed Indicator Badge */}
-                {item.isReversed && (
-                  <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90">
-                    معكوس
-                  </div>
-                )}
-                
-                {/* Header: Combo String, Quranic/Dictionary indicator & Copy Button */}
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 overflow-hidden">
-                    {exactMeta ? (
-                      <span
-                        className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-300 shrink-0 animate-pulse"
-                        title="لفظ قرآني كريم"
-                      />
-                    ) : isDictWord ? (
-                      <span
-                        className="w-2.5 h-2.5 rounded-full bg-emerald-600 ring-1 ring-emerald-300 shrink-0"
-                        title="كلمة عربية في المعجم القاموسي"
-                      />
-                    ) : hasMultiQuranic ? (
-                      <span
-                        className="w-2 h-2 rounded-full bg-teal-600 shrink-0"
-                        title="يتضمن فاتحة قرآنية مركبة"
-                      />
-                    ) : null}
-                    <span
-                      className={`font-black text-base tracking-wider break-all ${
-                        exactMeta
-                          ? 'text-amber-950 text-lg'
-                          : isDictWord
-                          ? 'text-emerald-950 text-base font-extrabold'
-                          : 'text-stone-900'
-                      }`}
-                      title={exactMeta ? `التركيب الأصلي: ${item.word}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${item.word}` : undefined}
-                    >
-                      {exactMeta ? exactMeta.word : (typeof isDictWord === 'string' ? isDictWord : item.word)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCombo(item.original)}
-                      className={`opacity-0 group-hover:opacity-100 transition-opacity text-2xs font-bold px-1.5 py-0.5 rounded cursor-pointer ${
-                        exactMeta
-                          ? 'text-amber-800 bg-amber-100 hover:bg-amber-200'
-                          : isDictWord
-                          ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200'
-                          : 'text-stone-700 bg-stone-200/80 hover:bg-stone-300'
-                      }`}
-                      title="اعتماد هذا المشفر في النص المعتمد"
-                    >
-                      تحديد
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(item.word, `combo-${idx}`)}
-                      className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
-                      title="نسخ هذا الاحتمال"
-                    >
-                      {copiedKey === `combo-${idx}` ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Quranic & Dictionary Vocabulary Match Details */}
-                <div className="space-y-1">
-                  {isDictWord && !exactMeta && (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-2xs font-bold w-fit">
-                      <SpellCheck className="w-3 h-3 text-emerald-700 shrink-0" />
-                      <span>كلمة عربية قاموسية</span>
+              return (
+                <div
+                  key={idx}
+                  id={`combo-item-${idx}`}
+                  className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-2 select-none group relative ${
+                    exactMeta
+                      ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white shadow-xs ring-1 ring-amber-300'
+                      : isDictWord
+                      ? 'border-emerald-400 bg-emerald-50/70 shadow-2xs ring-1 ring-emerald-300 hover:bg-emerald-50'
+                      : hasMultiQuranic
+                      ? 'border-teal-300 bg-teal-50/70 shadow-2xs hover:bg-teal-50'
+                      : hasMatch
+                      ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
+                      : 'border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300'
+                  }`}
+                >
+                  {/* Reversed Indicator Badge */}
+                  {item.isReversed && (
+                    <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90">
+                      معكوس
                     </div>
                   )}
+                  
+                  {/* Header: Combo String, Quranic/Dictionary indicator & Copy Button */}
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      {exactMeta ? (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-300 shrink-0 animate-pulse"
+                          title="لفظ قرآني كريم"
+                        />
+                      ) : isDictWord ? (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full bg-emerald-600 ring-1 ring-emerald-300 shrink-0"
+                          title="كلمة عربية في المعجم القاموسي"
+                        />
+                      ) : hasMultiQuranic ? (
+                        <span
+                          className="w-2 h-2 rounded-full bg-teal-600 shrink-0"
+                          title="يتضمن فاتحة قرآنية مركبة"
+                        />
+                      ) : null}
+                      <span
+                        className={`font-black text-base tracking-wider break-all ${
+                          exactMeta
+                            ? 'text-amber-950 text-lg'
+                            : isDictWord
+                            ? 'text-emerald-950 text-base font-extrabold'
+                            : 'text-stone-900'
+                        }`}
+                        title={exactMeta ? `التركيب الأصلي: ${item.word}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${item.word}` : undefined}
+                      >
+                        {exactMeta ? exactMeta.word : (typeof isDictWord === 'string' ? isDictWord : item.word)}
+                      </span>
+                    </div>
 
-                  <QuranicMatchBadge
-                    exactMeta={exactMeta || null}
-                    nearestMeta={nearestMeta || null}
-                    showNearest={showNearestVocab}
-                    compact={true}
-                  />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCombo(item.original)}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-2xs font-bold px-1.5 py-0.5 rounded cursor-pointer ${
+                          exactMeta
+                            ? 'text-amber-800 bg-amber-100 hover:bg-amber-200'
+                            : isDictWord
+                            ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200'
+                            : 'text-stone-700 bg-stone-200/80 hover:bg-stone-300'
+                        }`}
+                        title="اعتماد هذا المشفر في النص المعتمد"
+                      >
+                        تحديد
+                      </button>
 
-                  {/* Noorani Segmentation Badges & Division */}
-                  <div className="pt-1.5 border-t border-stone-200/60 flex items-center justify-between gap-1 text-2xs">
-                    <NooraniSegmentsBadge segmentation={segmentation} />
-                    <span className="text-stone-400 font-mono shrink-0">
-                      {segmentation.formattedDisplay}
-                    </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(item.word, `combo-${idx}`)}
+                        className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                        title="نسخ هذا الاحتمال"
+                      >
+                        {copiedKey === `combo-${idx}` ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quranic & Dictionary Vocabulary Match Details */}
+                  <div className="space-y-1">
+                    {isDictWord && !exactMeta && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-2xs font-bold w-fit">
+                        <SpellCheck className="w-3 h-3 text-emerald-700 shrink-0" />
+                        <span>كلمة عربية قاموسية</span>
+                      </div>
+                    )}
+
+                    <QuranicMatchBadge
+                      exactMeta={exactMeta || null}
+                      nearestMeta={nearestMeta || null}
+                      showNearest={showNearestVocab}
+                      compact={true}
+                    />
+
+                    {/* Noorani Segmentation Badges & Division */}
+                    <div className="pt-1.5 border-t border-stone-200/60 flex items-center justify-between gap-1 text-2xs">
+                      <NooraniSegmentsBadge segmentation={segmentation} />
+                      <span className="text-stone-400 font-mono shrink-0">
+                        {segmentation.formattedDisplay}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {filteredCombinations.length === 0 && !isGenerating && (
-            <div className="col-span-full py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
-              <AlertCircle className="w-5 h-5 text-stone-300" />
-              <span>لا توجد احتمالات مطابقة لشروط التصفية المدخلة</span>
+            {filteredCombinations.length === 0 && !isGenerating && (
+              <div className="col-span-full py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
+                <AlertCircle className="w-5 h-5 text-stone-300" />
+                <span>لا توجد احتمالات مطابقة لشروط التصفية المدخلة</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pagination / Show More for light DOM */}
+        {(hasGenerated || lettersCount <= 3) && filteredCombinations.length > visibleCount && (
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100">
+            <span className="text-xs text-stone-500">
+              يتم عرض <strong className="text-stone-800">{displayedCombinations.length}</strong> من أصل{' '}
+              <strong className="text-stone-800">{filteredCombinations.length}</strong> احتمال (الأولوية للكلمات القرآنية والمعجمية)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                id="show-more-encryption-combos-btn"
+                onClick={() => setVisibleCount((prev) => Math.min(prev + 48, filteredCombinations.length))}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition-colors cursor-pointer"
+              >
+                عرض المزيد (+{Math.min(48, filteredCombinations.length - visibleCount)})
+              </button>
+              <button
+                type="button"
+                id="show-all-encryption-combos-btn"
+                onClick={() => setVisibleCount(filteredCombinations.length)}
+                className="px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-700 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                عرض الكل ({filteredCombinations.length})
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Current Selected Cipher String Display with Noorani Breakdown (نقل إلى أسفل الصفحة) */}

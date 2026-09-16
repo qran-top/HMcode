@@ -1,4 +1,5 @@
 import { getCipherBaseString } from '../cipherData';
+import { ARABIC_COMMON_LEXICON_PARTS } from './arabicLexiconParts';
 
 class DictionaryService {
   private wordSet: Set<string> = new Set();
@@ -6,18 +7,40 @@ class DictionaryService {
   private loaded: boolean = false;
   private loading: boolean = false;
   private loadProgress: number = 0;
-  private listeners: ((progress: number, done: boolean) => void)[] = [];
+  private retryCount: number = 0;
+  private maxRetries: number = 2;
+  private listeners: ((progress: number, done: boolean, count: number) => void)[] = [];
 
   constructor() {
-    // Auto-kick background load
+    // 1. Immediately seed core Arabic lexicon (instant 0ms availability)
+    this.ingestLexiconParts(ARABIC_COMMON_LEXICON_PARTS);
+    this.loaded = true;
+    this.loadProgress = 100;
+
+    // 2. Auto-kick background load of the full dictionary
     if (typeof window !== 'undefined') {
-      setTimeout(() => this.init(), 100);
+      setTimeout(() => this.init(), 200);
     }
   }
 
-  subscribe(listener: (progress: number, done: boolean) => void) {
+  private ingestLexiconParts(parts: string[][]) {
+    for (const part of parts) {
+      for (const w of part) {
+        if (!w) continue;
+        const clean = w.trim();
+        if (!clean) continue;
+        this.wordSet.add(clean);
+        const cb = getCipherBaseString(clean);
+        if (!this.cipherBaseMap.has(cb)) {
+          this.cipherBaseMap.set(cb, clean);
+        }
+      }
+    }
+  }
+
+  subscribe(listener: (progress: number, done: boolean, count: number) => void) {
     this.listeners.push(listener);
-    listener(this.loadProgress, this.loaded);
+    listener(this.loadProgress, this.loaded, this.wordSet.size);
     return () => {
       this.listeners = this.listeners.filter((l) => l !== listener);
     };
@@ -25,20 +48,87 @@ class DictionaryService {
 
   private notify() {
     for (const listener of this.listeners) {
-      listener(this.loadProgress, this.loaded);
+      listener(this.loadProgress, this.loaded, this.wordSet.size);
     }
   }
 
   async init(): Promise<void> {
-    if (this.loaded || this.loading) return;
+    if (this.loading) return;
+    // If we already loaded a large set (> 100,000 words), we're done
+    if (this.wordSet.size > 100000) return;
     this.loading = true;
 
     try {
-      const baseUrl = import.meta.env.BASE_URL || './';
-      const dictUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}arabic_dictionary.txt`;
-      const response = await fetch(dictUrl);
-      if (!response.ok) {
-        throw new Error('Failed to fetch dictionary');
+      // Build candidate URLs to be resilient against varying base paths and hosting environments
+      const candidateUrls: string[] = [];
+      const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || './';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+      candidateUrls.push(`${cleanBase}arabic_dictionary.txt`);
+
+      if (typeof window !== 'undefined' && window.location) {
+        try {
+          candidateUrls.push(new URL('arabic_dictionary.txt', window.location.href).href);
+        } catch {
+          // ignore url parse error
+        }
+        if (window.location.origin && window.location.origin !== 'null') {
+          candidateUrls.push(`${window.location.origin}/arabic_dictionary.txt`);
+        }
+      }
+      candidateUrls.push('/arabic_dictionary.txt');
+      candidateUrls.push('./arabic_dictionary.txt');
+
+      const uniqueUrls = Array.from(new Set(candidateUrls));
+
+      let response: Response | null = null;
+      let lastError: unknown = null;
+
+      for (const url of uniqueUrls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      // If full 11MB file wasn't reachable, try fallback to quranic_words.txt (172KB)
+      if (!response) {
+        const fallbackUrls = [
+          `${cleanBase}quranic_words.txt`,
+          '/quranic_words.txt',
+          './quranic_words.txt'
+        ];
+        for (const url of fallbackUrls) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              response = res;
+              break;
+            }
+          } catch {
+            // continue
+          }
+        }
+      }
+
+      if (!response) {
+        if (this.retryCount < this.maxRetries) {
+          this.retryCount++;
+          this.loading = false;
+          setTimeout(() => this.init(), 1500 * this.retryCount);
+          return;
+        }
+        // Graceful notice without raising uncaught console errors
+        console.warn('Notice: Full Arabic dictionary download deferred (using embedded core lexicon):', lastError || 'File unreachable');
+        this.loading = false;
+        this.loaded = true;
+        this.loadProgress = 100;
+        this.notify();
+        return;
       }
 
       const text = await response.text();
@@ -81,8 +171,11 @@ class DictionaryService {
 
       requestAnimationFrame(processChunk);
     } catch (err) {
-      console.error('Dictionary load error:', err);
+      console.warn('Notice: Dictionary background load deferred (using embedded core lexicon):', err);
       this.loading = false;
+      this.loaded = true;
+      this.loadProgress = 100;
+      this.notify();
     }
   }
 

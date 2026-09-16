@@ -279,12 +279,38 @@ class QuranicDictionaryService {
     this.loading = true;
 
     try {
-      const baseUrl = import.meta.env.BASE_URL || './';
-      const url = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}quranic_words_info.json`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to load Quranic lexicon');
+      const candidateUrls: string[] = [];
+      const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || './';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+      candidateUrls.push(`${cleanBase}quranic_words_info.json`);
 
-      const json = (await res.json()) as Record<string, [string, number, number, string]>;
+      if (typeof window !== 'undefined' && window.location) {
+        try {
+          candidateUrls.push(new URL('quranic_words_info.json', window.location.href).href);
+        } catch {}
+        if (window.location.origin && window.location.origin !== 'null') {
+          candidateUrls.push(`${window.location.origin}/quranic_words_info.json`);
+        }
+      }
+      candidateUrls.push('/quranic_words_info.json');
+      candidateUrls.push('./quranic_words_info.json');
+
+      const uniqueUrls = Array.from(new Set(candidateUrls));
+      let response: Response | null = null;
+
+      for (const u of uniqueUrls) {
+        try {
+          const res = await fetch(u);
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!response) throw new Error('Failed to load Quranic lexicon from candidate URLs');
+
+      const json = (await response.json()) as Record<string, [string, number, number, string]>;
       this.ingestRecord(json);
 
       this.loaded = true;
