@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { EncryptedLetterDetail, getAllCombinations } from '../cipherData';
-import { Copy, Check, Shuffle, Sparkles, ChevronDown, ChevronUp, Layers, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { EncryptedLetterDetail, cleanText } from '../cipherData';
+import {
+  Copy,
+  Check,
+  Shuffle,
+  RefreshCw,
+  Layers,
+  Loader2,
+  AlertCircle,
+  ArrowLeftRight,
+} from 'lucide-react';
 
 interface EncryptionResultsProps {
   details: EncryptedLetterDetail[];
@@ -14,23 +23,19 @@ export function EncryptionResults({
   onSetSelectedProbabilities,
 }: EncryptionResultsProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [showAllCombinations, setShowAllCombinations] = useState(false);
   const [combinationFilter, setCombinationFilter] = useState('');
+  const [isReversed, setIsReversed] = useState<boolean>(false);
+
+  // Asynchronous chunked generation state
+  const [generatedList, setGeneratedList] = useState<string[]>([]);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const generationRef = useRef<number>(0);
 
   if (details.length === 0) return null;
 
-  // Compute probability 1 string
-  const prob1String = details
-    .map((d) => (d.isSpecialOrSpace ? d.originalChar : d.prob1))
-    .join('');
-
-  // Compute probability 2 string
-  const prob2String = details
-    .map((d) => (d.isSpecialOrSpace ? d.originalChar : d.prob2))
-    .join('');
-
-  // Compute current custom/mixed string
-  const customString = details
+  // Selected string without spaces as well for display & copy options
+  const customStringWithSpaces = details
     .map((d, i) => {
       if (d.isSpecialOrSpace) return d.originalChar;
       const choice = selectedProbabilities[i] ?? 0;
@@ -38,9 +43,93 @@ export function EncryptionResults({
     })
     .join('');
 
-  const lettersCount = details.filter((d) => !d.isSpecialOrSpace).length;
-  const totalCombinationsCount = Math.pow(2, lettersCount);
-  const combinationsList = showAllCombinations ? getAllCombinations(details, 256) : [];
+  // Also build clean without spaces
+  const customStringNoSpaces = details
+    .filter((d) => !d.isSpecialOrSpace)
+    .map((d) => {
+      const originalIdx = details.indexOf(d);
+      const choice = selectedProbabilities[originalIdx] ?? 0;
+      return choice === 0 ? d.prob1 : d.prob2;
+    })
+    .join('');
+
+  const lettersOnly = details.filter((d) => !d.isSpecialOrSpace && d.layer);
+  const lettersCount = lettersOnly.length;
+  const totalCombinationsPossible = lettersCount > 0 ? Math.pow(2, lettersCount) : 0;
+  const maxTarget = Math.min(totalCombinationsPossible, 2048);
+
+  // Chunked Async Backtracking Generation to prevent browser lag & show progress bar
+  useEffect(() => {
+    if (lettersCount === 0) {
+      setGeneratedList([]);
+      setProgressPercent(0);
+      setIsGenerating(false);
+      return;
+    }
+
+    const currentRunId = ++generationRef.current;
+    setIsGenerating(true);
+    setProgressPercent(0);
+    setGeneratedList([]);
+
+    const results: string[] = [];
+    const stack: { index: number; str: string; choiceIdx: number }[] = [
+      { index: 0, str: '', choiceIdx: 0 },
+    ];
+
+    function processChunk() {
+      if (generationRef.current !== currentRunId) return;
+
+      const startTime = performance.now();
+
+      while (stack.length > 0 && results.length < maxTarget && performance.now() - startTime < 8) {
+        const frame = stack[stack.length - 1];
+
+        if (frame.index === lettersOnly.length) {
+          results.push(frame.str);
+          stack.pop();
+          continue;
+        }
+
+        const item = lettersOnly[frame.index];
+        const choices = [item.prob1, item.prob2];
+
+        if (frame.choiceIdx < choices.length) {
+          const picked = choices[frame.choiceIdx];
+          frame.choiceIdx++;
+          stack.push({
+            index: frame.index + 1,
+            str: frame.str + picked,
+            choiceIdx: 0,
+          });
+        } else {
+          stack.pop();
+        }
+      }
+
+      if (generationRef.current !== currentRunId) return;
+
+      const currentProgress = maxTarget > 0 ? Math.min(100, Math.round((results.length / maxTarget) * 100)) : 100;
+      setProgressPercent(currentProgress);
+      setGeneratedList([...results]);
+
+      if (results.length < maxTarget && stack.length > 0) {
+        requestAnimationFrame(processChunk);
+      } else {
+        setIsGenerating(false);
+        setProgressPercent(100);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      requestAnimationFrame(processChunk);
+    }, 10);
+
+    return () => {
+      clearTimeout(timer);
+      generationRef.current = 0;
+    };
+  }, [lettersCount, details]);
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -67,129 +156,42 @@ export function EncryptionResults({
     onSetSelectedProbabilities(inverted);
   };
 
-  const handleAllProb1 = () => {
-    onSetSelectedProbabilities(details.map(() => 0));
-  };
+  // Helper to reverse words
+  const reverseString = (str: string) => Array.from(str).reverse().join('');
 
-  const handleAllProb2 = () => {
-    onSetSelectedProbabilities(details.map(() => 1));
-  };
+  // Apply reversal option and filtering
+  const normalizedFilter = cleanText(combinationFilter).trim();
+  const processedCombinations = useMemo(() => {
+    return generatedList.map((combo) => (isReversed ? reverseString(combo) : combo));
+  }, [generatedList, isReversed]);
 
-  const filteredCombinations = combinationsList.filter((c) =>
-    combinationFilter ? c.includes(combinationFilter) : true
-  );
+  const filteredCombinations = useMemo(() => {
+    return processedCombinations.filter((combo) => {
+      if (!normalizedFilter) return true;
+      return combo.includes(normalizedFilter);
+    });
+  }, [processedCombinations, normalizedFilter]);
+
+  const displaySelectedCipher = isReversed
+    ? reverseString(customStringNoSpaces || customStringWithSpaces)
+    : customStringNoSpaces || customStringWithSpaces;
 
   return (
     <div className="space-y-4">
-      {/* Primary Results Box */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Option 1: Full Probability 1 */}
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5 flex flex-col justify-between hover:border-amber-300 transition-colors">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                الاحتمال الأول (لكافة الحروف)
-              </span>
-              <button
-                type="button"
-                id="copy-prob1-btn"
-                onClick={() => handleCopy(prob1String, 'prob1')}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              >
-                {copiedKey === 'prob1' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-emerald-700">تم النسخ!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-stone-500 mb-3">
-              استخدام الحرف الأول من كل طبقة لجميع حروف الكلمة
-            </p>
-          </div>
-
-          <div className="bg-stone-900 rounded-xl p-4 text-center border border-stone-800">
-            <div
-              dir="rtl"
-              className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-wider select-all break-all"
-            >
-              {prob1String}
-            </div>
-          </div>
-        </div>
-
-        {/* Option 2: Full Probability 2 */}
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5 flex flex-col justify-between hover:border-amber-300 transition-colors">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                الاحتمال الثاني (لكافة الحروف)
-              </span>
-              <button
-                type="button"
-                id="copy-prob2-btn"
-                onClick={() => handleCopy(prob2String, 'prob2')}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              >
-                {copiedKey === 'prob2' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-emerald-700">تم النسخ!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-stone-500 mb-3">
-              استخدام الحرف الثاني من كل طبقة لجميع حروف الكلمة
-            </p>
-          </div>
-
-          <div className="bg-stone-900 rounded-xl p-4 text-center border border-stone-800">
-            <div
-              dir="rtl"
-              className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-wider select-all break-all"
-            >
-              {prob2String}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Custom Selected Mix Card */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5">
+      {/* Current Selected Cipher String Display */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
-                التشفير المخصص / التوليفة النشطة
-              </span>
-              <span className="text-xs text-stone-400">
-                (يمكنك تبديل أي حرف من بطاقات التحليل أعلاه)
-              </span>
-            </div>
-            <p className="text-xs text-stone-500 mt-1">
-              التشفير الناتج عن اختيارك لكل حرف سواء الاحتمال الأول أو الثاني
-            </p>
-          </div>
+          <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
+            النص المشفر المعتمد (بدون فراغات) {isReversed && <span className="text-amber-600">(معكوس)</span>}:
+          </span>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               id="randomize-cipher-btn"
               onClick={handleRandomize}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              title="توزيع عشوائي بين الاحتمالين"
+              title="توليف عشوائي بين الاحتمالين"
             >
               <Shuffle className="w-3.5 h-3.5 text-amber-600" />
               <span>توليف عشوائي</span>
@@ -200,7 +202,7 @@ export function EncryptionResults({
               id="invert-cipher-btn"
               onClick={handleInvert}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              title="عكس الاختيارات الحالية"
+              title="عكس الاحتمال الأول والثاني"
             >
               <RefreshCw className="w-3.5 h-3.5 text-stone-500" />
               <span>عكس الاختيارات</span>
@@ -209,8 +211,9 @@ export function EncryptionResults({
             <button
               type="button"
               id="copy-custom-btn"
-              onClick={() => handleCopy(customString, 'custom')}
+              onClick={() => handleCopy(displaySelectedCipher, 'custom')}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
+              title="نسخ المشفر بدون فراغات"
             >
               {copiedKey === 'custom' ? (
                 <>
@@ -220,101 +223,134 @@ export function EncryptionResults({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>نسخ التشفير</span>
+                  <span>نسخ المشفر</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        <div className="bg-stone-950 rounded-xl p-4 sm:p-5 flex items-center justify-center border border-stone-800">
+        <div className="bg-stone-900 rounded-xl p-4 sm:p-5 flex items-center justify-center border border-stone-800">
           <div
             dir="rtl"
-            className="text-2xl sm:text-4xl font-black text-amber-300 tracking-widest select-all break-all text-center"
+            className="text-2xl sm:text-4xl font-extrabold text-amber-400 tracking-widest select-all break-all text-center"
           >
-            {customString}
+            {displaySelectedCipher}
           </div>
         </div>
       </div>
 
-      {/* All Theoretical Combinations Explorer */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h4 id="all-combinations-title" className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-stone-600" />
-              <span>جميع الاحتمالات الممكنة للكلمة</span>
-              <span className="text-xs font-semibold bg-stone-100 text-stone-700 px-2 py-0.5 rounded-md">
-                2^{lettersCount} = {totalCombinationsCount.toLocaleString('ar-EG')} احتمالاً
-              </span>
+      {/* Permanently Open Combinations List with Progress Bar & Middle Filtering & Reverse Mode */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Layers className="w-4 h-4 text-stone-600" />
+            <h4 id="all-combinations-title" className="text-sm sm:text-base font-bold text-stone-900">
+              قائمة الاحتمالات (بدون فراغات)
             </h4>
-            <p className="text-xs text-stone-500 mt-0.5">
-              بما أن كل حرف له احتمالان، فإن أي كلمة يتشكل لها (2 أس عدد الأحرف) تشفيراً ممكناً.
-            </p>
+            <span className="text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
+              {totalCombinationsPossible.toLocaleString('ar-EG')} إجمالي ممكن
+            </span>
           </div>
 
-          <button
-            type="button"
-            id="toggle-combinations-btn"
-            onClick={() => setShowAllCombinations(!showAllCombinations)}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 hover:text-stone-950 bg-stone-100 hover:bg-stone-200/80 px-3.5 py-2 rounded-xl transition-all self-start sm:self-auto cursor-pointer"
-          >
-            <span>{showAllCombinations ? 'إخفاء القائمة' : 'عرض قائمة الاحتمالات'}</span>
-            {showAllCombinations ? (
-              <ChevronUp className="w-4 h-4 text-stone-500" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-stone-500" />
-            )}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            {/* Reverse Combinations Toggle */}
+            <button
+              type="button"
+              id="reverse-cipher-combos-btn"
+              onClick={() => setIsReversed(!isReversed)}
+              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                isReversed
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
+                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
+              }`}
+              title="عكس ترتيب أحرف كل كلمة بالكامل (من اليسار لليمين والعكس)"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span>الاحتمالات العكسية {isReversed ? '(مفعل)' : ''}</span>
+            </button>
+
+            {/* Filter Input: searches anywhere inside words */}
+            <input
+              type="text"
+              placeholder="تصفية بأي حرف (في أي موضع)..."
+              value={combinationFilter}
+              onChange={(e) => setCombinationFilter(e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-amber-500 w-full sm:w-56 text-right bg-stone-50/50"
+            />
+          </div>
         </div>
 
-        {showAllCombinations && (
-          <div className="mt-4 pt-4 border-t border-stone-100 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="text-xs text-stone-500">
-                {totalCombinationsCount > 256
-                  ? `يتم عرض أول 256 احتمالاً من إجمالي ${totalCombinationsCount.toLocaleString('ar-EG')}`
-                  : `يتم عرض جميع الاحتمالات (${combinationsList.length})`}
-              </div>
-
-              {combinationsList.length > 8 && (
-                <input
-                  type="text"
-                  placeholder="تصفية حسب أحرف معينة..."
-                  value={combinationFilter}
-                  onChange={(e) => setCombinationFilter(e.target.value)}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-amber-500 w-full sm:w-48 text-right"
-                />
-              )}
+        {/* Progress Bar (visible during generation or when large) */}
+        {isGenerating && (
+          <div className="space-y-1.5 py-1">
+            <div className="flex items-center justify-between text-xs text-stone-500">
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                <span>جاري معالجة وتوليد الاحتمالات بسلاسة...</span>
+              </span>
+              <span className="font-bold text-stone-700">{progressPercent}%</span>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-72 overflow-y-auto p-1">
-              {filteredCombinations.map((combo, idx) => (
-                <div
-                  key={idx}
-                  id={`combo-item-${idx}`}
-                  className="p-2.5 rounded-xl border border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300 transition-colors flex items-center justify-between gap-1 group"
-                >
-                  <span className="font-extrabold text-stone-800 text-sm tracking-wider">
-                    {combo}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(combo, `combo-${idx}`)}
-                    className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
-                    title="نسخ هذا الاحتمال"
-                  >
-                    {copiedKey === `combo-${idx}` ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              ))}
+            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden border border-stone-200">
+              <div
+                className="bg-amber-500 h-2 rounded-full transition-all duration-200"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
           </div>
         )}
+
+        {/* Filter Stats */}
+        {normalizedFilter && (
+          <div className="flex items-center justify-between text-xs text-stone-600 bg-amber-50/60 border border-amber-200 px-3 py-1.5 rounded-lg">
+            <span>
+              النتائج المطابقة للمقطع &quot;<strong className="text-amber-800">{normalizedFilter}</strong>&quot; في أي موضع:
+            </span>
+            <span className="font-bold text-amber-900">{filteredCombinations.length} احتمال</span>
+          </div>
+        )}
+
+        {/* Combinations Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-80 overflow-y-auto p-1">
+          {filteredCombinations.map((combo, idx) => {
+            const hasMatch = normalizedFilter && combo.includes(normalizedFilter);
+
+            return (
+              <div
+                key={idx}
+                id={`combo-item-${idx}`}
+                className={`p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-1 select-none ${
+                  hasMatch
+                    ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
+                    : 'border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300'
+                }`}
+              >
+                <span className="font-extrabold text-stone-800 text-sm tracking-wider break-all">
+                  {combo}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(combo, `combo-${idx}`)}
+                  className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer shrink-0"
+                  title="نسخ هذا الاحتمال"
+                >
+                  {copiedKey === `combo-${idx}` ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
+
+          {filteredCombinations.length === 0 && !isGenerating && (
+            <div className="col-span-full py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
+              <AlertCircle className="w-5 h-5 text-stone-300" />
+              <span>لا توجد احتمالات مطابقة لحروف التصفية المدخلة</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

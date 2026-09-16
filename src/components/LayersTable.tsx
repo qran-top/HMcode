@@ -1,5 +1,5 @@
-import { CIPHER_LAYERS, LayerInfo } from '../cipherData';
-import { Layers, ArrowLeftRight, Check, Hash } from 'lucide-react';
+import { CIPHER_LAYERS, LAYER_RAINBOW_COLORS } from '../cipherData';
+import { Layers, ArrowLeftRight } from 'lucide-react';
 
 interface LayersTableProps {
   highlightedLayerNumbers?: number[];
@@ -12,104 +12,72 @@ export function LayersTable({
 }: LayersTableProps) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
-      <div className="p-5 border-b border-stone-100 bg-stone-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-bold">
-            <Layers className="w-5 h-5" />
+      <div className="p-4 sm:p-5 border-b border-stone-100 bg-stone-50/70 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center font-bold">
+            <Layers className="w-4 h-4" />
           </div>
-          <div>
-            <h2 id="layers-table-heading" className="text-lg font-bold text-stone-900">
-              الجدول المرجعي للطبقات السبع
-            </h2>
-            <p className="text-xs text-stone-500">
-              مرتبة حسب النظام المحدد من الطبقة الأولى (ذ ض ظ غ) حتى الطبقة السابعة (أ ب ج د)
-            </p>
-          </div>
-        </div>
-
-        <div className="text-xs font-medium text-stone-600 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200/60 flex items-center gap-1.5 self-start sm:self-auto">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-          <span>إجمالي 28 حرفاً عربياً موزعة على 7 طبقات</span>
+          <h2 id="layers-table-heading" className="text-base font-bold text-stone-900">
+            الجدول المرجعي للطبقات السبع (28 حرفاً)
+          </h2>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-right border-collapse">
           <thead>
-            <tr className="bg-stone-50/50 text-xs font-semibold text-stone-500 border-b border-stone-200">
-              <th className="py-3.5 px-4 sm:px-6 w-28">رقم الطبقة</th>
-              <th className="py-3.5 px-4 sm:px-6">حرفا التشفير (الاحتمالان)</th>
-              <th className="py-3.5 px-4 sm:px-6">
-                الأحرف العربية الأربعة (الترتيب الأبجدي القديم)
-              </th>
-              <th className="py-3.5 px-4 sm:px-6 text-center w-36">الاستبدال المشفر</th>
+            <tr className="bg-stone-50 text-xs font-bold text-stone-600 border-b border-stone-200">
+              <th className="py-3 px-4 w-28">الطبقة</th>
+              <th className="py-3 px-4">حرفا التشفير</th>
+              <th className="py-3 px-4">الأحرف العربية الأربعة</th>
+              <th className="py-3 px-4 text-center w-36">الاستبدال</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100 text-sm">
             {CIPHER_LAYERS.map((layerItem) => {
               const isHighlighted = highlightedLayerNumbers.includes(layerItem.layer);
+              const color = LAYER_RAINBOW_COLORS[layerItem.layer];
 
               return (
                 <tr
                   key={layerItem.layer}
                   id={`layer-row-${layerItem.layer}`}
                   className={`transition-colors duration-150 ${
-                    isHighlighted
-                      ? 'bg-amber-50/80 hover:bg-amber-100/70 ring-1 ring-inset ring-amber-300'
-                      : 'hover:bg-stone-50/80'
+                    isHighlighted ? `${color.lightBg} ring-1 ring-inset ${color.lightBorder}` : 'hover:bg-stone-50/70'
                   }`}
                 >
                   {/* Layer Number Badge */}
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                          isHighlighted
-                            ? 'bg-amber-600 text-white shadow-xs'
-                            : 'bg-stone-100 text-stone-700 border border-stone-200'
-                        }`}
-                      >
-                        {layerItem.layer}
-                      </span>
-                      <span className="font-semibold text-stone-800 text-xs sm:text-sm">
-                        الطبقة {layerItem.layer}
-                      </span>
-                    </div>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg font-bold text-xs ${color.activeBg} ${color.activeText} shadow-xs`}
+                    >
+                      الطبقة {layerItem.layer}
+                    </span>
                   </td>
 
-                  {/* 2 Cipher Letters (Probabilities) */}
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-stone-900 text-amber-300 font-bold text-base shadow-xs"
-                        title="الاحتمال الأول"
-                      >
+                  {/* 2 Cipher Letters */}
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1.5 font-black text-base text-stone-900">
+                      <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center border border-stone-300">
                         {layerItem.cipherLetters[0]}
                       </span>
-                      <span className="text-stone-300 text-xs font-bold">أو</span>
-                      <span
-                        className="inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-lg bg-stone-800 text-amber-300 font-bold text-base shadow-xs"
-                        title="الاحتمال الثاني"
-                      >
+                      <span className="text-stone-400 text-xs">أو</span>
+                      <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center border border-stone-300">
                         {layerItem.cipherLetters[1]}
                       </span>
                     </div>
                   </td>
 
                   {/* 4 Arabic Letters */}
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <td className="py-3 px-4">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {layerItem.arabicLetters.map((arabicChar, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => onSelectLetter && onSelectLetter(arabicChar)}
-                          className={`min-w-8 h-8 px-2 rounded-md font-bold text-stone-800 border transition-transform active:scale-95 ${
-                            isHighlighted
-                              ? 'bg-white border-amber-300 text-amber-950 shadow-xs'
-                              : 'bg-stone-100/80 border-stone-200 hover:border-stone-400 hover:bg-white'
-                          }`}
-                          title={`انقر لتجربة الحرف: ${arabicChar}`}
+                          className="min-w-8 h-8 px-2 rounded-md font-bold text-stone-900 bg-stone-100 hover:bg-stone-200 border border-stone-300 transition-transform active:scale-95 cursor-pointer"
+                          title={`إضافة الحرف ${arabicChar}`}
                         >
                           {arabicChar}
                         </button>
@@ -118,13 +86,13 @@ export function LayersTable({
                   </td>
 
                   {/* Substitution explanation */}
-                  <td className="py-4 px-4 sm:px-6 text-center">
-                    <div className="inline-flex items-center gap-1.5 text-xs text-stone-600 bg-stone-100 px-2.5 py-1.5 rounded-lg border border-stone-200">
-                      <span className="font-semibold text-stone-800">
+                  <td className="py-3 px-4 text-center">
+                    <div className="inline-flex items-center gap-1.5 text-xs text-stone-600 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200">
+                      <span className="font-semibold text-stone-900">
                         {layerItem.arabicLetters.join(' ')}
                       </span>
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-stone-400" />
-                      <span className="font-bold text-amber-700">
+                      <ArrowLeftRight className="w-3 h-3 text-stone-400" />
+                      <span className="font-bold text-stone-900">
                         [{layerItem.cipherLetters[0]} / {layerItem.cipherLetters[1]}]
                       </span>
                     </div>
@@ -134,13 +102,6 @@ export function LayersTable({
             })}
           </tbody>
         </table>
-      </div>
-
-      <div className="p-4 bg-stone-50/50 border-t border-stone-100 text-xs text-stone-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-        <p>
-          💡 <strong>ملاحظة الترتيب:</strong> تبدأ الطبقة السابعة بـ (أ ب ج د)، وصولاً إلى الطبقة الأولى بـ (ذ ض ظ غ) وفق الترتيب الأبجدي التاريخي.
-        </p>
-        <span className="text-stone-400">نظام المشفر السباعي 7×4=28</span>
       </div>
     </div>
   );

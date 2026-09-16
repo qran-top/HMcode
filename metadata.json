@@ -2,5 +2,7 @@
   "name": "المشفر السباعي",
   "description": "برنامج لتشفير النصوص العربية وفق نظام الطبقات السبع والأبجدية القديمة وعرض كافة احتمالات الحروف",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -5,6 +5,99 @@ export interface LayerInfo {
   description: string;
 }
 
+export interface LayerColorTheme {
+  name: string;
+  activeBg: string;
+  activeText: string;
+  activeBorder: string;
+  badgeBg: string;
+  badgeText: string;
+  lightBg: string;
+  lightBorder: string;
+  accentHex: string;
+}
+
+// 7 Rainbow / Spectrum colors with high WCAG contrast
+export const LAYER_RAINBOW_COLORS: Record<number, LayerColorTheme> = {
+  1: {
+    name: 'أحمر',
+    activeBg: 'bg-red-600',
+    activeText: 'text-white',
+    activeBorder: 'border-red-700',
+    badgeBg: 'bg-red-700',
+    badgeText: 'text-white',
+    lightBg: 'bg-red-50',
+    lightBorder: 'border-red-200',
+    accentHex: '#dc2626',
+  },
+  2: {
+    name: 'برتقالي',
+    activeBg: 'bg-orange-500',
+    activeText: 'text-white',
+    activeBorder: 'border-orange-600',
+    badgeBg: 'bg-orange-600',
+    badgeText: 'text-white',
+    lightBg: 'bg-orange-50',
+    lightBorder: 'border-orange-200',
+    accentHex: '#f97316',
+  },
+  3: {
+    name: 'أصفر',
+    activeBg: 'bg-amber-400',
+    activeText: 'text-stone-950 font-black',
+    activeBorder: 'border-amber-500',
+    badgeBg: 'bg-amber-500',
+    badgeText: 'text-stone-950 font-bold',
+    lightBg: 'bg-amber-50',
+    lightBorder: 'border-amber-200',
+    accentHex: '#fbbf24',
+  },
+  4: {
+    name: 'أخضر',
+    activeBg: 'bg-emerald-600',
+    activeText: 'text-white',
+    activeBorder: 'border-emerald-700',
+    badgeBg: 'bg-emerald-700',
+    badgeText: 'text-white',
+    lightBg: 'bg-emerald-50',
+    lightBorder: 'border-emerald-200',
+    accentHex: '#059669',
+  },
+  5: {
+    name: 'أزرق سماوي',
+    activeBg: 'bg-cyan-600',
+    activeText: 'text-white',
+    activeBorder: 'border-cyan-700',
+    badgeBg: 'bg-cyan-700',
+    badgeText: 'text-white',
+    lightBg: 'bg-cyan-50',
+    lightBorder: 'border-cyan-200',
+    accentHex: '#0891b2',
+  },
+  6: {
+    name: 'نيلي',
+    activeBg: 'bg-blue-600',
+    activeText: 'text-white',
+    activeBorder: 'border-blue-700',
+    badgeBg: 'bg-blue-700',
+    badgeText: 'text-white',
+    lightBg: 'bg-blue-50',
+    lightBorder: 'border-blue-200',
+    accentHex: '#2563eb',
+  },
+  7: {
+    name: 'بنفسجي',
+    activeBg: 'bg-purple-600',
+    activeText: 'text-white',
+    activeBorder: 'border-purple-700',
+    badgeBg: 'bg-purple-700',
+    badgeText: 'text-white',
+    lightBg: 'bg-purple-50',
+    lightBorder: 'border-purple-200',
+    accentHex: '#9333ea',
+  },
+};
+
 export const CIPHER_LAYERS: LayerInfo[] = [
   {
     layer: 1,
@@ -49,6 +142,16 @@ export const CIPHER_LAYERS: LayerInfo[] = [
     description: 'الطبقة السابعة: ن ق المقابلة لـ (أ ب ج د)',
   },
 ];
+
+export const VALID_CIPHER_LETTERS = new Set<string>([
+  'ك', 'ر',
+  'ط', 'ه',
+  'ا', 'ل',
+  'ص', 'ي',
+  'ع', 'س',
+  'ح', 'م',
+  'ن', 'ق',
+]);
 
 // Normalize Arabic letters (stripping diacritics, unifying forms of alef, etc.)
 export function normalizeArabicChar(char: string): string {
@@ -130,28 +233,31 @@ export function analyzeWord(text: string): EncryptedLetterDetail[] {
   });
 }
 
-// Generate all combinations (up to a safe limit)
+// Generate all combinations (up to a safe limit), optionally omitting spaces
 export function getAllCombinations(
   details: EncryptedLetterDetail[],
-  maxCombinations = 128
+  maxCombinations = 500,
+  omitSpaces = true
 ): string[] {
-  const filtered = details.filter((d) => !d.isSpecialOrSpace);
-  if (filtered.length === 0) return [];
-  if (filtered.length > 12) {
-    // If word is too long (2^13+ is too big), we cap or sample
-    // We will generate the 1st maxCombinations
-  }
+  const meaningful = details.filter((d) => !d.isSpecialOrSpace);
+  if (meaningful.length === 0) return [];
+
+  const items = omitSpaces
+    ? details.filter((d) => d.originalChar !== ' ' && d.originalChar !== '\n' && d.originalChar !== '\t')
+    : details;
+
+  if (items.length === 0) return [];
 
   const results: string[] = [];
 
   function backtrack(index: number, currentStr: string) {
     if (results.length >= maxCombinations) return;
-    if (index === details.length) {
+    if (index === items.length) {
       results.push(currentStr);
       return;
     }
 
-    const item = details[index];
+    const item = items[index];
     if (item.isSpecialOrSpace || !item.layer) {
       backtrack(index + 1, currentStr + item.originalChar);
     } else {
@@ -187,3 +293,37 @@ export function decryptCipherChar(char: string): DecryptedLetterDetail {
     possibleLetters,
   };
 }
+
+export function getDecryptionCombinations(
+  items: { char: string; isSpace: boolean; candidates: string[] }[],
+  maxCombinations = 500,
+  omitSpaces = true
+): string[] {
+  const meaningful = items.filter((d) => !d.isSpace && d.candidates.length > 0);
+  if (meaningful.length === 0) return [];
+
+  const candidateItems = omitSpaces ? meaningful : items;
+  const results: string[] = [];
+
+  function backtrack(index: number, currentStr: string) {
+    if (results.length >= maxCombinations) return;
+    if (index === candidateItems.length) {
+      results.push(currentStr);
+      return;
+    }
+
+    const item = candidateItems[index];
+    if (item.isSpace || item.candidates.length === 0) {
+      backtrack(index + 1, currentStr + item.char);
+    } else {
+      for (const cand of item.candidates) {
+        if (results.length >= maxCombinations) break;
+        backtrack(index + 1, currentStr + cand);
+      }
+    }
+  }
+
+  backtrack(0, '');
+  return results;
+}
+

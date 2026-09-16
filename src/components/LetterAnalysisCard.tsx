@@ -1,5 +1,4 @@
-import { EncryptedLetterDetail } from '../cipherData';
-import { Sparkles, Check, ArrowDown } from 'lucide-react';
+import { EncryptedLetterDetail, LAYER_RAINBOW_COLORS } from '../cipherData';
 
 interface LetterAnalysisCardProps {
   details: EncryptedLetterDetail[];
@@ -14,120 +13,111 @@ export function LetterAnalysisCard({
 }: LetterAnalysisCardProps) {
   if (details.length === 0) return null;
 
+  // Group letters into lines/rows based on spaces and newlines
+  const lines: { originalIndex: number; detail: EncryptedLetterDetail }[][] = [];
+  let currentLine: { originalIndex: number; detail: EncryptedLetterDetail }[] = [];
+
+  details.forEach((item, index) => {
+    if (item.originalChar === ' ' || item.originalChar === '\n') {
+      if (currentLine.length > 0) {
+        lines.push(currentLine);
+        currentLine = [];
+      }
+    } else {
+      currentLine.push({ originalIndex: index, detail: item });
+    }
+  });
+
+  if (currentLine.length > 0) {
+    lines.push(currentLine);
+  }
+
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-stone-100">
-        <div>
-          <h3 id="letter-breakdown-title" className="text-base font-bold text-stone-900 flex items-center gap-2">
-            <span>تحليل الحروف وطبقاتها واحتمالاتها</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-normal">
-              {details.filter(d => !d.isSpecialOrSpace).length} أحرف
-            </span>
-          </h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            لكل حرف طبقة خاصة واحتمالان للتشفير. يمكنك النقر على أي احتمال لاختياره في التشفير المخصص.
-          </p>
-        </div>
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-stone-100">
+        <h3 id="letter-breakdown-title" className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
+          <span>تحليل الحروف والطبقات</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-semibold">
+            {details.filter((d) => !d.isSpecialOrSpace).length} حرفاً
+          </span>
+        </h3>
+        <span className="text-xs text-stone-400">
+          انقر على أي احتمال لتبديله
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {details.map((item, index) => {
-          if (item.isSpecialOrSpace) {
-            return (
-              <div
-                key={index}
-                id={`char-card-special-${index}`}
-                className="p-3.5 rounded-xl border border-dashed border-stone-200 bg-stone-50/50 flex items-center justify-between text-stone-400"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center font-mono text-xs text-stone-500">
-                    {item.originalChar === ' ' ? 'مسافة' : item.originalChar}
-                  </span>
-                  <span className="text-xs">فاصل / غير مشفر</span>
-                </div>
-                <span className="text-xs font-mono">{item.originalChar === ' ' ? '␣' : item.originalChar}</span>
-              </div>
-            );
-          }
+      {/* Render line by line: spaces create a new line */}
+      <div className="space-y-4">
+        {lines.map((lineItems, lineIdx) => (
+          <div
+            key={lineIdx}
+            className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 border border-stone-100"
+          >
+            {lineItems.map(({ originalIndex, detail: item }) => {
+              const currentChoice = selectedProbabilities[originalIndex] ?? 0;
+              const layerNum = item.layer?.layer ?? 0;
+              const color = LAYER_RAINBOW_COLORS[layerNum] || {
+                activeBg: 'bg-stone-800',
+                activeText: 'text-white',
+                activeBorder: 'border-stone-900',
+                lightBg: 'bg-stone-50',
+                lightBorder: 'border-stone-200',
+              };
 
-          const currentChoice = selectedProbabilities[index] ?? 0;
-          const layerNum = item.layer?.layer ?? '?';
+              return (
+                <div
+                  key={originalIndex}
+                  id={`char-card-${originalIndex}`}
+                  className="w-36 sm:w-40 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
+                >
+                  {/* Top: Letter and Layer Number with rainbow color */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`w-8 h-8 rounded-lg font-bold text-base flex items-center justify-center shadow-xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                    >
+                      {item.originalChar}
+                    </span>
 
-          return (
-            <div
-              key={index}
-              id={`char-card-${index}`}
-              className="p-3.5 rounded-xl border border-stone-200 bg-stone-50/40 hover:bg-stone-50/80 transition-all duration-150 flex flex-col gap-2.5"
-            >
-              {/* Header: Original Letter & Layer */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-9 h-9 rounded-lg bg-stone-900 text-white font-bold text-lg flex items-center justify-center shadow-xs">
-                    {item.originalChar}
-                  </span>
-                  <div>
-                    <div className="text-xs font-bold text-stone-900">
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-md ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                    >
                       الطبقة {layerNum}
-                    </div>
-                    <div className="text-[11px] text-stone-500">
-                      ({item.layer?.arabicLetters.join(' ')})
-                    </div>
+                    </span>
+                  </div>
+
+                  {/* Two probability buttons */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onToggleProbability(originalIndex, 0)}
+                      className={`py-1.5 px-2 rounded-lg border text-center font-bold text-base transition-all cursor-pointer ${
+                        currentChoice === 0
+                          ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs`
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                      title="الاحتمال الأول"
+                    >
+                      {item.prob1}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onToggleProbability(originalIndex, 1)}
+                      className={`py-1.5 px-2 rounded-lg border text-center font-bold text-base transition-all cursor-pointer ${
+                        currentChoice === 1
+                          ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs`
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                      title="الاحتمال الثاني"
+                    >
+                      {item.prob2}
+                    </button>
                   </div>
                 </div>
-
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
-                  الحرف {index + 1}
-                </span>
-              </div>
-
-              {/* Probabilities 1 & 2 */}
-              <div className="mt-1 pt-2 border-t border-stone-200/60">
-                <div className="text-[11px] font-semibold text-stone-500 mb-1.5 flex items-center justify-between">
-                  <span>الاحتمالان المتاحان:</span>
-                  <span className="text-stone-400">انقر للاختيار</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Probability 1 */}
-                  <button
-                    type="button"
-                    onClick={() => onToggleProbability(index, 0)}
-                    className={`p-2 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                      currentChoice === 0
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300 hover:bg-stone-100/50'
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium opacity-80">
-                      الاحتمال الأول
-                    </span>
-                    <span className="text-lg font-extrabold leading-none">
-                      {item.prob1}
-                    </span>
-                  </button>
-
-                  {/* Probability 2 */}
-                  <button
-                    type="button"
-                    onClick={() => onToggleProbability(index, 1)}
-                    className={`p-2 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                      currentChoice === 1
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300 hover:bg-stone-100/50'
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium opacity-80">
-                      الاحتمال الثاني
-                    </span>
-                    <span className="text-lg font-extrabold leading-none">
-                      {item.prob2}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
