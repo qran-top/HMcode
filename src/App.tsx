@@ -8,9 +8,11 @@ import { CompactLayersIndicator } from './components/CompactLayersIndicator';
 import { Footer, PolicyModalType } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
 import { analyzeWord } from './cipherData';
-import { Eraser, Sparkles, Loader2 } from 'lucide-react';
+import { useCipherLayers } from './context/CipherLayersContext';
+import { Eraser, Sparkles, Loader2, Settings2 } from 'lucide-react';
 
 export function App() {
+  const { analyzeText, isCustomized } = useCipherLayers();
   const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table'>('encrypt');
   const [inputText, setInputText] = useState('بقرة');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
@@ -21,10 +23,10 @@ export function App() {
     hasGenerated: false,
   });
 
-  // Detailed analysis of letters in the input string
+  // Detailed analysis of letters in the input string using active layers table
   const details = useMemo(() => {
-    return analyzeWord(inputText);
-  }, [inputText]);
+    return analyzeText(inputText);
+  }, [inputText, analyzeText]);
 
   // Ensure selected probabilities array length matches input length
   const currentProbabilities = useMemo(() => {
@@ -88,6 +90,17 @@ export function App() {
                   <span className="text-xs text-stone-400">
                     ({details.filter((d) => !d.isSpecialOrSpace).length} حرفاً)
                   </span>
+                  {isCustomized && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('table')}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer"
+                      title="يتم تطبيق جدول الطبقات المخصص - انقر لعرضه أو تعديله"
+                    >
+                      <Settings2 className="w-3 h-3 text-amber-700" />
+                      <span>جدول مخصص نشط</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">

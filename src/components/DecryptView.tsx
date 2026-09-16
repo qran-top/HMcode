@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  CIPHER_LAYERS,
   cleanText,
   VALID_CIPHER_LETTERS,
   LAYER_RAINBOW_COLORS,
 } from '../cipherData';
+import { useCipherLayers } from '../context/CipherLayersContext';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
 import {
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 
 export function DecryptView() {
+  const { layers: cipherLayers, validCipherLetters } = useCipherLayers();
   const [cipherInput, setCipherInput] = useState('طسم');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
@@ -67,11 +68,11 @@ export function DecryptView() {
     return unsub;
   }, []);
 
-  // Strict input sanitizer: allow ONLY valid cipher letters, space, or newline
+  // Strict input sanitizer: allow valid cipher letters, space, or newline
   const handleInputChange = (raw: string) => {
     const cleaned = cleanText(raw);
     const filtered = Array.from(cleaned)
-      .filter((char) => VALID_CIPHER_LETTERS.has(char) || char === ' ' || char === '\n')
+      .filter((char) => validCipherLetters.has(char) || VALID_CIPHER_LETTERS.has(char) || char === ' ' || char === '\n')
       .join('');
     setCipherInput(filtered);
   };
@@ -92,7 +93,7 @@ export function DecryptView() {
       };
     }
 
-    const matchingLayer = CIPHER_LAYERS.find((l) =>
+    const matchingLayer = cipherLayers.find((l) =>
       l.cipherLetters.includes(char)
     );
 
@@ -100,7 +101,7 @@ export function DecryptView() {
       char,
       isSpace: false,
       matchingLayer: matchingLayer || null,
-      candidates: matchingLayer ? matchingLayer.arabicLetters : ([] as string[]),
+      candidates: matchingLayer ? matchingLayer.arabicLetters.filter(Boolean) : ([] as string[]),
     };
   });
 
@@ -495,10 +496,10 @@ export function DecryptView() {
           />
         </div>
 
-        {/* 14 Cipher Buttons for Direct Clicking with Rainbow Colors */}
+        {/* Cipher Buttons for Direct Clicking with Rainbow Colors */}
         <div className="mt-3 flex items-center gap-1.5 flex-wrap">
           <span className="text-xs text-stone-500 ml-1">أحرف التشفير المسموحة:</span>
-          {CIPHER_LAYERS.map((l) => {
+          {cipherLayers.map((l) => {
             const color = LAYER_RAINBOW_COLORS[l.layer];
             return (
               <div key={l.layer} className="flex items-center gap-1">

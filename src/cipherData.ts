@@ -98,7 +98,7 @@ export const LAYER_RAINBOW_COLORS: Record<number, LayerColorTheme> = {
   },
 };
 
-export const CIPHER_LAYERS: LayerInfo[] = [
+export const DEFAULT_CIPHER_LAYERS: LayerInfo[] = [
   {
     layer: 7,
     cipherLetters: ['ن', 'ق'],
@@ -143,6 +143,66 @@ export const CIPHER_LAYERS: LayerInfo[] = [
   },
 ];
 
+export const CIPHER_LAYERS: LayerInfo[] = DEFAULT_CIPHER_LAYERS;
+
+export const ALL_ARABIC_LETTERS_28: string[] = [
+  'أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ',
+  'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص',
+  'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق',
+  'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي',
+];
+
+export const PRESET_TABLES = {
+  defaultQuranic: {
+    id: 'defaultQuranic',
+    name: 'جدول الفرقان المعتمد (الافتراضي)',
+    description: 'الطبقة 7 (أ ب ج د) حتى الطبقة 1 (ذ ض ظ غ)',
+    createLayers: (): LayerInfo[] => JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS)),
+  },
+  abjadAscending: {
+    id: 'abjadAscending',
+    name: 'الترتيب الأبجدي الصاعد',
+    description: 'الطبقة 1 (أ ب ج د) صعوداً إلى الطبقة 7 (ذ ض ظ غ)',
+    createLayers: (): LayerInfo[] => [
+      { layer: 7, cipherLetters: ['ن', 'ق'], arabicLetters: ['ذ', 'ض', 'ظ', 'غ'], description: 'الطبقة 7: ذ ض ظ غ' },
+      { layer: 6, cipherLetters: ['ح', 'م'], arabicLetters: ['ش', 'ت', 'ث', 'خ'], description: 'الطبقة 6: ش ت ث خ' },
+      { layer: 5, cipherLetters: ['ع', 'س'], arabicLetters: ['ف', 'ص', 'ق', 'ر'], description: 'الطبقة 5: ف ص ق ر' },
+      { layer: 4, cipherLetters: ['ص', 'ي'], arabicLetters: ['م', 'ن', 'س', 'ع'], description: 'الطبقة 4: م ن س ع' },
+      { layer: 3, cipherLetters: ['ا', 'ل'], arabicLetters: ['ط', 'ي', 'ك', 'ل'], description: 'الطبقة 3: ط ي ك ل' },
+      { layer: 2, cipherLetters: ['ط', 'ه'], arabicLetters: ['ه', 'و', 'ز', 'ح'], description: 'الطبقة 2: ه و ز ح' },
+      { layer: 1, cipherLetters: ['ك', 'ر'], arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'الطبقة 1: أ ب ج د' },
+    ],
+  },
+  alphabeticalHijai: {
+    id: 'alphabeticalHijai',
+    name: 'الترتيب الهجائي الألفبائي',
+    description: 'من (أ ب ت ث) في الطبقة 7 حتى (ن هـ و ي) في الطبقة 1',
+    createLayers: (): LayerInfo[] => [
+      { layer: 7, cipherLetters: ['ن', 'ق'], arabicLetters: ['أ', 'ب', 'ت', 'ث'], description: 'الطبقة 7: أ ب ت ث' },
+      { layer: 6, cipherLetters: ['ح', 'م'], arabicLetters: ['ج', 'ح', 'خ', 'د'], description: 'الطبقة 6: ج ح خ د' },
+      { layer: 5, cipherLetters: ['ع', 'س'], arabicLetters: ['ذ', 'ر', 'ز', 'س'], description: 'الطبقة 5: ذ ر ز س' },
+      { layer: 4, cipherLetters: ['ص', 'ي'], arabicLetters: ['ش', 'ص', 'ض', 'ط'], description: 'الطبقة 4: ش ص ض ط' },
+      { layer: 3, cipherLetters: ['ا', 'ل'], arabicLetters: ['ظ', 'ع', 'غ', 'ف'], description: 'الطبقة 3: ظ ع غ ف' },
+      { layer: 2, cipherLetters: ['ط', 'ه'], arabicLetters: ['ق', 'ك', 'ل', 'م'], description: 'الطبقة 2: ق ك ل م' },
+      { layer: 1, cipherLetters: ['ك', 'ر'], arabicLetters: ['ن', 'ه', 'و', 'ي'], description: 'الطبقة 1: ن ه و ي' },
+    ],
+  },
+  emptyTable: {
+    id: 'emptyTable',
+    name: 'جدول فارغ تماماً (إنشاء مخصص من الصفر)',
+    description: 'تفريغ جميع الخانات الـ 28 لتوزيع الحروف يدوياً',
+    createLayers: (): LayerInfo[] => [
+      { layer: 7, cipherLetters: ['ن', 'ق'], arabicLetters: ['', '', '', ''], description: 'الطبقة 7' },
+      { layer: 6, cipherLetters: ['ح', 'م'], arabicLetters: ['', '', '', ''], description: 'الطبقة 6' },
+      { layer: 5, cipherLetters: ['ع', 'س'], arabicLetters: ['', '', '', ''], description: 'الطبقة 5' },
+      { layer: 4, cipherLetters: ['ص', 'ي'], arabicLetters: ['', '', '', ''], description: 'الطبقة 4' },
+      { layer: 3, cipherLetters: ['ا', 'ل'], arabicLetters: ['', '', '', ''], description: 'الطبقة 3' },
+      { layer: 2, cipherLetters: ['ط', 'ه'], arabicLetters: ['', '', '', ''], description: 'الطبقة 2' },
+      { layer: 1, cipherLetters: ['ك', 'ر'], arabicLetters: ['', '', '', ''], description: 'الطبقة 1' },
+    ],
+  },
+};
+
 export const VALID_CIPHER_LETTERS = new Set<string>([
   'ك', 'ر',
   'ط', 'ه',
@@ -185,9 +245,9 @@ export interface EncryptedLetterDetail {
   isSpecialOrSpace: boolean;
 }
 
-export function findLayerForChar(char: string): LayerInfo | null {
+export function findLayerForChar(char: string, layers: LayerInfo[] = CIPHER_LAYERS): LayerInfo | null {
   const norm = normalizeArabicChar(char);
-  for (const l of CIPHER_LAYERS) {
+  for (const l of layers) {
     if (l.arabicLetters.includes(norm)) {
       return l;
     }
@@ -199,7 +259,7 @@ export function findLayerForChar(char: string): LayerInfo | null {
   return null;
 }
 
-export function analyzeWord(text: string): EncryptedLetterDetail[] {
+export function analyzeWord(text: string, layers: LayerInfo[] = CIPHER_LAYERS): EncryptedLetterDetail[] {
   const chars = Array.from(cleanText(text));
   return chars.map((char) => {
     if (char === ' ' || char === '\n' || char === '\t') {
@@ -213,7 +273,7 @@ export function analyzeWord(text: string): EncryptedLetterDetail[] {
       };
     }
 
-    const layer = findLayerForChar(char);
+    const layer = findLayerForChar(char, layers);
     if (!layer) {
       return {
         originalChar: char,
@@ -229,8 +289,8 @@ export function analyzeWord(text: string): EncryptedLetterDetail[] {
       originalChar: char,
       normalizedChar: normalizeArabicChar(char),
       layer,
-      prob1: layer.cipherLetters[0],
-      prob2: layer.cipherLetters[1],
+      prob1: layer.cipherLetters[0] || '؟',
+      prob2: layer.cipherLetters[1] || layer.cipherLetters[0] || '؟',
       isSpecialOrSpace: false,
     };
   });
@@ -281,13 +341,13 @@ export interface DecryptedLetterDetail {
   possibleLetters: string[];
 }
 
-export function decryptCipherChar(char: string): DecryptedLetterDetail {
-  const matchingLayers = CIPHER_LAYERS.filter((l) =>
+export function decryptCipherChar(char: string, layers: LayerInfo[] = CIPHER_LAYERS): DecryptedLetterDetail {
+  const matchingLayers = layers.filter((l) =>
     l.cipherLetters.includes(char)
   );
 
   const possibleLetters = Array.from(
-    new Set(matchingLayers.flatMap((l) => l.arabicLetters))
+    new Set(matchingLayers.flatMap((l) => l.arabicLetters).filter(Boolean))
   );
 
   return {
