@@ -26,9 +26,13 @@ import {
   Columns,
   ChevronDown,
   BookOpen,
+  Plus,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   LAYER_RAINBOW_COLORS,
+  getLayerColor,
   PRESET_TABLES,
   ALL_ARABIC_LETTERS_28,
   NOORANI_LETTERS,
@@ -90,6 +94,17 @@ export function LayersTable({
     deleteSavedNooraniPreset,
     removeRowDuplicates,
     columnDuplicatesSummary,
+    addLayer,
+    deleteLayer,
+    moveLayer,
+    addArabicSlotToLayer,
+    removeArabicSlotFromLayer,
+    addArabicColumnToAllLayers,
+    removeArabicColumnFromAllLayers,
+    addCipherSlotToLayer,
+    removeCipherSlotFromLayer,
+    updateLayerNumber,
+    updateLayerDescription,
     swapSlots,
     setLetterAtSlot,
     clearLetterAtSlot,
@@ -99,8 +114,8 @@ export function LayersTable({
     applyPreset,
   } = useCipherLayers();
 
-  // Mode: 'edit' (drag & drop, swap, custom placement) or 'type' (click to append to text)
-  const [mode, setMode] = useState<InteractionMode>('edit');
+  // Mode: 'edit' (reveals add/delete tools & direct editing) or 'type' (click to append to text)
+  const [mode, setMode] = useState<InteractionMode>('type');
   const [editingCipherLayer, setEditingCipherLayer] = useState<number | null>(null);
   const [cipherInputs, setCipherInputs] = useState<string[]>(Array(9).fill(''));
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -108,6 +123,10 @@ export function LayersTable({
   const [showArabicMenu, setShowArabicMenu] = useState(false);
   const [showNooraniMenu, setShowNooraniMenu] = useState(false);
   const [selectedBankLetter, setSelectedBankLetter] = useState<string | null>(null);
+
+  // Direct Inline Letter Editing
+  const [editingSlot, setEditingSlot] = useState<{ layerNum: number; slotIndex: number } | null>(null);
+  const [slotInputValue, setSlotInputValue] = useState('');
 
   // Modals & Storage states
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -234,39 +253,27 @@ export function LayersTable({
     }
 
     // In Edit mode:
-    // Case 1: An unused letter from the bank was selected, place it here!
+    // Case 1: If a letter from the bank was selected, place it here!
     if (selectedBankLetter) {
       setLetterAtSlot(layerNum, slotIndex, selectedBankLetter);
       setSelectedBankLetter(null);
+      setEditingSlot(null);
       return;
     }
 
-    // Case 2: A slot was already selected
-    if (selectedSlot) {
-      // Clicked the same slot -> deselect
-      if (selectedSlot.layerNum === layerNum && selectedSlot.slotIndex === slotIndex) {
-        setSelectedSlot(null);
-        return;
-      }
-      // Clicked another slot -> swap / move!
-      swapSlots(selectedSlot.layerNum, selectedSlot.slotIndex, layerNum, slotIndex);
-      return;
-    }
-
-    // Case 3: No slot selected yet
-    if (char) {
-      setSelectedSlot({ layerNum, slotIndex, char });
-    }
+    // Case 2: Open direct inline editing for this slot immediately
+    setEditingSlot({ layerNum, slotIndex });
+    setSlotInputValue(char || '');
   };
 
   // Handle Clicking a letter in the Letter Bank
   const handleBankLetterClick = (char: string) => {
     if (mode !== 'edit') return;
 
-    // If a slot is already selected, place this letter in that slot!
-    if (selectedSlot) {
-      setLetterAtSlot(selectedSlot.layerNum, selectedSlot.slotIndex, char);
-      setSelectedSlot(null);
+    // If an inline slot is being edited, place this letter directly into it!
+    if (editingSlot) {
+      setLetterAtSlot(editingSlot.layerNum, editingSlot.slotIndex, char);
+      setEditingSlot(null);
       setSelectedBankLetter(null);
       return;
     }
@@ -276,7 +283,6 @@ export function LayersTable({
       setSelectedBankLetter(null);
     } else {
       setSelectedBankLetter(char);
-      setSelectedSlot(null);
     }
   };
 
@@ -470,7 +476,27 @@ export function LayersTable({
           {/* Row 2: Mode Switch & Action Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-stone-100">
             {/* Left: Mode Switcher Pill */}
-            <div className="inline-flex items-center p-1 rounded-xl bg-stone-100 border border-stone-200 text-xs font-bold">
+            <div className="inline-flex items-center p-1 rounded-xl bg-stone-100 border border-stone-200 text-xs font-bold shadow-2xs">
+              <button
+                type="button"
+                id="mode-type-btn"
+                onClick={() => {
+                  setMode('type');
+                  setSelectedSlot(null);
+                  setSelectedBankLetter(null);
+                  setEditingSlot(null);
+                }}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                  mode === 'type'
+                    ? 'bg-white text-stone-900 shadow-xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+                title="تفعيل وضع العرض والنقر للإضافة المباشرة إلى النص"
+              >
+                <MousePointerClick className="w-3.5 h-3.5 text-blue-600" />
+                <span>وضع العرض والنقر</span>
+              </button>
+
               <button
                 type="button"
                 id="mode-edit-btn"
@@ -480,32 +506,16 @@ export function LayersTable({
                 }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   mode === 'edit'
-                    ? 'bg-white text-stone-900 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
                 }`}
-                title="تفعيل وضع التعديل، السحب والإفلات، وتبديل الخانات"
+                title="تفعيل وضع التعديل وتوسيع الجدول: إضافة وحذف الطبقات والأحرف والنقر للتعديل المباشر"
               >
-                <ArrowUpDown className="w-3.5 h-3.5 text-amber-600" />
-                <span>وضع التعديل والسحب</span>
-              </button>
-
-              <button
-                type="button"
-                id="mode-type-btn"
-                onClick={() => {
-                  setMode('type');
-                  setSelectedSlot(null);
-                  setSelectedBankLetter(null);
-                }}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
-                  mode === 'type'
-                    ? 'bg-white text-stone-900 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="تفعيل وضع النقر للإضافة السريعة إلى النص المراد تشفيره"
-              >
-                <MousePointerClick className="w-3.5 h-3.5 text-blue-600" />
-                <span>وضع النقر للكتابة</span>
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>وضع التعديل والتوسيع</span>
+                {mode === 'edit' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
               </button>
             </div>
 
@@ -535,17 +545,22 @@ export function LayersTable({
                 </button>
 
                 {showArabicMenu && (
-                  <div className="absolute left-0 mt-1.5 w-84 sm:w-96 max-h-[440px] overflow-y-auto bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-30 divide-y divide-stone-100">
-                    <div className="px-3.5 py-2 text-2xs font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50/80 flex items-center justify-between">
-                      <span>قوالب توزيعات الأحرف العربية (28 حرفاً)</span>
-                      <button
-                        type="button"
-                        onClick={handleOpenSaveArabicModal}
-                        className="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-3xs font-bold transition-colors cursor-pointer"
-                      >
-                        + حفظ التوزيعة الحالية
-                      </button>
-                    </div>
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-2xs sm:hidden"
+                      onClick={() => setShowArabicMenu(false)}
+                    />
+                    <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 divide-y divide-stone-100 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3.5 py-2 text-2xs font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50/80 flex items-center justify-between">
+                        <span>قوالب توزيعات الأحرف العربية (28 حرفاً)</span>
+                        <button
+                          type="button"
+                          onClick={handleOpenSaveArabicModal}
+                          className="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-3xs font-bold transition-colors cursor-pointer"
+                        >
+                          + حفظ التوزيعة الحالية
+                        </button>
+                      </div>
 
                     <div className="py-1">
                       {Object.values(ARABIC_PRESETS).map((preset) => (
@@ -641,34 +656,40 @@ export function LayersTable({
                       </button>
                     </div>
                   </div>
+                </>
+              )}
+            </div>
+
+            {/* 2. Noorani Letters Distribution Menu */}
+            <div className="relative" ref={nooraniMenuRef}>
+              <button
+                type="button"
+                id="noorani-distribution-menu-btn"
+                onClick={() => {
+                  setShowNooraniMenu(!showNooraniMenu);
+                  setShowArabicMenu(false);
+                  setShowPresetMenu(false);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-indigo-50 border border-indigo-300 text-indigo-900 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                title="قوالب وتوزيعات أحرف التشفير النورانية التسعة مع إمكانية حفظ توزيعتك الخاصة"
+              >
+                <Key className="w-3.5 h-3.5 text-indigo-600" />
+                <span>توزيعات الأحرف النورانية</span>
+                {activeNooraniPresetName && (
+                  <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 max-w-[110px] truncate">
+                    {activeNooraniPresetName}
+                  </span>
                 )}
-              </div>
+                <ChevronDown className="w-3 h-3 text-stone-400" />
+              </button>
 
-              {/* 2. Noorani Letters Distribution Menu */}
-              <div className="relative" ref={nooraniMenuRef}>
-                <button
-                  type="button"
-                  id="noorani-distribution-menu-btn"
-                  onClick={() => {
-                    setShowNooraniMenu(!showNooraniMenu);
-                    setShowArabicMenu(false);
-                    setShowPresetMenu(false);
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-indigo-50 border border-indigo-300 text-indigo-900 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-                  title="قوالب وتوزيعات أحرف التشفير النورانية التسعة مع إمكانية حفظ توزيعتك الخاصة"
-                >
-                  <Key className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>توزيعات الأحرف النورانية</span>
-                  {activeNooraniPresetName && (
-                    <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 max-w-[110px] truncate">
-                      {activeNooraniPresetName}
-                    </span>
-                  )}
-                  <ChevronDown className="w-3 h-3 text-stone-400" />
-                </button>
-
-                {showNooraniMenu && (
-                  <div className="absolute left-0 mt-1.5 w-84 sm:w-96 max-h-[440px] overflow-y-auto bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-30 divide-y divide-stone-100">
+              {showNooraniMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-2xs sm:hidden"
+                    onClick={() => setShowNooraniMenu(false)}
+                  />
+                  <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 divide-y divide-stone-100 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3.5 py-2 text-2xs font-bold text-indigo-900 uppercase tracking-wider bg-indigo-50/80 flex items-center justify-between">
                       <span>قوالب توزيعات الأحرف النورانية (شفرة الفرقان)</span>
                       <button
@@ -774,27 +795,33 @@ export function LayersTable({
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
+            </div>
 
-              {/* 3. Full Tables Presets Dropdown */}
-              <div className="relative" ref={presetMenuRef}>
-                <button
-                  type="button"
-                  id="presets-menu-btn"
-                  onClick={() => {
-                    setShowPresetMenu(!showPresetMenu);
-                    setShowArabicMenu(false);
-                    setShowNooraniMenu(false);
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>قوالب كاملة</span>
-                </button>
+            {/* 3. Full Tables Presets Dropdown */}
+            <div className="relative" ref={presetMenuRef}>
+              <button
+                type="button"
+                id="presets-menu-btn"
+                onClick={() => {
+                  setShowPresetMenu(!showPresetMenu);
+                  setShowArabicMenu(false);
+                  setShowNooraniMenu(false);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>قوالب كاملة</span>
+              </button>
 
-                {showPresetMenu && (
-                  <div className="absolute left-0 mt-1.5 w-80 sm:w-96 max-h-[420px] overflow-y-auto bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-30 divide-y divide-stone-100">
+              {showPresetMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-2xs sm:hidden"
+                    onClick={() => setShowPresetMenu(false)}
+                  />
+                  <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 divide-y divide-stone-100 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3.5 py-2 text-2xs font-bold text-stone-400 uppercase tracking-wider bg-stone-50/70">
                       اختر قالباً لتطبيق جدول الطبقات السبع كاملاً:
                     </div>
@@ -839,8 +866,9 @@ export function LayersTable({
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
+                </>
+              )}
+            </div>
 
               {/* 4. Remove Duplicates in Rows button */}
               <button
@@ -1192,19 +1220,105 @@ export function LayersTable({
 
       {/* Main Layers Table Grid */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+        {/* Top Expandability Bar when in Edit Mode */}
+        {mode === 'edit' && (
+          <div className="p-3 bg-gradient-to-r from-amber-50/90 to-orange-50/70 border-b border-amber-200 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                أدوات تعديل وتوسيع الجدول:
+              </span>
+              <span className="text-2xs text-amber-900 hidden md:inline font-medium">
+                انقر على أي حرف لتعديله فوراً أو استخدم أزرار الإضافة (+) لتوسيع الطبقات والخانات
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  addLayer(undefined, undefined, 'bottom');
+                  setNotification({
+                    type: 'success',
+                    message: `تمت إضافة طبقة جديدة إلى نهاية الجدول.`,
+                  });
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                title="إضافة طبقة جديدة إلى أسفل الجدول"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ إضافة طبقة جديدة</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  addLayer(undefined, undefined, 'top');
+                  setNotification({
+                    type: 'success',
+                    message: `تمت إضافة طبقة جديدة في بداية الجدول.`,
+                  });
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-950 text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                title="إضافة طبقة جديدة في أعلى الجدول"
+              >
+                <ArrowUp className="w-3.5 h-3.5 text-amber-700" />
+                <span>+ طبقة في البداية</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-stone-50 text-xs font-bold text-stone-600 border-b border-stone-200">
-                <th className="py-3.5 px-4 w-28 sm:w-32">الطبقة</th>
-                <th className="py-3.5 px-4 min-w-[280px]">أحرف التشفير (9 خانات للطبقة، مع إمكانية التكرار)</th>
-                <th className="py-3.5 px-4">الأحرف العربية الأربعة في هذه الطبقة</th>
+                <th className="py-3.5 px-4 w-32 sm:w-36">الطبقة</th>
+                <th className="py-3.5 px-4 min-w-[260px]">أحرف التشفير المقابلة</th>
+                <th className="py-3.5 px-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span>الأحرف العربية في الطبقة</span>
+                    {mode === 'edit' && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addArabicColumnToAllLayers();
+                            setNotification({
+                              type: 'success',
+                              message: 'تمت إضافة عمود أحرف عربية جديد لجميع طبقات الجدول.',
+                            });
+                          }}
+                          className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                          title="إضافة عمود أحرف عربية إضافي في كل طبقة"
+                        >
+                          <Plus className="w-3 h-3 text-emerald-700" />
+                          <span>+ عمود أحرف للكل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            removeArabicColumnFromAllLayers();
+                            setNotification({
+                              type: 'info',
+                              message: 'تم حذف آخر عمود أحرف عربية من جميع الطبقات.',
+                            });
+                          }}
+                          className="px-2 py-1 rounded-lg bg-stone-50 hover:bg-rose-50 text-stone-600 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          title="حذف آخر عمود أحرف عربية من جميع الطبقات"
+                        >
+                          <Trash2 className="w-3 h-3 text-stone-500 hover:text-rose-600" />
+                          <span>- حذف عمود للكل</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-sm">
-              {layers.map((layerItem) => {
+              {layers.map((layerItem, layerIndex) => {
                 const isHighlighted = highlightedLayerNumbers.includes(layerItem.layer);
-                const color = LAYER_RAINBOW_COLORS[layerItem.layer];
+                const color = getLayerColor(layerItem.layer);
                 const isEditingCipher = editingCipherLayer === layerItem.layer;
 
                 return (
@@ -1217,26 +1331,86 @@ export function LayersTable({
                         : 'hover:bg-stone-50/60'
                     }`}
                   >
-                    {/* Layer Number Badge & Group info */}
+                    {/* Layer Number Badge & Controls */}
                     <td className="py-3.5 px-4 align-middle">
-                      <div className="flex flex-col items-start gap-1">
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 rounded-lg font-bold text-xs ${color.activeBg} ${color.activeText} shadow-xs`}
-                        >
-                          الطبقة {layerItem.layer}
-                        </span>
-                        {layerItem.description && (
+                      <div className="flex flex-col items-start gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className="text-3xs text-stone-500 font-medium leading-tight max-w-[140px]"
-                            title={layerItem.description}
+                            className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg font-bold text-xs ${color.activeBg} ${color.activeText} shadow-xs whitespace-nowrap`}
                           >
-                            {layerItem.description}
+                            الطبقة {layerItem.layer}
                           </span>
+
+                          {/* Edit Mode Layer Controls: Move Up, Move Down, Delete */}
+                          {mode === 'edit' && (
+                            <div className="inline-flex items-center gap-0.5 bg-stone-100 p-0.5 rounded-lg border border-stone-200 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => moveLayer(layerItem.layer, 'up')}
+                                disabled={layerIndex === 0}
+                                className="p-1 hover:bg-white text-stone-600 disabled:opacity-25 disabled:hover:bg-transparent rounded cursor-pointer transition-colors"
+                                title="تحريك الطبقة لأعلى"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveLayer(layerItem.layer, 'down')}
+                                disabled={layerIndex === layers.length - 1}
+                                className="p-1 hover:bg-white text-stone-600 disabled:opacity-25 disabled:hover:bg-transparent rounded cursor-pointer transition-colors"
+                                title="تحريك الطبقة لأسفل"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (layers.length <= 1) {
+                                    setNotification({
+                                      type: 'error',
+                                      message: 'لا يمكن حذف الطبقة الوحيدة المتبقية في الجدول.',
+                                    });
+                                    return;
+                                  }
+                                  deleteLayer(layerItem.layer);
+                                  setNotification({
+                                    type: 'info',
+                                    message: `تم حذف الطبقة ${layerItem.layer}.`,
+                                  });
+                                }}
+                                disabled={layers.length <= 1}
+                                className="p-1 hover:bg-rose-100 text-stone-400 hover:text-rose-600 disabled:opacity-25 rounded cursor-pointer transition-colors"
+                                title="حذف هذه الطبقة"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        {mode === 'edit' ? (
+                          <input
+                            type="text"
+                            value={layerItem.description || ''}
+                            onChange={(e) => updateLayerDescription(layerItem.layer, e.target.value)}
+                            placeholder="وصف الطبقة..."
+                            className="text-3xs text-stone-700 bg-white border border-stone-200 rounded px-1.5 py-0.5 w-28 focus:outline-none focus:border-amber-500"
+                          />
+                        ) : (
+                          layerItem.description && (
+                            <span
+                              className="text-3xs text-stone-500 font-medium leading-tight max-w-[140px]"
+                              title={layerItem.description}
+                            >
+                              {layerItem.description}
+                            </span>
+                          )
                         )}
                       </div>
                     </td>
 
-                    {/* Cipher Keys (9 slots, duplicates explicitly supported) */}
+                    {/* Cipher Letters Column */}
                     <td className="py-3.5 px-4 align-middle">
                       {isEditingCipher ? (
                         <div className="space-y-2 p-2 rounded-xl bg-amber-50/80 border border-amber-200 shadow-2xs max-w-md">
@@ -1262,9 +1436,9 @@ export function LayersTable({
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1 items-center">
                             {cipherInputs.map((val, cIdx) => (
-                              <div key={cIdx} className="flex flex-col items-center gap-0.5">
+                              <div key={cIdx} className="flex flex-col items-center gap-0.5 relative group/cslot">
                                 <input
                                   type="text"
                                   maxLength={2}
@@ -1283,6 +1457,15 @@ export function LayersTable({
                                 </span>
                               </div>
                             ))}
+
+                            <button
+                              type="button"
+                              onClick={() => setCipherInputs([...cipherInputs, ''])}
+                              className="w-7 h-7 rounded-md border border-dashed border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center justify-center cursor-pointer transition-colors"
+                              title="إضافة خانة تشفير إضافية"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ) : (
@@ -1321,7 +1504,7 @@ export function LayersTable({
                               onClick={() =>
                                 handleStartEditCipher(layerItem.layer, layerItem.cipherLetters)
                               }
-                              className="w-7 h-7 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer mr-1"
+                              className="w-7 h-7 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer mr-1"
                               title="تعديل أحرف التشفير لهذه الطبقة"
                             >
                               <Key className="w-3.5 h-3.5" />
@@ -1331,81 +1514,138 @@ export function LayersTable({
                       )}
                     </td>
 
-                    {/* 4 Letter Slots */}
+                    {/* Arabic Letter Slots Column */}
                     <td className="py-3.5 px-4 align-middle">
-                      <div className="flex flex-wrap items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         {layerItem.arabicLetters.map((arabicChar, slotIndex) => {
+                          const isEditingThisSlot =
+                            editingSlot?.layerNum === layerItem.layer &&
+                            editingSlot?.slotIndex === slotIndex;
                           const isSelected =
                             selectedSlot?.layerNum === layerItem.layer &&
                             selectedSlot?.slotIndex === slotIndex;
-                          const isDragTarget =
-                            dragOverTarget?.layerNum === layerItem.layer &&
-                            dragOverTarget?.slotIndex === slotIndex;
                           const count = arabicChar ? letterCounts[arabicChar] || 0 : 0;
                           const isDuplicate = count > 1;
+
+                          if (isEditingThisSlot) {
+                            return (
+                              <div
+                                key={slotIndex}
+                                className="relative min-w-12 h-11 rounded-xl ring-2 ring-amber-500 bg-amber-50 shadow-md flex items-center justify-center p-0.5"
+                              >
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  maxLength={3}
+                                  value={slotInputValue}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSlotInputValue(val);
+                                    setLetterAtSlot(layerItem.layer, slotIndex, val);
+                                  }}
+                                  onBlur={() => {
+                                    setEditingSlot(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === 'Escape') {
+                                      setEditingSlot(null);
+                                    }
+                                  }}
+                                  placeholder="حرف"
+                                  className="w-full h-full text-center font-bold text-lg font-['Amiri',serif] bg-transparent text-stone-900 outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    clearLetterAtSlot(layerItem.layer, slotIndex);
+                                    setSlotInputValue('');
+                                  }}
+                                  className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-stone-400 hover:bg-rose-500 text-white flex items-center justify-center shadow-xs cursor-pointer"
+                                  title="مسح الحرف"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            );
+                          }
 
                           return (
                             <div
                               key={slotIndex}
-                              draggable={mode === 'edit' && !!arabicChar}
-                              onDragStart={(e) =>
-                                handleSlotDragStart(e, layerItem.layer, slotIndex, arabicChar)
-                              }
-                              onDragOver={(e) => handleDragOver(e, layerItem.layer, slotIndex)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => handleDrop(e, layerItem.layer, slotIndex)}
                               onClick={() => handleSlotClick(layerItem.layer, slotIndex, arabicChar)}
-                              className={`relative group min-w-11 h-11 px-3 rounded-xl font-bold flex items-center justify-center transition-all select-none cursor-pointer text-lg font-['Amiri',serif] ${
-                                isDragTarget
-                                  ? 'border-2 border-dashed border-amber-500 bg-amber-100/80 scale-105 shadow-md ring-2 ring-amber-400'
-                                  : isSelected
+                              className={`relative group min-w-11 h-11 px-2.5 rounded-xl font-bold flex items-center justify-center transition-all select-none cursor-pointer text-lg font-['Amiri',serif] ${
+                                isSelected
                                   ? 'bg-amber-400 text-stone-950 border-2 border-stone-900 shadow-md ring-2 ring-amber-300 scale-105'
                                   : !arabicChar
-                                  ? 'border-2 border-dashed border-stone-300 hover:border-amber-400 bg-stone-50 hover:bg-amber-50/50 text-stone-300 hover:text-amber-600'
+                                  ? 'border-2 border-dashed border-stone-300 hover:border-amber-400 bg-stone-50 hover:bg-amber-50/50 text-stone-400 hover:text-amber-700'
                                   : isDuplicate
-                                  ? 'bg-rose-50 text-rose-800 border-2 border-rose-400 shadow-xs'
-                                  : 'bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-900 shadow-2xs hover:scale-105 active:scale-95'
+                                  ? 'bg-rose-50 text-rose-800 border-2 border-rose-400 shadow-xs hover:scale-105'
+                                  : 'bg-stone-100 hover:bg-amber-50 hover:border-amber-300 border border-stone-300 text-stone-900 shadow-2xs hover:scale-105 active:scale-95'
                               }`}
                               title={
                                 mode === 'edit'
                                   ? arabicChar
-                                    ? `اسحب ${arabicChar} أو انقر لتبديله مع خانة أخرى`
-                                    : `خانة فارغة - اسحب حرفاً إليها أو انقر لوضع حرف`
-                                  : `إضافة الحرف ${arabicChar} إلى النص المراد تشفيره`
+                                    ? `انقر لتعديل الحرف [${arabicChar}] مباشرة`
+                                    : `خانة فارغة - انقر لكتابة حرف مباشرة`
+                                  : `إضافة الحرف [${arabicChar}] إلى النص المراد تشفيره`
                               }
                             >
                               {arabicChar ? (
                                 <>
                                   <span>{arabicChar}</span>
 
-                                  {/* Drag Handle Icon on hover in edit mode */}
-                                  {mode === 'edit' && (
-                                    <GripVertical className="w-3 h-3 text-stone-400 opacity-0 group-hover:opacity-80 absolute -right-0.5 pointer-events-none transition-opacity" />
-                                  )}
-
-                                  {/* Quick Clear "X" on hover in edit mode */}
+                                  {/* In edit mode: Quick delete/remove slot button */}
                                   {mode === 'edit' && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        clearLetterAtSlot(layerItem.layer, slotIndex);
+                                        if (layerItem.arabicLetters.length > 1) {
+                                          removeArabicSlotFromLayer(layerItem.layer, slotIndex);
+                                        } else {
+                                          clearLetterAtSlot(layerItem.layer, slotIndex);
+                                        }
                                       }}
-                                      className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
-                                      title="إفراغ الخانة"
+                                      className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                      title={
+                                        layerItem.arabicLetters.length > 1
+                                          ? 'حذف هذه الخانة'
+                                          : 'إفراغ الخانة'
+                                      }
                                     >
                                       <X className="w-2.5 h-2.5" />
                                     </button>
                                   )}
                                 </>
                               ) : (
-                                <span className="text-xs text-stone-400 font-sans font-medium">
+                                <span className="text-2xs text-stone-400 font-sans font-medium">
                                   + فارغ
                                 </span>
                               )}
                             </div>
                           );
                         })}
+
+                        {/* In Edit Mode: "+ Add letter slot" to this row */}
+                        {mode === 'edit' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addArabicSlotToLayer(layerItem.layer, '');
+                              setEditingSlot({
+                                layerNum: layerItem.layer,
+                                slotIndex: layerItem.arabicLetters.length,
+                              });
+                              setSlotInputValue('');
+                            }}
+                            className="min-w-10 h-11 px-2.5 rounded-xl border-2 border-dashed border-emerald-400 hover:border-emerald-600 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs whitespace-nowrap"
+                            title="إضافة خانة حرف عربي جديدة لهذا السطر"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>+ حرف</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1414,6 +1654,26 @@ export function LayersTable({
             </tbody>
           </table>
         </div>
+
+        {/* Bottom Expandability Bar in Edit Mode */}
+        {mode === 'edit' && (
+          <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                addLayer(undefined, undefined, 'bottom');
+                setNotification({
+                  type: 'success',
+                  message: `تمت إضافة الطبقة ${layers.length + 1} بنجاح.`,
+                });
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ إضافة طبقة جديدة ({layers.length + 1})</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

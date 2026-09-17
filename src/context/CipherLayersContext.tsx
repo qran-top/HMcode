@@ -40,7 +40,7 @@ export interface SavedArabicPreset {
   name: string;
   description?: string;
   createdAt: number;
-  arabicLayers: { layer: number; letters: [string, string, string, string] }[];
+  arabicLayers: { layer: number; letters: string[] }[];
 }
 
 export interface SavedNooraniPreset {
@@ -118,6 +118,18 @@ export interface CipherLayersContextType {
   removeRowDuplicates: () => { arabicRemoved: number; cipherRemoved: number; totalRemoved: number };
   // Column duplicates summary
   columnDuplicatesSummary: ColumnDuplicatesSummary;
+  // Layer & Grid Expandability
+  addLayer: (layerNum?: number, description?: string, position?: 'top' | 'bottom') => void;
+  deleteLayer: (layerNum: number) => boolean;
+  moveLayer: (layerNum: number, direction: 'up' | 'down') => void;
+  addArabicSlotToLayer: (layerNum: number, initialChar?: string) => void;
+  removeArabicSlotFromLayer: (layerNum: number, slotIndex: number) => void;
+  addArabicColumnToAllLayers: () => void;
+  removeArabicColumnFromAllLayers: () => void;
+  addCipherSlotToLayer: (layerNum: number, initialChar?: string) => void;
+  removeCipherSlotFromLayer: (layerNum: number, slotIndex: number) => void;
+  updateLayerNumber: (oldNum: number, newNum: number) => void;
+  updateLayerDescription: (layerNum: number, description: string) => void;
   // Mutations
   swapSlots: (layerA: number, indexA: number, layerB: number, indexB: number) => void;
   setLetterAtSlot: (layerNum: number, slotIndex: number, char: string) => void;
@@ -137,7 +149,7 @@ export interface CipherLayersContextType {
 const CipherLayersContext = createContext<CipherLayersContextType | null>(null);
 
 export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
-  return candidate.map((l) => {
+  return candidate.map((l, index) => {
     const rawCiphers = Array.isArray(l.cipherLetters) ? l.cipherLetters : [];
     const flatChars: string[] = [];
     rawCiphers.forEach((c) => {
@@ -152,13 +164,15 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
       }
     });
     const targetLen = Math.max(9, flatChars.length);
+    const rawArabic = Array.isArray(l.arabicLetters) ? l.arabicLetters : [];
+    const targetArabicLen = Math.max(4, rawArabic.length);
     return {
-      layer: l.layer,
+      layer: typeof l.layer === 'number' ? l.layer : index + 1,
       cipherLetters: Array.from({ length: targetLen }, (_, i) => (flatChars[i] != null ? flatChars[i] : '')),
-      arabicLetters: Array.from({ length: 4 }, (_, i) =>
-        Array.isArray(l.arabicLetters) && l.arabicLetters[i] != null ? String(l.arabicLetters[i]) : ''
-      ) as [string, string, string, string],
-      description: l.description || `الطبقة ${l.layer}`,
+      arabicLetters: Array.from({ length: targetArabicLen }, (_, i) =>
+        rawArabic[i] != null ? String(rawArabic[i]) : ''
+      ),
+      description: l.description || `الطبقة ${l.layer || index + 1}`,
     };
   });
 }
@@ -168,7 +182,7 @@ function loadInitialLayers(): LayerInfo[] {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === 7) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return normalizeLayers(parsed);
       }
     }
@@ -244,7 +258,7 @@ function triggerJsonDownload(filename: string, data: unknown) {
 }
 
 function validateLayersStructure(candidate: unknown): candidate is LayerInfo[] {
-  if (!Array.isArray(candidate) || candidate.length !== 7) return false;
+  if (!Array.isArray(candidate) || candidate.length === 0) return false;
   return candidate.every(
     (l) =>
       typeof l === 'object' &&
@@ -438,16 +452,175 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setSelectedSlot(null);
   }, []);
 
-  // Clear all 28 slots
+  // Clear all slots
   const clearAllSlots = useCallback(() => {
     setLayers((prevLayers) => {
       const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
       next.forEach((l) => {
-        l.arabicLetters = ['', '', '', ''];
+        const len = (l.arabicLetters || []).length || 4;
+        l.arabicLetters = Array(len).fill('');
       });
       return next;
     });
     setSelectedSlot(null);
+  }, []);
+
+  // Add a new layer (can be added at top or bottom)
+  const addLayer = useCallback((layerNum?: number, description?: string, position: 'top' | 'bottom' = 'bottom') => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const existingNums = next.map((l) => l.layer);
+      let newNum = layerNum;
+      if (newNum === undefined || existingNums.includes(newNum)) {
+        newNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+      }
+      const maxArabicLen = Math.max(4, ...next.map((l) => (l.arabicLetters || []).length));
+      const newLayer: LayerInfo = {
+        layer: newNum,
+        cipherLetters: Array(9).fill(''),
+        arabicLetters: Array(maxArabicLen).fill(''),
+        description: description?.trim() || `الطبقة ${newNum}`,
+      };
+      return position === 'top' ? [newLayer, ...next] : [...next, newLayer];
+    });
+  }, []);
+
+  // Delete a layer (must keep at least one layer)
+  const deleteLayer = useCallback((layerNum: number): boolean => {
+    let deleted = false;
+    setLayers((prevLayers) => {
+      if (prevLayers.length <= 1) return prevLayers;
+      deleted = true;
+      return prevLayers.filter((l) => l.layer !== layerNum);
+    });
+    setSelectedSlot((curr) => (curr?.layerNum === layerNum ? null : curr));
+    return deleted;
+  }, []);
+
+  // Move layer up or down in visual sequence
+  const moveLayer = useCallback((layerNum: number, direction: 'up' | 'down') => {
+    setLayers((prevLayers) => {
+      const idx = prevLayers.findIndex((l) => l.layer === layerNum);
+      if (idx === -1) return prevLayers;
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prevLayers.length) return prevLayers;
+      const next = [...prevLayers];
+      const temp = next[idx];
+      next[idx] = next[targetIdx];
+      next[targetIdx] = temp;
+      return next;
+    });
+  }, []);
+
+  // Add an Arabic letter slot to a specific layer
+  const addArabicSlotToLayer = useCallback((layerNum: number, initialChar = '') => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === layerNum);
+      if (target) {
+        if (!Array.isArray(target.arabicLetters)) target.arabicLetters = [];
+        target.arabicLetters.push(initialChar.trim());
+      }
+      return next;
+    });
+  }, []);
+
+  // Remove an Arabic letter slot from a specific layer
+  const removeArabicSlotFromLayer = useCallback((layerNum: number, slotIndex: number) => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === layerNum);
+      if (target && Array.isArray(target.arabicLetters)) {
+        if (target.arabicLetters.length > 1) {
+          target.arabicLetters.splice(slotIndex, 1);
+        } else {
+          target.arabicLetters[0] = '';
+        }
+      }
+      return next;
+    });
+    setSelectedSlot((curr) => (curr?.layerNum === layerNum && curr.slotIndex === slotIndex ? null : curr));
+  }, []);
+
+  // Add an Arabic letter column to all layers across the table
+  const addArabicColumnToAllLayers = useCallback(() => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      next.forEach((l) => {
+        if (!Array.isArray(l.arabicLetters)) l.arabicLetters = [];
+        l.arabicLetters.push('');
+      });
+      return next;
+    });
+  }, []);
+
+  // Remove the last Arabic column from all layers
+  const removeArabicColumnFromAllLayers = useCallback(() => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const maxLen = Math.max(...next.map((l) => (l.arabicLetters || []).length));
+      if (maxLen <= 1) return prevLayers;
+      next.forEach((l) => {
+        if (Array.isArray(l.arabicLetters) && l.arabicLetters.length > 0) {
+          l.arabicLetters.pop();
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  // Add a cipher letter slot to a layer
+  const addCipherSlotToLayer = useCallback((layerNum: number, initialChar = '') => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === layerNum);
+      if (target) {
+        if (!Array.isArray(target.cipherLetters)) target.cipherLetters = [];
+        target.cipherLetters.push(initialChar.trim());
+      }
+      return next;
+    });
+  }, []);
+
+  // Remove a cipher letter slot from a layer
+  const removeCipherSlotFromLayer = useCallback((layerNum: number, slotIndex: number) => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === layerNum);
+      if (target && Array.isArray(target.cipherLetters)) {
+        if (target.cipherLetters.length > 1) {
+          target.cipherLetters.splice(slotIndex, 1);
+        } else {
+          target.cipherLetters[0] = '';
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  // Update layer number
+  const updateLayerNumber = useCallback((oldNum: number, newNum: number) => {
+    if (oldNum === newNum || isNaN(newNum)) return;
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === oldNum);
+      if (target) {
+        target.layer = newNum;
+      }
+      return next;
+    });
+  }, []);
+
+  // Update layer description
+  const updateLayerDescription = useCallback((layerNum: number, description: string) => {
+    setLayers((prevLayers) => {
+      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+      const target = next.find((l) => l.layer === layerNum);
+      if (target) {
+        target.description = description.trim();
+      }
+      return next;
+    });
   }, []);
 
   // Set cipher letters for a layer (supports array of slots or individual strings)
@@ -583,7 +756,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       next.forEach((l) => {
         // 1. Arabic letters in this layer:
         const seenArabic = new Set<string>();
-        const newArabic: [string, string, string, string] = ['', '', '', ''];
+        const arabicLen = Math.max(4, (l.arabicLetters || []).length);
+        const newArabic: string[] = Array(arabicLen).fill('');
         (l.arabicLetters || []).forEach((ch, idx) => {
           const raw = (ch || '').trim();
           if (!raw) return;
@@ -729,12 +903,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         createdAt: Date.now(),
         arabicLayers: layers.map((l) => ({
           layer: l.layer,
-          letters: [
-            l.arabicLetters[0] || '',
-            l.arabicLetters[1] || '',
-            l.arabicLetters[2] || '',
-            l.arabicLetters[3] || '',
-          ] as [string, string, string, string],
+          letters: (l.arabicLetters || []).map((ch) => ch || ''),
         })),
       };
       setSavedArabicPresets((prev) => [newPreset, ...prev]);
@@ -1129,6 +1298,17 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       deleteSavedNooraniPreset,
       removeRowDuplicates,
       columnDuplicatesSummary,
+      addLayer,
+      deleteLayer,
+      moveLayer,
+      addArabicSlotToLayer,
+      removeArabicSlotFromLayer,
+      addArabicColumnToAllLayers,
+      removeArabicColumnFromAllLayers,
+      addCipherSlotToLayer,
+      removeCipherSlotFromLayer,
+      updateLayerNumber,
+      updateLayerDescription,
       swapSlots,
       setLetterAtSlot,
       clearLetterAtSlot,
@@ -1176,6 +1356,17 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       deleteSavedNooraniPreset,
       removeRowDuplicates,
       columnDuplicatesSummary,
+      addLayer,
+      deleteLayer,
+      moveLayer,
+      addArabicSlotToLayer,
+      removeArabicSlotFromLayer,
+      addArabicColumnToAllLayers,
+      removeArabicColumnFromAllLayers,
+      addCipherSlotToLayer,
+      removeCipherSlotFromLayer,
+      updateLayerNumber,
+      updateLayerDescription,
       swapSlots,
       setLetterAtSlot,
       clearLetterAtSlot,

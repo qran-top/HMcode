@@ -1,7 +1,7 @@
 export interface LayerInfo {
   layer: number;
   cipherLetters: string[];
-  arabicLetters: [string, string, string, string];
+  arabicLetters: string[];
   description: string;
 }
 
@@ -97,6 +97,14 @@ export const LAYER_RAINBOW_COLORS: Record<number, LayerColorTheme> = {
     accentHex: '#9333ea',
   },
 };
+
+export function getLayerColor(layerNum: number): LayerColorTheme {
+  if (LAYER_RAINBOW_COLORS[layerNum]) {
+    return LAYER_RAINBOW_COLORS[layerNum];
+  }
+  const key = (((Math.abs(layerNum) - 1) % 7) + 1);
+  return LAYER_RAINBOW_COLORS[key] || LAYER_RAINBOW_COLORS[1];
+}
 
 export function createNineCipherSlots(c1 = '', c2 = ''): string[] {
   return [c1, c2, '', '', '', '', '', '', ''];

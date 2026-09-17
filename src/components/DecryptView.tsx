@@ -3,6 +3,7 @@ import {
   cleanText,
   VALID_CIPHER_LETTERS,
   LAYER_RAINBOW_COLORS,
+  getLayerColor,
 } from '../cipherData';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
@@ -32,9 +33,26 @@ import {
   Search,
 } from 'lucide-react';
 
-export function DecryptView() {
+interface DecryptViewProps {
+  cipherInput?: string;
+  onCipherInputChange?: (val: string) => void;
+}
+
+export function DecryptView({
+  cipherInput: externalCipherInput,
+  onCipherInputChange,
+}: DecryptViewProps = {}) {
   const { layers: cipherLayers, validCipherLetters } = useCipherLayers();
-  const [cipherInput, setCipherInput] = useState('طسم');
+  const [internalCipherInput, setInternalCipherInput] = useState('طسم');
+  const cipherInput = externalCipherInput !== undefined ? externalCipherInput : internalCipherInput;
+  const setCipherInput = (val: string | ((prev: string) => string)) => {
+    const nextVal = typeof val === 'function' ? val(cipherInput) : val;
+    if (onCipherInputChange) {
+      onCipherInputChange(nextVal);
+    } else {
+      setInternalCipherInput(nextVal);
+    }
+  };
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
   const [onlyShowDictionaryWords, setOnlyShowDictionaryWords] = useState(false);
@@ -68,11 +86,11 @@ export function DecryptView() {
     return unsub;
   }, []);
 
-  // Strict input sanitizer: allow valid cipher letters, space, or newline
+  // Strict input sanitizer: allow cipher letters configured in current table, space, or newline
   const handleInputChange = (raw: string) => {
     const cleaned = cleanText(raw);
     const filtered = Array.from(cleaned)
-      .filter((char) => validCipherLetters.has(char) || VALID_CIPHER_LETTERS.has(char) || char === ' ' || char === '\n')
+      .filter((char) => validCipherLetters.has(char) || char === ' ' || char === '\n')
       .join('');
     setCipherInput(filtered);
   };
@@ -293,16 +311,20 @@ export function DecryptView() {
     return statusMap;
   }, [processedCombinations, quranicCount]);
 
-  // Quranic nearest vocabulary map
+  // Quranic nearest vocabulary map (Optimized to top 40 non-exact candidates to avoid UI locking/freezing)
   const quranicNearestMap = useMemo(() => {
     const nearestMap = new Map<string, QuranicNearestMatch | null>();
+    if (!hasGenerated && meaningfulLettersCount > 2) return nearestMap;
+    let computedCount = 0;
     for (const item of processedCombinations) {
-      if (!nearestMap.has(item.word)) {
+      if (computedCount >= 40) break;
+      if (!nearestMap.has(item.word) && !quranicStatus.get(item.word)) {
         nearestMap.set(item.word, quranicDictionary.findClosestQuranicWord(item.word));
+        computedCount++;
       }
     }
     return nearestMap;
-  }, [processedCombinations, quranicCount]);
+  }, [processedCombinations, quranicCount, quranicStatus, hasGenerated, meaningfulLettersCount]);
 
   // List of nearest matches with good similarity
   const nearestQuranicList = useMemo(() => {
@@ -426,22 +448,22 @@ export function DecryptView() {
   return (
     <div className="space-y-5">
       {/* Input Card */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <label htmlFor="cipher-input" className="text-sm sm:text-base font-bold text-stone-900">
             النص المشفر:
           </label>
 
-          <div className="flex items-center gap-3">
-            {/* 7 Compact Layers Indicator */}
+          <div className="flex items-center gap-2 max-w-full overflow-x-auto py-0.5">
+            {/* Compact Layers Indicator */}
             <CompactLayersIndicator activeLayerNumbers={activeLayersInDecrypt} />
           </div>
         </div>
 
-        {/* Input container: smaller Clear button on top, Generate button directly below it */}
-        <div className="flex items-stretch gap-2.5">
-          {/* Actions Column: smaller Clear button on top + Generate button underneath */}
-          <div className="shrink-0 flex flex-col gap-1.5 justify-between w-32 sm:w-36">
+        {/* Input container: responsive on mobile (flex-col-reverse on mobile, row on sm+) */}
+        <div className="flex flex-col-reverse sm:flex-row items-stretch gap-2.5 w-full max-w-full">
+          {/* Actions Column / Row on mobile */}
+          <div className="shrink-0 flex flex-row sm:flex-col gap-1.5 w-full sm:w-36">
             {/* Smaller Clear button */}
             <button
               type="button"
@@ -452,7 +474,7 @@ export function DecryptView() {
                 setGeneratedList([]);
               }}
               disabled={!cipherInput}
-              className={`w-full py-1.5 px-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-1 transition-all ${
+              className={`flex-1 sm:w-full py-2 sm:py-1.5 px-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-1 transition-all ${
                 cipherInput
                   ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
                   : 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
@@ -469,7 +491,7 @@ export function DecryptView() {
               id="generate-decrypt-input-btn"
               onClick={handleTriggerDecryptGenerate}
               disabled={!cipherInput.trim()}
-              className={`w-full flex-1 py-1.5 sm:py-2 px-2 rounded-xl font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
+              className={`flex-2 sm:w-full sm:flex-1 py-2 sm:py-2 px-2 rounded-xl font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
                 !cipherInput.trim()
                   ? 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
                   : isGenerating
@@ -504,15 +526,15 @@ export function DecryptView() {
               }
             }}
             placeholder="اكتب أو انقر أحرف التشفير لفك التشفير (واضغط Enter لتوليد الاحتمالات)..."
-            className="flex-1 text-xl sm:text-2xl font-bold p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right bg-stone-50/50"
+            className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right bg-stone-50/50 transition-all"
           />
         </div>
 
         {/* Cipher Buttons for Direct Clicking with Rainbow Colors */}
-        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+        <div className="mt-3 flex items-center gap-1.5 flex-wrap max-w-full">
           <span className="text-xs text-stone-500 ml-1">أحرف التشفير:</span>
           {cipherLayers.map((l) => {
-            const color = LAYER_RAINBOW_COLORS[l.layer];
+            const color = getLayerColor(l.layer);
             const charsInLayer: string[] = [];
             (l.cipherLetters || []).forEach((c) => {
               const trimmed = (c || '').trim();
@@ -617,7 +639,7 @@ export function DecryptView() {
                   return (
                     <div
                       key={originalIndex}
-                      className="w-40 sm:w-48 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex flex-col justify-between gap-2"
+                      className="w-[calc(50%-0.35rem)] sm:w-48 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex flex-col justify-between gap-2"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span

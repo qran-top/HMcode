@@ -68,7 +68,7 @@ export function LetterAnalysisCard({
                 <div
                   key={originalIndex}
                   id={`char-card-${originalIndex}`}
-                  className="w-36 sm:w-44 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
+                  className="w-[calc(50%-0.35rem)] sm:w-44 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
                 >
                   {/* Top: Letter and Layer Number with rainbow color */}
                   <div className="flex items-center justify-between">
