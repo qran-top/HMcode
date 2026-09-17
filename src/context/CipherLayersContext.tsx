@@ -625,40 +625,27 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, []);
 
-  // Reverse Arabic letters in each layer (e.g. from right-to-left to left-to-right or reversing sequence)
+  // Reverse Arabic letters vertically across layers (Layer 1 swaps with Layer N, etc.)
   const reverseAllLayersArabicLetters = useCallback(() => {
     setLayers((prevLayers) => {
-      return prevLayers.map((l) => {
-        const arabic = Array.isArray(l.arabicLetters) ? [...l.arabicLetters] : [];
-        return {
-          ...l,
-          arabicLetters: arabic.reverse(),
-        };
-      });
+      const allArabic = prevLayers.map((l) => (Array.isArray(l.arabicLetters) ? [...l.arabicLetters] : []));
+      const reversedVertical = [...allArabic].reverse();
+      return prevLayers.map((l, idx) => ({
+        ...l,
+        arabicLetters: reversedVertical[idx] || [],
+      }));
     });
   }, []);
 
-  // Reverse cipher letters in each layer
+  // Reverse cipher letters vertically across layers (Layer 1 swaps with Layer N, etc.)
   const reverseAllLayersCipherLetters = useCallback(() => {
     setLayers((prevLayers) => {
-      return prevLayers.map((l) => {
-        const ciphers = Array.isArray(l.cipherLetters) ? [...l.cipherLetters] : [];
-        // Find non-empty characters vs empty trailing slots
-        // Reversing only valid letters or whole active slots preserves alignment
-        const validChars = ciphers.filter((c) => c && c.trim());
-        if (validChars.length > 1) {
-          const reversedValid = [...validChars].reverse();
-          const newSlots = Array(Math.max(9, ciphers.length)).fill('');
-          reversedValid.forEach((char, idx) => {
-            newSlots[idx] = char;
-          });
-          return {
-            ...l,
-            cipherLetters: newSlots,
-          };
-        }
-        return l;
-      });
+      const allCiphers = prevLayers.map((l) => (Array.isArray(l.cipherLetters) ? [...l.cipherLetters] : []));
+      const reversedVertical = [...allCiphers].reverse();
+      return prevLayers.map((l, idx) => ({
+        ...l,
+        cipherLetters: reversedVertical[idx] || [],
+      }));
     });
   }, []);
 

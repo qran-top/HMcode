@@ -29,7 +29,6 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
-  ArrowLeftRight,
 } from 'lucide-react';
 import {
   LAYER_RAINBOW_COLORS,
@@ -1286,14 +1285,14 @@ export function LayersTable({
                         reverseAllLayersCipherLetters();
                         setNotification({
                           type: 'success',
-                          message: 'تم عكس ترتيب أحرف التشفير في جميع الطبقات بنجاح.',
+                          message: 'تم عكس ترتيب أحرف التشفير عامودياً بين الطبقات بنجاح.',
                         });
                       }}
                       className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 hover:border-indigo-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                      title="عكس ترتيب أحرف التشفير في طبقات الجدول"
+                      title="عكس ترتيب أحرف التشفير عامودياً بين الطبقات (تبديل الطبقة الأولى بالأخيرة وهكذا)"
                     >
-                      <ArrowLeftRight className="w-3 h-3 text-indigo-700" />
-                      <span>عكس ترتيب أحرف التشفير</span>
+                      <ArrowUpDown className="w-3 h-3 text-indigo-700" />
+                      <span>عكس عامودي لأحرف التشفير</span>
                     </button>
                   </div>
                 </th>
@@ -1308,14 +1307,14 @@ export function LayersTable({
                           reverseAllLayersArabicLetters();
                           setNotification({
                             type: 'success',
-                            message: 'تم عكس ترتيب الأحرف العربية في جميع الطبقات بنجاح.',
+                            message: 'تم عكس ترتيب الأحرف العربية عامودياً بين الطبقات بنجاح.',
                           });
                         }}
                         className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 hover:border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                        title="عكس ترتيب الأحرف العربية في طبقات الجدول"
+                        title="عكس ترتيب الأحرف العربية عامودياً بين الطبقات (تبديل الطبقة الأولى بالأخيرة وهكذا)"
                       >
-                        <ArrowLeftRight className="w-3 h-3 text-emerald-700" />
-                        <span>عكس ترتيب الأحرف العربية</span>
+                        <ArrowUpDown className="w-3 h-3 text-emerald-700" />
+                        <span>عكس عامودي للأحرف العربية</span>
                       </button>
                     </div>
                     {mode === 'edit' && (
