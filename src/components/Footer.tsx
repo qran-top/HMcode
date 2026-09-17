@@ -30,9 +30,9 @@ export function Footer({ onOpenModal }: FooterProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-center md:justify-start gap-2 text-stone-900 font-extrabold text-sm">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>شيفرة الفرقان</span>
+              <span>التشفير العربي</span>
               <span className="text-stone-400 font-normal">|</span>
-              <span className="text-amber-800 font-bold">علم الحرف والتشفير السباعي القرآني</span>
+              <span className="text-amber-800 font-bold">علم الحرف والتشفير السباعي</span>
             </div>
             <p className="text-xs text-stone-600 leading-relaxed max-w-2xl">
               الفكرة والتوفيق بفضل الله تعالى ومنّته وحده لا شريك له، والبرمجة والتطوير تمّت بكل أمانة ومسؤولية بواسطة الذكاء الاصطناعي (AI Coding Assistant - Google DeepMind / Gemini).
@@ -100,7 +100,7 @@ export function Footer({ onOpenModal }: FooterProps) {
         {/* Bottom copyright & international compliance note */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-3xs text-stone-400 pt-2 border-t border-stone-100 text-center sm:text-right">
           <p>
-            © {currentYear} شيفرة الفرقان — تطبيق بحثي معرفي مجاني مفتوح النفع. متوافق مع معايير حماية البيانات الدولية (GDPR / CCPA).
+            © {currentYear} التشفير العربي — تطبيق بحثي معرفي مجاني مفتوح النفع. متوافق مع معايير حماية البيانات الدولية (GDPR / CCPA).
           </p>
           <p className="inline-flex items-center gap-1">
             <span>تم تطويره بالذكاء الاصطناعي بروح الأمانة العلمية</span>

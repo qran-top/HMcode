@@ -130,6 +130,8 @@ export interface CipherLayersContextType {
   removeCipherSlotFromLayer: (layerNum: number, slotIndex: number) => void;
   updateLayerNumber: (oldNum: number, newNum: number) => void;
   updateLayerDescription: (layerNum: number, description: string) => void;
+  reverseAllLayersArabicLetters: () => void;
+  reverseAllLayersCipherLetters: () => void;
   // Mutations
   swapSlots: (layerA: number, indexA: number, layerB: number, indexB: number) => void;
   setLetterAtSlot: (layerNum: number, slotIndex: number, char: string) => void;
@@ -620,6 +622,43 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         target.description = description.trim();
       }
       return next;
+    });
+  }, []);
+
+  // Reverse Arabic letters in each layer (e.g. from right-to-left to left-to-right or reversing sequence)
+  const reverseAllLayersArabicLetters = useCallback(() => {
+    setLayers((prevLayers) => {
+      return prevLayers.map((l) => {
+        const arabic = Array.isArray(l.arabicLetters) ? [...l.arabicLetters] : [];
+        return {
+          ...l,
+          arabicLetters: arabic.reverse(),
+        };
+      });
+    });
+  }, []);
+
+  // Reverse cipher letters in each layer
+  const reverseAllLayersCipherLetters = useCallback(() => {
+    setLayers((prevLayers) => {
+      return prevLayers.map((l) => {
+        const ciphers = Array.isArray(l.cipherLetters) ? [...l.cipherLetters] : [];
+        // Find non-empty characters vs empty trailing slots
+        // Reversing only valid letters or whole active slots preserves alignment
+        const validChars = ciphers.filter((c) => c && c.trim());
+        if (validChars.length > 1) {
+          const reversedValid = [...validChars].reverse();
+          const newSlots = Array(Math.max(9, ciphers.length)).fill('');
+          reversedValid.forEach((char, idx) => {
+            newSlots[idx] = char;
+          });
+          return {
+            ...l,
+            cipherLetters: newSlots,
+          };
+        }
+        return l;
+      });
     });
   }, []);
 
@@ -1309,6 +1348,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       removeCipherSlotFromLayer,
       updateLayerNumber,
       updateLayerDescription,
+      reverseAllLayersArabicLetters,
+      reverseAllLayersCipherLetters,
       swapSlots,
       setLetterAtSlot,
       clearLetterAtSlot,
@@ -1367,6 +1408,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       removeCipherSlotFromLayer,
       updateLayerNumber,
       updateLayerDescription,
+      reverseAllLayersArabicLetters,
+      reverseAllLayersCipherLetters,
       swapSlots,
       setLetterAtSlot,
       clearLetterAtSlot,

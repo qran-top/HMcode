@@ -13,11 +13,11 @@ export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderPr
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-bold text-lg border border-stone-800 shadow-xs">
-              <span className="font-['Amiri',serif]">ف</span>
+              <span className="font-['Amiri',serif]">ع</span>
             </div>
             <div>
               <h1 id="app-title" className="text-xl font-extrabold text-stone-900 tracking-tight">
-                شيفرة الفرقان
+                التشفير العربي
               </h1>
             </div>
           </div>

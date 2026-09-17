@@ -29,6 +29,7 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
+  ArrowLeftRight,
 } from 'lucide-react';
 import {
   LAYER_RAINBOW_COLORS,
@@ -105,6 +106,8 @@ export function LayersTable({
     removeCipherSlotFromLayer,
     updateLayerNumber,
     updateLayerDescription,
+    reverseAllLayersArabicLetters,
+    reverseAllLayersCipherLetters,
     swapSlots,
     setLetterAtSlot,
     clearLetterAtSlot,
@@ -660,7 +663,7 @@ export function LayersTable({
               )}
             </div>
 
-            {/* 2. Noorani Letters Distribution Menu */}
+            {/* 2. Cipher Letters Distribution Menu */}
             <div className="relative" ref={nooraniMenuRef}>
               <button
                 type="button"
@@ -671,10 +674,10 @@ export function LayersTable({
                   setShowPresetMenu(false);
                 }}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-indigo-50 border border-indigo-300 text-indigo-900 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-                title="قوالب وتوزيعات أحرف التشفير النورانية التسعة مع إمكانية حفظ توزيعتك الخاصة"
+                title="قوالب وتوزيعات أحرف التشفير مع إمكانية حفظ توزيعتك الخاصة"
               >
                 <Key className="w-3.5 h-3.5 text-indigo-600" />
-                <span>توزيعات الأحرف النورانية</span>
+                <span>أحرف التشفير</span>
                 {activeNooraniPresetName && (
                   <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 max-w-[110px] truncate">
                     {activeNooraniPresetName}
@@ -691,7 +694,7 @@ export function LayersTable({
                   />
                   <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 divide-y divide-stone-100 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3.5 py-2 text-2xs font-bold text-indigo-900 uppercase tracking-wider bg-indigo-50/80 flex items-center justify-between">
-                      <span>قوالب توزيعات الأحرف النورانية (شفرة الفرقان)</span>
+                      <span>قوالب وتوزيعات أحرف التشفير</span>
                       <button
                         type="button"
                         onClick={handleOpenSaveNooraniModal}
@@ -1273,10 +1276,48 @@ export function LayersTable({
             <thead>
               <tr className="bg-stone-50 text-xs font-bold text-stone-600 border-b border-stone-200">
                 <th className="py-3.5 px-4 w-32 sm:w-36">الطبقة</th>
-                <th className="py-3.5 px-4 min-w-[260px]">أحرف التشفير المقابلة</th>
+                <th className="py-3.5 px-4 min-w-[260px]">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span>أحرف التشفير المقابلة</span>
+                    <button
+                      type="button"
+                      id="btn-reverse-cipher-letters"
+                      onClick={() => {
+                        reverseAllLayersCipherLetters();
+                        setNotification({
+                          type: 'success',
+                          message: 'تم عكس ترتيب أحرف التشفير في جميع الطبقات بنجاح.',
+                        });
+                      }}
+                      className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 hover:border-indigo-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      title="عكس ترتيب أحرف التشفير في طبقات الجدول"
+                    >
+                      <ArrowLeftRight className="w-3 h-3 text-indigo-700" />
+                      <span>عكس ترتيب أحرف التشفير</span>
+                    </button>
+                  </div>
+                </th>
                 <th className="py-3.5 px-4">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span>الأحرف العربية في الطبقة</span>
+                    <div className="flex items-center gap-2">
+                      <span>الأحرف العربية في الطبقة</span>
+                      <button
+                        type="button"
+                        id="btn-reverse-arabic-letters"
+                        onClick={() => {
+                          reverseAllLayersArabicLetters();
+                          setNotification({
+                            type: 'success',
+                            message: 'تم عكس ترتيب الأحرف العربية في جميع الطبقات بنجاح.',
+                          });
+                        }}
+                        className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 hover:border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                        title="عكس ترتيب الأحرف العربية في طبقات الجدول"
+                      >
+                        <ArrowLeftRight className="w-3 h-3 text-emerald-700" />
+                        <span>عكس ترتيب الأحرف العربية</span>
+                      </button>
+                    </div>
                     {mode === 'edit' && (
                       <div className="flex items-center gap-1.5">
                         <button
@@ -2330,7 +2371,7 @@ export function LayersTable({
                           </div>
                         </div>
                         <span className="text-3xs font-black bg-indigo-100 text-indigo-900 border border-indigo-300 px-2 py-0.5 rounded">
-                          مسموح بشفرة الفرقان
+                          مسموح بنظام التشفير
                         </span>
                       </div>
                     ))}
