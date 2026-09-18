@@ -36,11 +36,13 @@ import {
 interface DecryptViewProps {
   cipherInput?: string;
   onCipherInputChange?: (val: string) => void;
+  isDualMode?: boolean;
 }
 
 export function DecryptView({
   cipherInput: externalCipherInput,
   onCipherInputChange,
+  isDualMode = false,
 }: DecryptViewProps = {}) {
   const { layers: cipherLayers, validCipherLetters } = useCipherLayers();
   const [internalCipherInput, setInternalCipherInput] = useState('طسم');
@@ -89,10 +91,7 @@ export function DecryptView({
   // Strict input sanitizer: allow cipher letters configured in current table, space, or newline
   const handleInputChange = (raw: string) => {
     const cleaned = cleanText(raw);
-    const filtered = Array.from(cleaned)
-      .filter((char) => validCipherLetters.has(char) || char === ' ' || char === '\n')
-      .join('');
-    setCipherInput(filtered);
+    setCipherInput(cleaned);
   };
 
   const handleAppendChar = (char: string) => {
@@ -100,6 +99,7 @@ export function DecryptView({
   };
 
   const cleanChars = Array.from(cleanText(cipherInput));
+  const hasMissingCipher = cleanChars.some(char => char !== ' ' && char !== '\n' && char !== '\t' && !validCipherLetters.has(char));
 
   const decodedItems = cleanChars.map((char) => {
     if (char === ' ' || char === '\n' || char === '\t') {
@@ -445,16 +445,22 @@ export function DecryptView({
     // Keep viewport in place without scrolling down
   };
 
+  useEffect(() => {
+    if (isDualMode && meaningfulLettersCount > 0 && !hasMissingCipher) {
+      handleTriggerDecryptGenerate();
+    }
+  }, [cipherInput, isDualMode, meaningfulLettersCount, hasMissingCipher, cipherLayers]);
+
   return (
     <div className="space-y-5">
       {/* Input Card */}
-      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden transition-colors">
+      {!isDualMode && ( <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <label htmlFor="cipher-input" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
             النص المشفر:
           </label>
 
-          <div className="flex items-center gap-2 max-w-full overflow-x-auto py-0.5">
+          <div className="flex items-center gap-2 max-w-full flex-wrap py-0.5">
             {/* Compact Layers Indicator */}
             <CompactLayersIndicator activeLayerNumbers={activeLayersInDecrypt} />
           </div>
@@ -574,9 +580,16 @@ export function DecryptView({
           </button>
         </div>
       </div>
+      )}
+
+      {hasMissingCipher && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl p-6 text-center text-red-600 dark:text-red-400 font-bold text-lg mt-6">
+          لا توجد حروف في الجدول تقابل هذه الكلمة
+        </div>
+      )}
 
       {/* Results Summary Box (shown when generated or for small input or while generating) */}
-      {meaningfulLettersCount > 0 && (
+      {!hasMissingCipher && meaningfulLettersCount > 0 && (
         <ResultsSummaryBox
           exactQuranicList={exactQuranicList}
           exactDictList={exactDictList}
@@ -591,7 +604,7 @@ export function DecryptView({
       )}
 
       {/* Quranic Combinations Lexicon (Vocabulary & Nearest Matching) */}
-      {meaningfulLettersCount > 0 && (
+      {!isDualMode && !hasMissingCipher && meaningfulLettersCount > 0 && (
         <QuranicCombinationsLexicon
           exactMatches={exactQuranicList}
           nearestMatches={nearestQuranicList}
@@ -602,11 +615,12 @@ export function DecryptView({
           isGenerating={isGenerating}
           hasGenerated={hasGenerated || meaningfulLettersCount <= 2}
           totalCombinations={totalCombinationsPossible}
+          isDualMode={isDualMode}
         />
       )}
 
       {/* Breakdown per letter with Line Breaks on Spaces */}
-      {lines.length > 0 && (
+      {!isDualMode && lines.length > 0 && (
         <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-4 transition-colors">
           <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
             <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
@@ -683,7 +697,7 @@ export function DecryptView({
       )}
 
       {/* Permanently Open Combinations with Arabic Dictionary Highlights, Reverse Mode & Progress Bar */}
-      {meaningfulLettersCount > 0 && (
+      {!isDualMode && !hasMissingCipher && meaningfulLettersCount > 0 && (
         <div id="decrypt-combinations-container" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3 transition-colors">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2 flex-wrap">
@@ -962,7 +976,7 @@ export function DecryptView({
           )}
 
           {/* Pagination / Show More for light DOM */}
-          {(hasGenerated || meaningfulLettersCount <= 2) && filteredCombinations.length > visibleCount && (
+          {!hasMissingCipher && (hasGenerated || meaningfulLettersCount <= 2) && filteredCombinations.length > visibleCount && (
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100 dark:border-stone-800">
               <span className="text-xs text-stone-500 dark:text-stone-400">
                 يتم عرض <strong className="text-stone-800 dark:text-stone-200">{displayedCombinations.length}</strong> من أصل{' '}

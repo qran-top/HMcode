@@ -4,6 +4,8 @@ import { LetterAnalysisCard } from './components/LetterAnalysisCard';
 import { EncryptionResults } from './components/EncryptionResults';
 import { LayersTable } from './components/LayersTable';
 import { DecryptView } from './components/DecryptView';
+import { DualTranslator } from './components/DualTranslator';
+import { SettingsView } from './components/SettingsView';
 import { CompactLayersIndicator } from './components/CompactLayersIndicator';
 import { Footer, PolicyModalType } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
@@ -13,7 +15,7 @@ import { Eraser, Sparkles, Loader2, Settings2 } from 'lucide-react';
 
 export function App() {
   const { analyzeText, isCustomized } = useCipherLayers();
-  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table'>('encrypt');
+  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings'>('dual');
   const [inputText, setInputText] = useState('بقرة');
   const [decryptCipherInput, setDecryptCipherInput] = useState('طسم');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
@@ -103,7 +105,7 @@ export function App() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 max-w-full overflow-x-auto py-0.5">
+              <div className="flex items-center gap-2 max-w-full flex-wrap py-0.5">
                 {/* Compact Rainbow Numbered Squares */}
                 <CompactLayersIndicator activeLayerNumbers={activeLayersInText} />
               </div>
@@ -159,25 +161,29 @@ export function App() {
                 </button>
               </div>
 
-              <textarea
+              <input
                 id="arabic-input"
-                rows={2}
+                type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === 'Enter') {
                     e.preventDefault();
                     handleTriggerGenerate();
                   }
                 }}
-                placeholder="اكتب هنا بالعربية (واضغط Enter لتوليد الاحتمالات)..."
-                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 resize-none transition-all"
+                placeholder="اكتب كلمة أو كلمتين هنا..."
+                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 transition-all"
               />
             </div>
           </div>
 
           {/* Letter by letter analysis & Results */}
-          {details.length > 0 && (
+          {details.length > 0 && details.some(d => d.layer === null && !d.isSpecialOrSpace) ? (
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl p-6 text-center text-red-600 dark:text-red-400 font-bold text-lg">
+              لا توجد حروف في الجدول تقابل هذه الكلمة
+            </div>
+          ) : details.length > 0 ? (
             <EncryptionResults
               details={details}
               selectedProbabilities={currentProbabilities}
@@ -186,7 +192,7 @@ export function App() {
               generateSignal={generateSignal}
               onGenerationStateChange={setEncryptGenStatus}
             />
-          )}
+          ) : null}
         </div>
 
         {/* Tab 2: Full Layers Reference Table (Preserved across tab switches) */}
@@ -205,6 +211,25 @@ export function App() {
             cipherInput={decryptCipherInput}
             onCipherInputChange={setDecryptCipherInput}
           />
+        </div>
+
+        {/* Tab 4: Dual Translator */}
+        <div className={activeTab === 'dual' ? 'block' : 'hidden'}>
+          <DualTranslator 
+            onNavigateToEncrypt={(text) => {
+              setInputText(text);
+              setActiveTab('encrypt');
+            }}
+            onNavigateToDecrypt={(text) => {
+              setDecryptCipherInput(text);
+              setActiveTab('decrypt');
+            }}
+          />
+        </div>
+
+        {/* Tab 5: Settings */}
+        <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
+          <SettingsView />
         </div>
       </main>
 

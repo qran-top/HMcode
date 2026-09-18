@@ -26,6 +26,7 @@ interface EncryptionResultsProps {
   onToggleProbability: (index: number, probIndex: number) => void;
   generateSignal?: number;
   onGenerationStateChange?: (state: { isGenerating: boolean; hasGenerated: boolean }) => void;
+  isDualMode?: boolean;
 }
 
 export function EncryptionResults({
@@ -35,6 +36,7 @@ export function EncryptionResults({
   onToggleProbability,
   generateSignal,
   onGenerationStateChange,
+  isDualMode = false,
 }: EncryptionResultsProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [combinationFilter, setCombinationFilter] = useState('');
@@ -182,7 +184,7 @@ export function EncryptionResults({
   // Text change handler: auto-generate for small inputs (<= 3 letters = 8 combos),
   // but for 4+ letters, decouple typing so typing stays 100% instant and butter-smooth!
   useEffect(() => {
-    if (lettersCount <= 3) {
+    if (lettersCount <= 3 || isDualMode) {
       startGeneration();
     } else {
       generationRef.current++;
@@ -462,15 +464,19 @@ export function EncryptionResults({
         totalCombinations={totalCombinationsPossible}
       />
 
-      {/* 1. LetterAnalysisCard (Moved here to sit below summary) */}
-      <LetterAnalysisCard
-        details={details}
-        selectedProbabilities={selectedProbabilities}
-        onToggleProbability={onToggleProbability}
-      />
+      {!isDualMode && (
+        <>
+          {/* 1. LetterAnalysisCard (Moved here to sit below summary) */}
+          <LetterAnalysisCard
+            details={details}
+            selectedProbabilities={selectedProbabilities}
+            onToggleProbability={onToggleProbability}
+          />
+        </>
+      )}
 
       {/* 2. Quranic Combinations Lexicon (Vocabulary Matching) */}
-      {lettersCount > 0 && (
+      {!isDualMode && lettersCount > 0 && (
         <QuranicCombinationsLexicon
           exactMatches={exactQuranicList}
           nearestMatches={nearestQuranicList}
@@ -481,10 +487,12 @@ export function EncryptionResults({
           isGenerating={isGenerating}
           hasGenerated={hasGenerated || lettersCount <= 3}
           totalCombinations={totalCombinationsPossible}
+          isDualMode={isDualMode}
         />
       )}
 
       {/* 2. Combinations List with Noorani Dictionary & Quranic Vocabulary Matching */}
+      {!isDualMode && (
       <div id="all-combinations-card" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-2 flex-wrap">
@@ -719,7 +727,6 @@ export function EncryptionResults({
                       معكوس
                     </div>
                   )}
-                  
                   {/* Header: Combo String, Quranic/Dictionary indicator & Copy Button */}
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 overflow-hidden">
@@ -849,8 +856,9 @@ export function EncryptionResults({
           </div>
         )}
       </div>
-
+      )}
       {/* 3. Current Selected Cipher String Display with Noorani Breakdown (نقل إلى أسفل الصفحة) */}
+      {!isDualMode && (
       <div id="adopted-cipher-section" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-2 flex-wrap">
@@ -949,6 +957,7 @@ export function EncryptionResults({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

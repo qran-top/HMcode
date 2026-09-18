@@ -9,6 +9,7 @@ import {
 import { BookOpen, Sparkles, ChevronDown, ChevronUp, Copy, Check, ExternalLink, Search } from 'lucide-react';
 
 interface QuranicCombinationsLexiconProps {
+  isDualMode?: boolean;
   exactMatches: { combo: string; meta: QuranicWordMeta }[];
   nearestMatches: { combo: string; nearest: QuranicNearestMatch }[];
   onSelectCombo?: (combo: string) => void;
@@ -30,6 +31,7 @@ export function QuranicCombinationsLexicon({
   isGenerating = false,
   hasGenerated = true,
   totalCombinations,
+  isDualMode = false,
 }: QuranicCombinationsLexiconProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showAllNearest, setShowAllNearest] = useState(false);
@@ -39,6 +41,7 @@ export function QuranicCombinationsLexicon({
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);
+    window.open(`https://qran-top.github.io/dec/?q=${encodeURIComponent(text)}`, "_blank");
   };
 
   const hasExact = exactMatches.length > 0;

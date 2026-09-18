@@ -81,10 +81,6 @@ export function LayersTable({
     loadSavedTable,
     deleteSavedTable,
     updateSavedTableName,
-    exportCurrentTableAsFile,
-    exportSingleSavedTableAsFile,
-    exportAllSavedTablesAsFile,
-    importTablesFromJson,
     savedArabicPresets,
     activeArabicPresetName,
     saveCurrentArabicPreset,
@@ -330,30 +326,6 @@ export function LayersTable({
     });
   };
 
-  // File Upload Handler (.json)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (!content) return;
-      const result = importTablesFromJson(content);
-      if (result.success) {
-        setNotification({ type: 'success', message: result.message });
-      } else {
-        setNotification({ type: 'error', message: result.message });
-      }
-    };
-    reader.onerror = () => {
-      setNotification({ type: 'error', message: 'تعذر قراءة الملف المختار من جهازك.' });
-    };
-    reader.readAsText(file);
-
-    // Reset input so user can re-upload if needed
-    e.target.value = '';
-  };
 
   // Open Save Arabic Modal
   const handleOpenSaveArabicModal = () => {
@@ -418,14 +390,6 @@ export function LayersTable({
   };
 
   // Export full map (both cipher letters and arabic letters in one file)
-  const handleExportCurrent = () => {
-    const name = activeTableName || 'خريطة_شفرة_الفرقان_الكاملة';
-    exportCurrentTableAsFile(name);
-    setNotification({
-      type: 'info',
-      message: `تم بنجاح تصدير الخريطة الكاملة (أحرف التشفير والأحرف العربية موزعة في ملف واحد: ${name}.json).`,
-    });
-  };
 
   // Rename saved table submit
   const handleRenameSavedTable = (id: string) => {
@@ -539,11 +503,7 @@ export function LayersTable({
                 >
                   <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
                   <span>توزيعات الأحرف العربية</span>
-                  {activeArabicPresetName && (
-                    <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 max-w-[110px] truncate">
-                      {activeArabicPresetName}
-                    </span>
-                  )}
+
                   <ChevronDown className="w-3 h-3 text-stone-400" />
                 </button>
 
@@ -630,18 +590,6 @@ export function LayersTable({
                                   </div>
                                 )}
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (window.confirm(`هل تريد حذف توزيعة [${sp.name}]؟`)) {
-                                    deleteSavedArabicPreset(sp.id);
-                                  }
-                                }}
-                                className="text-stone-300 hover:text-rose-600 p-1 rounded cursor-pointer transition-colors"
-                                title="حذف هذه التوزيعة المحفوظة"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
                             </div>
                           ))}
                         </div>
@@ -678,11 +626,7 @@ export function LayersTable({
               >
                 <Key className="w-3.5 h-3.5 text-indigo-600" />
                 <span>أحرف التشفير</span>
-                {activeNooraniPresetName && (
-                  <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 max-w-[110px] truncate">
-                    {activeNooraniPresetName}
-                  </span>
-                )}
+
                 <ChevronDown className="w-3 h-3 text-stone-400" />
               </button>
 
@@ -768,18 +712,6 @@ export function LayersTable({
                                     {sp.description}
                                   </div>
                                 )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (window.confirm(`هل تريد حذف توزيعة [${sp.name}]؟`)) {
-                                    deleteSavedNooraniPreset(sp.id);
-                                  }
-                                }}
-                                className="text-stone-300 hover:text-rose-600 p-1 rounded cursor-pointer transition-colors"
-                                title="حذف هذه التوزيعة المحفوظة"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           ))}
@@ -981,42 +913,6 @@ export function LayersTable({
                 {savedTables.length}
               </span>
             </button>
-          </div>
-
-          {/* Right: File Export & Import actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Export Current Table / Full Map JSON */}
-            <button
-              type="button"
-              id="export-current-json-btn"
-              onClick={handleExportCurrent}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-950 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="تصدير الخريطة الشاملة المتضمنة أحرف التشفير النورانية والأحرف العربية موزعة في ملف JSON واحد"
-            >
-              <Download className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>تصدير الخريطة الكاملة (.json)</span>
-            </button>
-
-            {/* Import JSON File */}
-            <button
-              type="button"
-              id="import-json-file-btn"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-stone-800 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-stone-700 dark:text-stone-300 hover:text-blue-900 dark:hover:text-blue-300 hover:border-blue-300 dark:hover:border-blue-700 border border-stone-300 dark:border-stone-700 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="استيراد جدول أو خريطة كاملة من ملف JSON مخزن بجهازك"
-            >
-              <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>استيراد ملف (.json)</span>
-            </button>
-
-            {/* Hidden file input for import */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".json,application/json"
-              className="hidden"
-              onChange={handleFileChange}
-            />
           </div>
         </div>
 
@@ -1822,24 +1718,6 @@ export function LayersTable({
               </div>
 
               <div className="flex items-center gap-2">
-                {savedTables.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      exportAllSavedTablesAsFile();
-                      setNotification({
-                        type: 'info',
-                        message: 'تم تنزيل نسخة احتياطية شاملة لجميع جداولك المحفوظة كملف JSON.',
-                      });
-                    }}
-                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-2xs font-bold bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 cursor-pointer transition-colors"
-                    title="تصدير جميع الجداول المحفوظة دفعة واحدة في ملف احتياطي شامل"
-                  >
-                    <FolderArchive className="w-3.5 h-3.5 text-amber-400" />
-                    <span>تصدير الكل (نسخة احتياطية)</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={() => setShowLibraryModal(false)}
@@ -2027,40 +1905,6 @@ export function LayersTable({
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>{isActive ? 'مطبّق حالياً' : 'تطبيق الجدول'}</span>
-                            </button>
-
-                            {/* Export Single Table JSON */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                exportSingleSavedTableAsFile(tbl.id);
-                                setNotification({
-                                  type: 'info',
-                                  message: `تم تصدير ملف الجدول [${tbl.name}.json] بنجاح.`,
-                                });
-                              }}
-                              className="p-1.5 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 cursor-pointer transition-colors"
-                              title="تصدير هذا الجدول كملف JSON مستقل"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-
-                            {/* Delete Table Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(`هل أنت متأكد من حذف الجدول [${tbl.name}] من مكتبتك؟`)) {
-                                  deleteSavedTable(tbl.id);
-                                  setNotification({
-                                    type: 'info',
-                                    message: `تم حذف الجدول [${tbl.name}] من مكتبتك.`,
-                                  });
-                                }
-                              }}
-                              className="p-1.5 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 cursor-pointer transition-colors"
-                              title="حذف هذا الجدول من المكتبة"
-                            >
-                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>

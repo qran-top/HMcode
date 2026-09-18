@@ -48,6 +48,7 @@ export function ResultsSummaryBox({
     setTimeout(() => {
       setCopiedWord(null);
     }, 1800);
+    window.open(`https://qran-top.github.io/dec/?q=${encodeURIComponent(word)}`, "_blank");
   };
 
   return (

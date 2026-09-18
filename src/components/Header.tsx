@@ -1,9 +1,9 @@
-import { KeyRound, Sparkles, BookOpen, HelpCircle, Moon, Sun, ExternalLink } from 'lucide-react';
+import { KeyRound, Sparkles, BookOpen, HelpCircle, Moon, Sun, ExternalLink, Settings } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
-  activeTab: 'encrypt' | 'table' | 'decrypt';
-  setActiveTab: (tab: 'encrypt' | 'table' | 'decrypt') => void;
+  activeTab: 'encrypt' | 'table' | 'decrypt' | 'dual' | 'settings';
+  setActiveTab: (tab: 'encrypt' | 'table' | 'decrypt' | 'dual' | 'settings') => void;
   onOpenInstructions?: () => void;
 }
 
@@ -118,6 +118,22 @@ export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderPr
             </button>
 
             <button
+              id="tab-dual"
+              type="button"
+              onClick={() => setActiveTab('dual')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'dual'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+            >
+              <svg className="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <span>المترجم المزدوج</span>
+            </button>
+
+            <button
               id="tab-table"
               type="button"
               onClick={() => setActiveTab('table')}
@@ -129,6 +145,20 @@ export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderPr
             >
               <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>جدول الطبقات</span>
+            </button>
+
+            <button
+              id="tab-settings"
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+              <span>الإعدادات</span>
             </button>
           </div>
 

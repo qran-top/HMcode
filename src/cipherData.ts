@@ -198,7 +198,7 @@ export interface NooraniDistributionPreset {
 export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   abjadEastern: {
     id: 'abjadEastern',
-    name: 'الترتيب الأبجدي الشرقي المعتمد',
+    name: '1- الترتيب الأبجدي الشرقي المعتمد',
     badge: 'الافتراضي',
     description: 'أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ (من أ ب ج د في الطبقة 7 إلى ذ ض ظ غ في الطبقة 1)',
     arabicLayers: [
@@ -213,7 +213,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   abjadWestern: {
     id: 'abjadWestern',
-    name: 'الترتيب الأبجدي الغربي (المغربي)',
+    name: '2- الترتيب الأبجدي الغربي (المغربي)',
     badge: 'المغربي',
     description: 'أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش (من أ ب ج د في الطبقة 7 إلى ذ ظ غ ش في الطبقة 1)',
     arabicLayers: [
@@ -228,7 +228,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   abjadEasternAscending: {
     id: 'abjadEasternAscending',
-    name: 'الترتيب الأبجدي الشرقي الصاعد',
+    name: '3- الترتيب الأبجدي الشرقي الصاعد',
     badge: 'صاعد ⬆️',
     description: 'يبدأ من (أ ب ج د) في الطبقة 1 صعوداً إلى (ذ ض ظ غ) في الطبقة 7',
     arabicLayers: [
@@ -243,7 +243,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   abjadWesternAscending: {
     id: 'abjadWesternAscending',
-    name: 'الترتيب الأبجدي الغربي الصاعد',
+    name: '4- الترتيب الأبجدي الغربي الصاعد',
     badge: 'مغربي صاعد ⬆️',
     description: 'يبدأ من (أ ب ج د) في الطبقة 1 صعوداً إلى (ذ ظ غ ش) في الطبقة 7',
     arabicLayers: [
@@ -258,7 +258,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   alphabeticalHijai: {
     id: 'alphabeticalHijai',
-    name: 'الترتيب الهجائي الألفبائي الحديث',
+    name: '5- الترتيب الهجائي الألفبائي الحديث',
     badge: 'هجائي',
     description: 'أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي (من ط7 نزولاً إلى ط1)',
     arabicLayers: [
@@ -273,7 +273,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   alphabeticalHijaiAscending: {
     id: 'alphabeticalHijaiAscending',
-    name: 'الترتيب الهجائي الألفبائي الصاعد',
+    name: '6- الترتيب الهجائي الألفبائي الصاعد',
     badge: 'هجائي صاعد ⬆️',
     description: 'يبدأ من (أ ب ت ث) في الطبقة 1 صعوداً حتى (ن هـ و ي) في الطبقة 7',
     arabicLayers: [
@@ -288,7 +288,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   clearArabic: {
     id: 'clearArabic',
-    name: 'تفريغ الأحرف العربية فقط',
+    name: '7- تفريغ الأحرف العربية فقط',
     badge: 'تفريغ',
     description: 'تفريغ جميع خانات الأحرف العربية الـ 28 مع الإبقاء على أحرف التشفير النورانية',
     arabicLayers: [
@@ -306,7 +306,7 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
 export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   distribution29: {
     id: 'distribution29',
-    name: 'توزيعة 29',
+    name: '1- توزيعة 29',
     badge: 'توزيعة 29',
     description: 'توزيع فواتح السور الـ 29 بالأحرف المفردة (ن، ق، ح م، ع س ق، ص، ي س، ا ل م، ط س م، ط س، ط ه، ك ه ي ع ص، ا ل ر، ا ل م ر، ا ل م ص)',
     nooraniLayers: [
@@ -349,7 +349,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distribution30: {
     id: 'distribution30',
-    name: 'توزيعة 30',
+    name: '2- توزيعة 30',
     badge: 'توزيعة 30',
     description: 'توزيع فواتح السور الـ 30 بالأحرف المفردة (بفصل عسق كفاتحة مستقلة في الشورى وترحيل الحواميم)',
     nooraniLayers: [
@@ -392,7 +392,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distributionNoon: {
     id: 'distributionNoon',
-    name: 'توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
+    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
     badge: 'توزيعة ن ⬆️',
     description: 'المجموعات 1 إلى 7 صعوداً: (ن-ق)، (حم-حم عسق)، (ص-يس)، (الم-طسم)، (طس-طه)، (كهيعص-الر)، (المر-المص)',
     nooraniLayers: [
@@ -407,7 +407,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distributionAlef: {
     id: 'distributionAlef',
-    name: 'توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
+    name: '4- توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
     badge: 'توزيعة الف ⬇️',
     description: 'المجموعات 1 إلى 7 نزولاً: (الم-المص)، (الر-المر)، (كهيعص-طه)، (طسم-طس)، (يس-ص)، (حم-حم عسق)، (ق-ن)',
     nooraniLayers: [
@@ -422,7 +422,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   defaultQuranicPairs: {
     id: 'defaultQuranicPairs',
-    name: 'الترتيب الثنائي المعتمد (جدول الفرقان)',
+    name: '5- الترتيب الثنائي المعتمد (جدول الفرقان)',
     badge: 'الافتراضي',
     description: 'ن ق، ح م، ع س، ص ي، ا ل، ط ه، ك ر (حرفان لكل طبقة)',
     nooraniLayers: [
@@ -437,7 +437,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distinct14Noorani: {
     id: 'distinct14Noorani',
-    name: 'الحروف النورانية الـ 14 بدون تكرار',
+    name: '6- الحروف النورانية الـ 14 بدون تكرار',
     badge: '14 حرفاً',
     description: 'توزيع الحروف النورانية الـ 14 بدون أي تكرار عبر الطبقات السبع (حرفان في كل طبقة)',
     nooraniLayers: [
@@ -452,7 +452,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   surahOpeningsGradual: {
     id: 'surahOpeningsGradual',
-    name: 'فواتح السور حسب الطول والتركيب',
+    name: '7- فواتح السور حسب الطول والتركيب',
     badge: 'فواتح السور',
     description: 'من الحروف المفردة (ن، ق، ص) إلى الفواتح الثنائية والثلاثية ثم المركبة الطويلة',
     nooraniLayers: [
@@ -467,7 +467,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   clearNoorani: {
     id: 'clearNoorani',
-    name: 'تفريغ أحرف التشفير النورانية فقط',
+    name: '8- تفريغ أحرف التشفير النورانية فقط',
     badge: 'تفريغ',
     description: 'تفريغ جميع خانات أحرف التشفير في كافة الطبقات مع الإبقاء على الأحرف العربية',
     nooraniLayers: [
@@ -485,7 +485,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
 export const PRESET_TABLES = {
   distribution29: {
     id: 'distribution29',
-    name: 'توزيعة 29',
+    name: '1- توزيعة 29',
     description: 'توزيع فواتح السور الـ 29 بالأحرف المفردة مع الأحرف العربية المعتمدة',
     createLayers: (): LayerInfo[] => [
       {
@@ -534,7 +534,7 @@ export const PRESET_TABLES = {
   },
   distribution30: {
     id: 'distribution30',
-    name: 'توزيعة 30',
+    name: '2- توزيعة 30',
     description: 'توزيع فواتح السور الـ 30 بالأحرف المفردة (بفصل عسق كفاتحة مستقلة في الشورى) مع الأحرف العربية المعتمدة',
     createLayers: (): LayerInfo[] => [
       {
@@ -583,7 +583,7 @@ export const PRESET_TABLES = {
   },
   distributionNoon: {
     id: 'distributionNoon',
-    name: 'توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
+    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
     description: 'المجموعات 1 إلى 7 صعوداً: (ن-ق)، (حم-حم عسق)، (ص-يس)، (الم-طسم)، (طس-طه)، (كهيعص-الر)، (المر-المص)',
     createLayers: (): LayerInfo[] => [
       {
@@ -632,7 +632,7 @@ export const PRESET_TABLES = {
   },
   distributionAlef: {
     id: 'distributionAlef',
-    name: 'توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
+    name: '4- توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
     description: 'المجموعات 1 إلى 7 نزولاً: (الم-المص)، (الر-المر)، (كهيعص-طه)، (طسم-طس)، (يس-ص)، (حم-حم عسق)، (ق-ن)',
     createLayers: (): LayerInfo[] => [
       {
@@ -681,13 +681,13 @@ export const PRESET_TABLES = {
   },
   defaultQuranic: {
     id: 'defaultQuranic',
-    name: 'الترتيب الأبجدي الشرقي المعتمد (جدول الفرقان)',
+    name: '5- الترتيب الأبجدي الشرقي المعتمد (جدول الفرقان)',
     description: 'الطبقة 7 (أ ب ج د) إلى 1 (ذ ض ظ غ) - أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ',
     createLayers: (): LayerInfo[] => JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS)),
   },
   abjadWestern: {
     id: 'abjadWestern',
-    name: 'الترتيب الأبجدي الغربي (المغربي)',
+    name: '6- الترتيب الأبجدي الغربي (المغربي)',
     description: 'الطبقة 7 (أ ب ج د) إلى 1 (ذ ظ غ ش) - أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش',
     createLayers: (): LayerInfo[] => [
       {
@@ -736,7 +736,7 @@ export const PRESET_TABLES = {
   },
   abjadAscending: {
     id: 'abjadAscending',
-    name: 'الترتيب الأبجدي الشرقي الصاعد',
+    name: '7- الترتيب الأبجدي الشرقي الصاعد',
     description: 'الطبقة 1 (أ ب ج د) صعوداً إلى الطبقة 7 (ذ ض ظ غ)',
     createLayers: (): LayerInfo[] => [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['ذ', 'ض', 'ظ', 'غ'], description: 'الطبقة 7: ذ ض ظ غ' },
@@ -750,7 +750,7 @@ export const PRESET_TABLES = {
   },
   abjadWesternAscending: {
     id: 'abjadWesternAscending',
-    name: 'الترتيب الأبجدي الغربي الصاعد',
+    name: '8- الترتيب الأبجدي الغربي الصاعد',
     description: 'الطبقة 1 (أ ب ج د) صعوداً إلى الطبقة 7 (ذ ظ غ ش)',
     createLayers: (): LayerInfo[] => [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['ذ', 'ظ', 'غ', 'ش'], description: 'الطبقة 7: ذ ظ غ ش' },
@@ -764,7 +764,7 @@ export const PRESET_TABLES = {
   },
   alphabeticalHijai: {
     id: 'alphabeticalHijai',
-    name: 'الترتيب الهجائي الألفبائي',
+    name: '9- الترتيب الهجائي الألفبائي',
     description: 'من (أ ب ت ث) في الطبقة 7 حتى (ن هـ و ي) في الطبقة 1',
     createLayers: (): LayerInfo[] => [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['أ', 'ب', 'ت', 'ث'], description: 'الطبقة 7: أ ب ت ث' },
@@ -778,7 +778,7 @@ export const PRESET_TABLES = {
   },
   emptyTable: {
     id: 'emptyTable',
-    name: 'جدول فارغ تماماً (إنشاء مخصص من الصفر)',
+    name: '10- جدول فارغ تماماً (إنشاء مخصص من الصفر)',
     description: 'تفريغ جميع الخانات الـ 28 لتوزيع الحروف يدوياً',
     createLayers: (): LayerInfo[] => [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['', '', '', ''], description: 'الطبقة 7' },
