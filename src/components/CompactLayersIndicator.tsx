@@ -11,10 +11,11 @@ export function CompactLayersIndicator({
   onSelectLayer,
 }: CompactLayersIndicatorProps) {
   const { layers } = useCipherLayers();
+  const displayLayers = [...layers].reverse();
 
   return (
-    <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap max-w-full">
-      {layers.map((layerItem) => {
+    <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap max-w-full" dir="ltr">
+      {displayLayers.map((layerItem) => {
         const isUsed = activeLayerNumbers.includes(layerItem.layer);
         const color = getLayerColor(layerItem.layer);
 

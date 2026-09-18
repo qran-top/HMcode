@@ -141,6 +141,18 @@ export interface CipherLayersContextType {
   setCipherLetterAtSlot: (layerNum: number, cipherSlotIndex: number, char: string) => void;
   resetToDefault: () => void;
   applyPreset: (presetId: keyof typeof PRESET_TABLES) => void;
+  bulkFillArabicLetters: (
+    rawLetters: string[],
+    orderMode?: 'table_order' | 'layer_asc' | 'layer_desc',
+    clearRemaining?: boolean,
+    resizeConfig?: { rows: number; cols: number }
+  ) => { filledCount: number; totalSlots: number; message: string };
+  bulkFillCipherLetters: (
+    rawLetters: string[],
+    orderMode?: 'table_order' | 'layer_asc' | 'layer_desc',
+    clearRemaining?: boolean,
+    resizeConfig?: { rows: number; cols: number }
+  ) => { filledCount: number; totalSlots: number; message: string };
   importLayersJson: (jsonStr: string) => boolean;
   exportLayersJson: () => string;
   // Execution helpers wired to active layers
@@ -725,6 +737,170 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSelectedSlot(null);
     }
   }, []);
+
+  // Bulk fill Arabic letters into table slots in order
+  const bulkFillArabicLetters = useCallback(
+    (
+      rawLetters: string[],
+      orderMode: 'table_order' | 'layer_asc' | 'layer_desc' = 'table_order',
+      clearRemaining = true,
+      resizeConfig?: { rows: number; cols: number }
+    ) => {
+      let filledCount = 0;
+      let totalSlots = 0;
+
+      setLayers((prevLayers) => {
+        let next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+
+        if (resizeConfig) {
+          // Adjust rows (number of layers)
+          if (next.length > resizeConfig.rows) {
+            next = next.slice(0, resizeConfig.rows);
+          } else if (next.length < resizeConfig.rows) {
+            const existingNums = next.map((l) => l.layer);
+            const currentMax = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+            const toAdd = resizeConfig.rows - next.length;
+            for (let i = 0; i < toAdd; i++) {
+              const newNum = currentMax + i + 1;
+              next.push({
+                layer: newNum,
+                description: `الطبقة ${newNum}`,
+                arabicLetters: [],
+                cipherLetters: [],
+              });
+            }
+          }
+          
+          // Adjust columns for arabicLetters
+          next.forEach(l => {
+             l.arabicLetters = Array.from({ length: resizeConfig.cols }, (_, i) => (l.arabicLetters && l.arabicLetters[i]) || '');
+             if (!l.cipherLetters) l.cipherLetters = [];
+          });
+        }
+
+        const orderedIndices: number[] = next.map((_, i) => i);
+
+        if (orderMode === 'layer_asc') {
+          orderedIndices.sort((a, b) => next[a].layer - next[b].layer);
+        } else if (orderMode === 'layer_desc') {
+          orderedIndices.sort((a, b) => next[b].layer - next[a].layer);
+        }
+
+        totalSlots = orderedIndices.reduce((acc, idx) => acc + (next[idx].arabicLetters?.length || 0), 0);
+        let letterIdx = 0;
+
+        orderedIndices.forEach((layerIdx) => {
+          const l = next[layerIdx];
+          if (!Array.isArray(l.arabicLetters)) {
+            l.arabicLetters = [];
+          }
+          for (let s = 0; s < l.arabicLetters.length; s++) {
+            if (letterIdx < rawLetters.length) {
+              l.arabicLetters[s] = rawLetters[letterIdx];
+              letterIdx++;
+            } else if (clearRemaining) {
+              l.arabicLetters[s] = '';
+            }
+          }
+        });
+
+        filledCount = Math.min(letterIdx, rawLetters.length);
+        return next;
+      });
+
+      setActiveArabicPresetName(null);
+      setSelectedSlot(null);
+
+      return {
+        filledCount: Math.min(rawLetters.length, totalSlots || rawLetters.length),
+        totalSlots,
+        message: `تم توزيع الحروف بنجاح عبر طبقات الجدول.`,
+      };
+    },
+    []
+  );
+
+  // Bulk fill Cipher letters into table slots in order
+  const bulkFillCipherLetters = useCallback(
+    (
+      rawLetters: string[],
+      orderMode: 'table_order' | 'layer_asc' | 'layer_desc' = 'table_order',
+      clearRemaining = true,
+      resizeConfig?: { rows: number; cols: number }
+    ) => {
+      let filledCount = 0;
+      let totalSlots = 0;
+
+      setLayers((prevLayers) => {
+        let next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+
+        if (resizeConfig) {
+          // Adjust rows (number of layers)
+          if (next.length > resizeConfig.rows) {
+            next = next.slice(0, resizeConfig.rows);
+          } else if (next.length < resizeConfig.rows) {
+            const existingNums = next.map((l) => l.layer);
+            const currentMax = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+            const toAdd = resizeConfig.rows - next.length;
+            for (let i = 0; i < toAdd; i++) {
+              const newNum = currentMax + i + 1;
+              next.push({
+                layer: newNum,
+                description: `الطبقة ${newNum}`,
+                arabicLetters: [],
+                cipherLetters: [],
+              });
+            }
+          }
+          
+          // Adjust columns for cipherLetters
+          next.forEach(l => {
+             l.cipherLetters = Array.from({ length: resizeConfig.cols }, (_, i) => (l.cipherLetters && l.cipherLetters[i]) || '');
+             if (!l.arabicLetters) l.arabicLetters = [];
+          });
+        }
+
+        const orderedIndices: number[] = next.map((_, i) => i);
+
+        if (orderMode === 'layer_asc') {
+          orderedIndices.sort((a, b) => next[a].layer - next[b].layer);
+        } else if (orderMode === 'layer_desc') {
+          orderedIndices.sort((a, b) => next[b].layer - next[a].layer);
+        }
+
+        totalSlots = orderedIndices.reduce((acc, idx) => acc + (next[idx].cipherLetters?.length || 0), 0);
+        let letterIdx = 0;
+
+        orderedIndices.forEach((layerIdx) => {
+          const l = next[layerIdx];
+          if (!Array.isArray(l.cipherLetters)) {
+            l.cipherLetters = [];
+          }
+          for (let s = 0; s < l.cipherLetters.length; s++) {
+            if (letterIdx < rawLetters.length) {
+              l.cipherLetters[s] = rawLetters[letterIdx];
+              letterIdx++;
+            } else if (clearRemaining) {
+              l.cipherLetters[s] = '';
+            }
+          }
+        });
+
+        filledCount = Math.min(letterIdx, rawLetters.length);
+        return next;
+      });
+
+      setActiveNooraniPresetName(null);
+      setSelectedSlot(null);
+
+      return {
+        filledCount: Math.min(rawLetters.length, totalSlots || rawLetters.length),
+        totalSlots,
+        message: `تم توزيع أحرف التشفير بنجاح عبر طبقات الجدول.`,
+      };
+    },
+    []
+  );
 
   // Save current table into user's personal saved library
   const saveCurrentTable = useCallback(
@@ -1345,6 +1521,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setCipherLetterAtSlot,
       resetToDefault,
       applyPreset,
+      bulkFillArabicLetters,
+      bulkFillCipherLetters,
       importLayersJson,
       exportLayersJson,
       analyzeText,
@@ -1405,6 +1583,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setCipherLetterAtSlot,
       resetToDefault,
       applyPreset,
+      bulkFillArabicLetters,
+      bulkFillCipherLetters,
       importLayersJson,
       exportLayersJson,
       analyzeText,

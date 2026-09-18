@@ -30,6 +30,7 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
+  ClipboardPaste,
 } from 'lucide-react';
 import {
   LAYER_RAINBOW_COLORS,
@@ -41,6 +42,7 @@ import {
   NOORANI_PRESETS,
 } from '../cipherData';
 import { useCipherLayers, SelectedSlot } from '../context/CipherLayersContext';
+import { BulkPasteModal } from './BulkPasteModal';
 
 interface LayersTableProps {
   highlightedLayerNumbers?: number[];
@@ -142,6 +144,7 @@ export function LayersTable({
   const [saveNooraniNameInput, setSaveNooraniNameInput] = useState('');
   const [saveNooraniDescInput, setSaveNooraniDescInput] = useState('');
   const [showColumnDuplicatesModal, setShowColumnDuplicatesModal] = useState(false);
+  const [showBulkPasteModal, setShowBulkPasteModal] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [editingSavedTableId, setEditingSavedTableId] = useState<string | null>(null);
   const [editingSavedTableName, setEditingSavedTableName] = useState('');
@@ -869,6 +872,16 @@ export function LayersTable({
                 </>
               )}
             </div>
+
+            <button
+                type="button"
+                onClick={() => setShowBulkPasteModal(true)}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-stone-950 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all hover:scale-102 active:scale-98"
+                title="لصق مجموعة أحرف معاً وتوزيعها تلقائياً عبر الطبقات"
+              >
+                <ClipboardPaste className="w-3.5 h-3.5" />
+                <span>لصق أحرف متعددة</span>
+              </button>
 
               {/* 4. Remove Duplicates in Rows button */}
               <button
@@ -2401,6 +2414,13 @@ export function LayersTable({
           </div>
         </div>
       )}
+
+      {/* Bulk Paste Modal */}
+      <BulkPasteModal
+        isOpen={showBulkPasteModal}
+        onClose={() => setShowBulkPasteModal(false)}
+        onSuccessNotification={(msg) => setNotification({ type: 'success', message: msg })}
+      />
     </div>
   );
 }
