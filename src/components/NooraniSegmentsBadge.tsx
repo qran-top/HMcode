@@ -31,7 +31,7 @@ export function NooraniSegmentsBadge({ segmentation, className = '' }: NooraniSe
           return (
             <span
               key={sIdx}
-              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-extrabold bg-teal-100 text-teal-900 border border-teal-300"
+              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-extrabold bg-teal-100 dark:bg-teal-950/70 text-teal-900 dark:text-teal-300 border border-teal-300 dark:border-teal-700"
               title={`فاتحة قرآنية مفردة: (${seg.text})`}
             >
               {seg.text}
@@ -44,7 +44,7 @@ export function NooraniSegmentsBadge({ segmentation, className = '' }: NooraniSe
           return (
             <span
               key={sIdx}
-              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200"
+              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
               title={`حرف نوراني: (${seg.text})`}
             >
               {seg.text}
@@ -56,7 +56,7 @@ export function NooraniSegmentsBadge({ segmentation, className = '' }: NooraniSe
         return (
           <span
             key={sIdx}
-            className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium text-stone-500 bg-stone-100"
+            className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800"
           >
             {seg.text}
           </span>

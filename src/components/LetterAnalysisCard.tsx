@@ -33,15 +33,15 @@ export function LetterAnalysisCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-stone-100">
-        <h3 id="letter-breakdown-title" className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
+    <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 transition-colors">
+      <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-stone-100 dark:border-stone-800">
+        <h3 id="letter-breakdown-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <span>تحليل الحروف والطبقات</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-semibold">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-semibold">
             {details.filter((d) => !d.isSpecialOrSpace).length} حرفاً
           </span>
         </h3>
-        <span className="text-xs text-stone-400">
+        <span className="text-xs text-stone-400 dark:text-stone-500">
           انقر على أي احتمال لتبديله
         </span>
       </div>
@@ -51,7 +51,7 @@ export function LetterAnalysisCard({
         {lines.map((lineItems, lineIdx) => (
           <div
             key={lineIdx}
-            className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 border border-stone-100"
+            className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 dark:bg-stone-900/80 border border-stone-100 dark:border-stone-800"
           >
             {lineItems.map(({ originalIndex, detail: item }) => {
               const currentChoice = selectedProbabilities[originalIndex] ?? 0;
@@ -68,7 +68,7 @@ export function LetterAnalysisCard({
                 <div
                   key={originalIndex}
                   id={`char-card-${originalIndex}`}
-                  className="w-[calc(50%-0.35rem)] sm:w-44 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs hover:border-stone-300 transition-all flex flex-col justify-between gap-2"
+                  className="w-[calc(50%-0.35rem)] sm:w-44 p-2.5 rounded-xl border border-stone-200 dark:border-stone-700/80 bg-white dark:bg-stone-800 shadow-2xs hover:border-stone-300 dark:hover:border-stone-600 transition-all flex flex-col justify-between gap-2"
                 >
                   {/* Top: Letter and Layer Number with rainbow color */}
                   <div className="flex items-center justify-between">
@@ -112,7 +112,7 @@ export function LetterAnalysisCard({
                                 className={`py-1 px-1 rounded-lg border text-center font-bold text-sm sm:text-base font-['Amiri',serif] transition-all cursor-pointer ${
                                   isSelected
                                     ? `${color.activeBg} ${color.activeText} ${color.activeBorder} shadow-xs font-black scale-105`
-                                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                                    : 'bg-stone-50 dark:bg-stone-700/60 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-600 hover:bg-stone-100 dark:hover:bg-stone-700'
                                 }`}
                                 title={`الخيار ${optIdx + 1}: ${optChar}`}
                               >

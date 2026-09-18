@@ -405,38 +405,46 @@ class QuranicDictionaryService {
       return match;
     }
 
-    // 2. Search nearest in candidate pool (words with length within ± 1 or 2)
+    // 2. Search nearest in candidate pool (words with length within ± 1)
     const qLen = clean.length;
-    const candidateLengths = [qLen, qLen - 1, qLen + 1, qLen - 2, qLen + 2].filter(
-      (len) => len >= 2
-    );
+    // Lengths ± 1 are sufficient for high quality matches (>= 60%)
+    const candidateLengths = [qLen, qLen - 1, qLen + 1].filter((len) => len >= 2);
 
     let bestMatch: QuranicNearestMatch | null = null;
     let minDistance = 999;
+    const firstChar = clean[0];
 
     for (const len of candidateLengths) {
       const words = this.wordsByLength.get(len) || [];
+      // Prioritize words that start with the same letter or common root prefix
+      let evaluated = 0;
       for (const w of words) {
-        const d = levenshteinDistance(clean, w);
-        if (d < minDistance) {
-          minDistance = d;
-          const entry = this.dataMap.get(w);
-          if (entry) {
-            const maxLen = Math.max(clean.length, w.length);
-            const similarity = Math.max(0, Math.round((1 - d / maxLen) * 100));
-            const surahNumber = getSurahNumber(entry[0]);
-            bestMatch = {
-              word: w,
-              originalQuranicWord: entry[3] || w,
-              surahName: entry[0],
-              surahNumber,
-              ayahNum: entry[1],
-              distance: d,
-              similarity,
-            };
-            if (d === 1 && similarity >= 75) {
-              // High quality close match found
-              break;
+        // Fast early skip: if lengths are same and first letter differs by a lot, still check, but cap evaluations
+        if (evaluated > 350) break;
+
+        // Fast check: if first char matches or length <= 3
+        if (w[0] === firstChar || qLen <= 3) {
+          evaluated++;
+          const d = levenshteinDistance(clean, w);
+          if (d < minDistance) {
+            minDistance = d;
+            const entry = this.dataMap.get(w);
+            if (entry) {
+              const maxLen = Math.max(clean.length, w.length);
+              const similarity = Math.max(0, Math.round((1 - d / maxLen) * 100));
+              const surahNumber = getSurahNumber(entry[0]);
+              bestMatch = {
+                word: w,
+                originalQuranicWord: entry[3] || w,
+                surahName: entry[0],
+                surahNumber,
+                ayahNum: entry[1],
+                distance: d,
+                similarity,
+              };
+              if (d <= 1 && similarity >= 70) {
+                break;
+              }
             }
           }
         }

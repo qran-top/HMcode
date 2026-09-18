@@ -65,7 +65,7 @@ export function App() {
   }, [details]);
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-stone-900" dir="rtl">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-stone-900 transition-colors duration-200" dir="rtl">
       {/* Header with simple title without long explanation */}
       <Header
         activeTab={activeTab}
@@ -78,26 +78,26 @@ export function App() {
         {/* Tab 1: Encryption (Preserved across tab switches) */}
         <div className={activeTab === 'encrypt' ? 'space-y-4' : 'hidden'}>
           {/* Input Card with Compact 7-Layer Rainbow Squares */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden transition-colors">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <label
                   htmlFor="arabic-input"
-                  className="text-sm sm:text-base font-bold text-stone-900"
+                  className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100"
                 >
                   النص المراد تشفيره:
                 </label>
-                <span className="text-xs text-stone-400">
+                <span className="text-xs text-stone-400 dark:text-stone-500">
                   ({details.filter((d) => !d.isSpecialOrSpace).length} حرفاً)
                 </span>
                 {isCustomized && (
                   <button
                     type="button"
                     onClick={() => setActiveTab('table')}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
                     title="يتم تطبيق جدول الطبقات المخصص - انقر لعرضه أو تعديله"
                   >
-                    <Settings2 className="w-3 h-3 text-amber-700" />
+                    <Settings2 className="w-3 h-3 text-amber-700 dark:text-amber-400" />
                     <span>جدول مخصص نشط</span>
                   </button>
                 )}
@@ -121,12 +121,12 @@ export function App() {
                   disabled={!inputText}
                   className={`flex-1 sm:w-full py-2 sm:py-1.5 px-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-1 transition-all ${
                     inputText
-                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
-                      : 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+                      ? 'bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
+                      : 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
                   }`}
                   title="مسح النص بالكامل"
                 >
-                  <Eraser className="w-3.5 h-3.5 text-rose-600" />
+                  <Eraser className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                   <span>مسح</span>
                 </button>
 
@@ -138,17 +138,17 @@ export function App() {
                   disabled={!inputText.trim()}
                   className={`flex-2 sm:w-full sm:flex-1 py-2 sm:py-2 px-2 rounded-xl font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
                     !inputText.trim()
-                      ? 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+                      ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
                       : encryptGenStatus.isGenerating
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300 cursor-wait'
-                      : 'bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white border border-amber-700/30 cursor-pointer'
+                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 cursor-wait'
+                      : 'bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white border border-amber-700/30 cursor-pointer shadow-amber-900/20'
                   }`}
                   title="توليد وعرض قائمة الاحتمالات (أو اضغط Enter في مربع النص)"
                 >
                   {encryptGenStatus.isGenerating ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700 shrink-0" />
-                      <span>جاري التوليد...</span>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700 dark:text-amber-400 shrink-0" />
+                      <span>جاري المعالجة...</span>
                     </>
                   ) : (
                     <>
@@ -171,7 +171,7 @@ export function App() {
                   }
                 }}
                 placeholder="اكتب هنا بالعربية (واضغط Enter لتوليد الاحتمالات)..."
-                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 resize-none transition-all"
+                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 resize-none transition-all"
               />
             </div>
           </div>

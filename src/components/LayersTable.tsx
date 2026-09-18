@@ -14,6 +14,7 @@ import {
   HelpCircle,
   BookmarkPlus,
   BookmarkCheck,
+  Save,
   Download,
   Upload,
   FileJson,
@@ -435,40 +436,37 @@ export function LayersTable({
   return (
     <div className="space-y-4">
       {/* Top Banner & Control Bar */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5">
+      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5">
         <div className="flex flex-col gap-3.5">
           {/* Row 1: Title & Status Badge */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-bold shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-stone-900 dark:bg-stone-800 text-amber-400 flex items-center justify-center font-bold shrink-0 shadow-xs">
                 <Layers className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 id="layers-table-heading" className="text-base sm:text-lg font-bold text-stone-900">
-                    الجدول المرجعي للطبقات السبع (تعديل كامل وسحب وإفلات)
+                  <h2 id="layers-table-heading" className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
+                    جدول التشفير
                   </h2>
                 </div>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  اسحب الحرف بالماوس وضعه في أي خانة للتبديل، أو انقر للتحديد والتبديل المباشر. يمكنك حفظ جداولك واسترجاعها وتصديرها كملف في أي وقت.
-                </p>
               </div>
             </div>
 
             {/* Active Table Status Badge */}
             <div className="shrink-0 self-start sm:self-center">
               {activeTableName ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-2xs">
-                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>النشط: {activeTableName}</span>
                 </span>
               ) : isCustomized ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
                   <span>جدول مخصص نشط</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-stone-100 text-stone-600 border border-stone-200">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-700">
                   الجدول القياسي المعتمد
                 </span>
               )}
@@ -476,9 +474,9 @@ export function LayersTable({
           </div>
 
           {/* Row 2: Mode Switch & Action Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-stone-100">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-stone-100 dark:border-stone-800">
             {/* Left: Mode Switcher Pill */}
-            <div className="inline-flex items-center p-1 rounded-xl bg-stone-100 border border-stone-200 text-xs font-bold shadow-2xs">
+            <div className="inline-flex items-center p-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs font-bold shadow-2xs">
               <button
                 type="button"
                 id="mode-type-btn"
@@ -490,12 +488,12 @@ export function LayersTable({
                 }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   mode === 'type'
-                    ? 'bg-white text-stone-900 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
                 title="تفعيل وضع العرض والنقر للإضافة المباشرة إلى النص"
               >
-                <MousePointerClick className="w-3.5 h-3.5 text-blue-600" />
+                <MousePointerClick className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>وضع العرض والنقر</span>
               </button>
 
@@ -509,7 +507,7 @@ export function LayersTable({
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   mode === 'edit'
                     ? 'bg-amber-600 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/60 dark:hover:bg-stone-700'
                 }`}
                 title="تفعيل وضع التعديل وتوسيع الجدول: إضافة وحذف الطبقات والأحرف والنقر للتعديل المباشر"
               >
@@ -811,10 +809,10 @@ export function LayersTable({
                   setShowArabicMenu(false);
                   setShowNooraniMenu(false);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>قوالب كاملة</span>
+                <span>قوالب جاهزة</span>
               </button>
 
               {showPresetMenu && (
@@ -823,8 +821,8 @@ export function LayersTable({
                     className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-2xs sm:hidden"
                     onClick={() => setShowPresetMenu(false)}
                   />
-                  <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 divide-y divide-stone-100 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3.5 py-2 text-2xs font-bold text-stone-400 uppercase tracking-wider bg-stone-50/70">
+                  <div className="fixed left-3 right-3 top-20 z-50 sm:absolute sm:top-full sm:right-0 sm:left-auto sm:w-96 mt-1.5 max-h-[75vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 py-2 divide-y divide-stone-100 dark:divide-stone-800 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-2 text-2xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider bg-stone-50/70 dark:bg-stone-800/60">
                       اختر قالباً لتطبيق جدول الطبقات السبع كاملاً:
                     </div>
                     {Object.values(PRESET_TABLES).map((preset) => (
@@ -835,34 +833,34 @@ export function LayersTable({
                           applyPreset(preset.id as keyof typeof PRESET_TABLES);
                           setShowPresetMenu(false);
                         }}
-                        className="w-full text-right px-3.5 py-2.5 hover:bg-amber-50/80 text-xs transition-colors cursor-pointer flex flex-col gap-1 group"
+                        className="w-full text-right px-3.5 py-2.5 hover:bg-amber-50/80 dark:hover:bg-amber-950/40 text-xs transition-colors cursor-pointer flex flex-col gap-1 group"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-stone-900 group-hover:text-amber-950">
+                          <span className="font-bold text-stone-900 dark:text-stone-100 group-hover:text-amber-950 dark:group-hover:text-amber-300">
                             {preset.name}
                           </span>
                           {preset.id === 'distributionNoon' && (
-                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
                               قالب مخصص ⬆️
                             </span>
                           )}
                           {preset.id === 'distributionAlef' && (
-                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
                               قالب مخصص ⬇️
                             </span>
                           )}
                           {preset.id === 'defaultQuranic' && (
-                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                               الافتراضي
                             </span>
                           )}
                           {preset.id === 'abjadWestern' && (
-                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                               المغربي
                             </span>
                           )}
                         </div>
-                        <span className="text-2xs text-stone-500 leading-relaxed group-hover:text-stone-700">
+                        <span className="text-2xs text-stone-500 dark:text-stone-400 leading-relaxed group-hover:text-stone-700 dark:group-hover:text-stone-300">
                           {preset.description}
                         </span>
                       </button>
@@ -937,14 +935,14 @@ export function LayersTable({
         </div>
 
         {/* Storage, Export & Import Bar */}
-        <div className="mt-3.5 pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-2.5 bg-stone-50/70 p-2.5 rounded-xl">
+        <div className="mt-3.5 pt-3 border-t border-stone-200/80 dark:border-stone-800 flex flex-wrap items-center justify-between gap-2.5 bg-stone-50/70 dark:bg-stone-850 p-2.5 rounded-xl">
           {/* Left: Library & Save actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-2xs font-bold text-stone-500 uppercase tracking-wider ml-1">
+            <span className="text-2xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider ml-1">
               حفظ وتخزين الجداول:
             </span>
 
-            {/* Save Current Table Button */}
+            {/* Save Current Table Button (Floppy Disk Icon) */}
             <button
               type="button"
               id="save-table-btn"
@@ -952,7 +950,7 @@ export function LayersTable({
               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102 active:scale-98"
               title="تخزين هذا الجدول في مكتبتك الخاصة للرجوع إليه وتطبيقه متى شئت"
             >
-              <BookmarkPlus className="w-3.5 h-3.5 text-emerald-200" />
+              <Save className="w-3.5 h-3.5 text-emerald-200" />
               <span>حفظ هذا الجدول</span>
             </button>
 
@@ -961,12 +959,12 @@ export function LayersTable({
               type="button"
               id="saved-tables-library-btn"
               onClick={() => setShowLibraryModal(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-amber-50/70 text-stone-900 border border-stone-300 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 hover:bg-amber-50/70 dark:hover:bg-amber-950/40 text-stone-900 dark:text-stone-100 border border-stone-300 dark:border-stone-700 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
               title="استعراض وإدارة جميع الجداول التي قمت بحفظها"
             >
-              <BookmarkCheck className="w-3.5 h-3.5 text-amber-600" />
+              <BookmarkCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>جداولي المحفوظة</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-3xs font-black">
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-3xs font-black">
                 {savedTables.length}
               </span>
             </button>
@@ -979,10 +977,10 @@ export function LayersTable({
               type="button"
               id="export-current-json-btn"
               onClick={handleExportCurrent}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-300 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-950 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
               title="تصدير الخريطة الشاملة المتضمنة أحرف التشفير النورانية والأحرف العربية موزعة في ملف JSON واحد"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-600" />
+              <Download className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>تصدير الخريطة الكاملة (.json)</span>
             </button>
 
@@ -991,10 +989,10 @@ export function LayersTable({
               type="button"
               id="import-json-file-btn"
               onClick={() => fileInputRef.current?.click()}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-blue-50/70 text-stone-700 hover:text-blue-900 hover:border-blue-300 border border-stone-300 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-stone-800 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-stone-700 dark:text-stone-300 hover:text-blue-900 dark:hover:text-blue-300 hover:border-blue-300 dark:hover:border-blue-700 border border-stone-300 dark:border-stone-700 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
               title="استيراد جدول أو خريطة كاملة من ملف JSON مخزن بجهازك"
             >
-              <Upload className="w-3.5 h-3.5 text-blue-600" />
+              <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>استيراد ملف (.json)</span>
             </button>
 
@@ -1166,15 +1164,15 @@ export function LayersTable({
 
       {/* Interactive 28-Letter Bank Tray */}
       {mode === 'edit' && (
-        <div className="bg-stone-50 rounded-2xl border border-stone-200 p-3.5 sm:p-4">
+        <div className="bg-stone-50 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-3.5 sm:p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
               <span>بنك الأحرف العربية (28 حرفاً):</span>
-              <span className="text-stone-400 font-normal text-2xs">
+              <span className="text-stone-400 dark:text-stone-500 font-normal text-2xs">
                 (الأحرف الملونة متبقية وغير مستخدمة بعد في الجدول)
               </span>
             </span>
-            <span className="text-2xs font-bold text-stone-500">
+            <span className="text-2xs font-bold text-stone-500 dark:text-stone-400">
               {28 - missingLetters.length} مُستخدم / {missingLetters.length} متبقي
             </span>
           </div>
@@ -1196,10 +1194,10 @@ export function LayersTable({
                     isBankSelected
                       ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-400 scale-110'
                       : !isUsed
-                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300 shadow-xs hover:scale-105 active:scale-95'
+                      ? 'bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-xs hover:scale-105 active:scale-95'
                       : count > 1
-                      ? 'bg-rose-100 text-rose-800 border-rose-300'
-                      : 'bg-white text-stone-400 border-stone-200 opacity-60 hover:opacity-100'
+                      ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                      : 'bg-white dark:bg-stone-800 text-stone-400 dark:text-stone-500 border-stone-200 dark:border-stone-700 opacity-60 hover:opacity-100'
                   }`}
                   title={
                     !isUsed
@@ -1221,16 +1219,16 @@ export function LayersTable({
       )}
 
       {/* Main Layers Table Grid */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs overflow-hidden">
         {/* Top Expandability Bar when in Edit Mode */}
         {mode === 'edit' && (
-          <div className="p-3 bg-gradient-to-r from-amber-50/90 to-orange-50/70 border-b border-amber-200 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="p-3 bg-gradient-to-r from-amber-50/90 to-orange-50/70 dark:from-stone-850 dark:to-stone-800 border-b border-amber-200 dark:border-stone-700 flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                <Edit3 className="w-4 h-4 text-amber-700" />
+              <span className="text-xs font-black text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
+                <Edit3 className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                 أدوات تعديل وتوسيع الجدول:
               </span>
-              <span className="text-2xs text-amber-900 hidden md:inline font-medium">
+              <span className="text-2xs text-amber-900 dark:text-stone-300 hidden md:inline font-medium">
                 انقر على أي حرف لتعديله فوراً أو استخدم أزرار الإضافة (+) لتوسيع الطبقات والخانات
               </span>
             </div>
@@ -1250,20 +1248,19 @@ export function LayersTable({
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ إضافة طبقة جديدة</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => {
                   addLayer(undefined, undefined, 'top');
                   setNotification({
                     type: 'success',
-                    message: `تمت إضافة طبقة جديدة في بداية الجدول.`,
+                    message: `تمت إضافة طبقة جديدة إلى بداية الجدول.`,
                   });
                 }}
-                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-950 text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-stone-800 hover:bg-amber-100/60 dark:hover:bg-stone-700 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-300 text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                 title="إضافة طبقة جديدة في أعلى الجدول"
               >
-                <ArrowUp className="w-3.5 h-3.5 text-amber-700" />
+                <ArrowUp className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                 <span>+ طبقة في البداية</span>
               </button>
             </div>
@@ -1273,7 +1270,7 @@ export function LayersTable({
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse">
             <thead>
-              <tr className="bg-stone-50 text-xs font-bold text-stone-600 border-b border-stone-200">
+              <tr className="bg-stone-50 dark:bg-stone-850 text-xs font-bold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-800">
                 <th className="py-3.5 px-4 w-32 sm:w-36">الطبقة</th>
                 <th className="py-3.5 px-4 min-w-[260px]">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1288,10 +1285,10 @@ export function LayersTable({
                           message: 'تم عكس ترتيب أحرف التشفير عامودياً بين الطبقات بنجاح.',
                         });
                       }}
-                      className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 hover:border-indigo-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:border-indigo-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                       title="عكس ترتيب أحرف التشفير عامودياً بين الطبقات (تبديل الطبقة الأولى بالأخيرة وهكذا)"
                     >
-                      <ArrowUpDown className="w-3 h-3 text-indigo-700" />
+                      <ArrowUpDown className="w-3 h-3 text-indigo-700 dark:text-indigo-400" />
                       <span>عكس عامودي لأحرف التشفير</span>
                     </button>
                   </div>
@@ -1310,10 +1307,10 @@ export function LayersTable({
                             message: 'تم عكس ترتيب الأحرف العربية عامودياً بين الطبقات بنجاح.',
                           });
                         }}
-                        className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 hover:border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                        className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                         title="عكس ترتيب الأحرف العربية عامودياً بين الطبقات (تبديل الطبقة الأولى بالأخيرة وهكذا)"
                       >
-                        <ArrowUpDown className="w-3 h-3 text-emerald-700" />
+                        <ArrowUpDown className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                         <span>عكس عامودي للأحرف العربية</span>
                       </button>
                     </div>
@@ -1328,10 +1325,10 @@ export function LayersTable({
                               message: 'تمت إضافة عمود أحرف عربية جديد لجميع طبقات الجدول.',
                             });
                           }}
-                          className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                          className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                           title="إضافة عمود أحرف عربية إضافي في كل طبقة"
                         >
-                          <Plus className="w-3 h-3 text-emerald-700" />
+                          <Plus className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                           <span>+ عمود أحرف للكل</span>
                         </button>
                         <button
@@ -1343,10 +1340,10 @@ export function LayersTable({
                               message: 'تم حذف آخر عمود أحرف عربية من جميع الطبقات.',
                             });
                           }}
-                          className="px-2 py-1 rounded-lg bg-stone-50 hover:bg-rose-50 text-stone-600 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          className="px-2 py-1 rounded-lg bg-stone-50 dark:bg-stone-800 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-stone-600 dark:text-stone-300 hover:text-rose-700 dark:hover:text-rose-300 border border-stone-200 dark:border-stone-700 hover:border-rose-300 text-2xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
                           title="حذف آخر عمود أحرف عربية من جميع الطبقات"
                         >
-                          <Trash2 className="w-3 h-3 text-stone-500 hover:text-rose-600" />
+                          <Trash2 className="w-3 h-3 text-stone-500 dark:text-stone-400 hover:text-rose-600" />
                           <span>- حذف عمود للكل</span>
                         </button>
                       </div>
@@ -1355,7 +1352,7 @@ export function LayersTable({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 text-sm">
+            <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-sm">
               {layers.map((layerItem, layerIndex) => {
                 const isHighlighted = highlightedLayerNumbers.includes(layerItem.layer);
                 const color = getLayerColor(layerItem.layer);
@@ -1520,7 +1517,7 @@ export function LayersTable({
                                   validChars.map((char, cIdx) => (
                                     <span
                                       key={cIdx}
-                                      className="min-w-7 h-7 px-1.5 rounded-md bg-stone-100 flex items-center justify-center border border-stone-300 shadow-2xs font-['Amiri',serif] text-sm font-bold text-stone-900"
+                                      className="min-w-7 h-7 px-1.5 rounded-md bg-stone-100 dark:bg-stone-800 flex items-center justify-center border border-stone-300 dark:border-stone-700 shadow-2xs font-['Amiri',serif] text-sm font-bold text-stone-900 dark:text-stone-100"
                                       title={`حرف تشفير خانة ${cIdx + 1}`}
                                     >
                                       {char}
@@ -1544,7 +1541,7 @@ export function LayersTable({
                               onClick={() =>
                                 handleStartEditCipher(layerItem.layer, layerItem.cipherLetters)
                               }
-                              className="w-7 h-7 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer mr-1"
+                              className="w-7 h-7 rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/60 dark:hover:bg-stone-700 flex items-center justify-center transition-colors cursor-pointer mr-1"
                               title="تعديل أحرف التشفير لهذه الطبقة"
                             >
                               <Key className="w-3.5 h-3.5" />
@@ -1571,7 +1568,7 @@ export function LayersTable({
                             return (
                               <div
                                 key={slotIndex}
-                                className="relative min-w-12 h-11 rounded-xl ring-2 ring-amber-500 bg-amber-50 shadow-md flex items-center justify-center p-0.5"
+                                className="relative min-w-12 h-11 rounded-xl ring-2 ring-amber-500 bg-amber-50 dark:bg-stone-800 shadow-md flex items-center justify-center p-0.5"
                               >
                                 <input
                                   autoFocus
@@ -1592,7 +1589,7 @@ export function LayersTable({
                                     }
                                   }}
                                   placeholder="حرف"
-                                  className="w-full h-full text-center font-bold text-lg font-['Amiri',serif] bg-transparent text-stone-900 outline-none"
+                                  className="w-full h-full text-center font-bold text-lg font-['Amiri',serif] bg-transparent text-stone-900 dark:text-stone-100 outline-none"
                                 />
                                 <button
                                   type="button"
@@ -1616,12 +1613,12 @@ export function LayersTable({
                               onClick={() => handleSlotClick(layerItem.layer, slotIndex, arabicChar)}
                               className={`relative group min-w-11 h-11 px-2.5 rounded-xl font-bold flex items-center justify-center transition-all select-none cursor-pointer text-lg font-['Amiri',serif] ${
                                 isSelected
-                                  ? 'bg-amber-400 text-stone-950 border-2 border-stone-900 shadow-md ring-2 ring-amber-300 scale-105'
+                                  ? 'bg-amber-400 text-stone-950 border-2 border-stone-900 dark:border-amber-300 shadow-md ring-2 ring-amber-300 scale-105'
                                   : !arabicChar
-                                  ? 'border-2 border-dashed border-stone-300 hover:border-amber-400 bg-stone-50 hover:bg-amber-50/50 text-stone-400 hover:text-amber-700'
+                                  ? 'border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-amber-400 bg-stone-50 dark:bg-stone-850 hover:bg-amber-50/50 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500 hover:text-amber-700 dark:hover:text-amber-300'
                                   : isDuplicate
-                                  ? 'bg-rose-50 text-rose-800 border-2 border-rose-400 shadow-xs hover:scale-105'
-                                  : 'bg-stone-100 hover:bg-amber-50 hover:border-amber-300 border border-stone-300 text-stone-900 shadow-2xs hover:scale-105 active:scale-95'
+                                  ? 'bg-rose-50 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border-2 border-rose-400 dark:border-rose-800 shadow-xs hover:scale-105'
+                                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs hover:scale-105 active:scale-95'
                               }`}
                               title={
                                 mode === 'edit'

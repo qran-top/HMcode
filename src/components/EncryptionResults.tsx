@@ -485,40 +485,40 @@ export function EncryptionResults({
       )}
 
       {/* 2. Combinations List with Noorani Dictionary & Quranic Vocabulary Matching */}
-      <div id="all-combinations-card" className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+      <div id="all-combinations-card" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-2 flex-wrap">
-            <Layers className="w-4 h-4 text-stone-600" />
-            <h4 id="all-combinations-title" className="text-sm sm:text-base font-bold text-stone-900">
+            <Layers className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+            <h4 id="all-combinations-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
               قائمة الاحتمالات (معجم الأحرف النورانية والمفردات القرآنية)
             </h4>
-            <span className="text-xs font-bold bg-stone-100 text-stone-800 border border-stone-200 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-bold bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-300 border border-stone-200 dark:border-stone-700 px-2 py-0.5 rounded-md">
               {totalCombinationsPossible.toLocaleString('ar-EG')} إجمالي ممكن
             </span>
 
             {/* Exact Quranic Words Counter */}
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold">
-              <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-xs font-bold">
+              <BookOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
               <span>مفردات قرآنية متطابقة:</span>
-              <span className="font-black text-amber-950">
+              <span className="font-black text-amber-950 dark:text-amber-200">
                 {exactQuranicList.length} كلمة
               </span>
             </div>
 
             {/* Arabic Dictionary Words Counter */}
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-bold">
-              <SpellCheck className="w-3.5 h-3.5 text-emerald-700" />
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold">
+              <SpellCheck className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
               <span>كلمات قاموسية:</span>
-              <span className="font-black text-emerald-950">
+              <span className="font-black text-emerald-950 dark:text-emerald-200">
                 {exactDictList.length} كلمة
               </span>
             </div>
 
             {/* Noorani Dictionary Indicator Badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               <span>فواتح نورانية:</span>
-              <span className="font-extrabold text-teal-900">
+              <span className="font-extrabold text-teal-900 dark:text-teal-200">
                 {quranicMatchesCount} احتمال
               </span>
             </div>
@@ -532,8 +532,8 @@ export function EncryptionResults({
               onClick={() => setOnlyQuranicVocab(!onlyQuranicVocab)}
               className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                 onlyQuranicVocab
-                  ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
-                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-amber-50 hover:border-amber-300'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300 dark:ring-amber-700'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700'
               }`}
               title="عرض الكلمات التي تطابق تماماً ألفاظاً وردت في القرآن الكريم"
             >
@@ -548,8 +548,8 @@ export function EncryptionResults({
               onClick={() => setOnlyDictWords(!onlyDictWords)}
               className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                 onlyDictWords
-                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs ring-2 ring-emerald-300'
-                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-emerald-50 hover:border-emerald-300'
+                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs ring-2 ring-emerald-300 dark:ring-emerald-700'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700'
               }`}
               title="عرض الكلمات العربية الصحيحة الموثقة في المعجم اللغوي العربي"
             >
@@ -564,8 +564,8 @@ export function EncryptionResults({
               onClick={() => setOnlyQuranicMatches(!onlyQuranicMatches)}
               className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                 onlyQuranicMatches
-                  ? 'bg-teal-700 text-white border-teal-800 shadow-2xs ring-2 ring-teal-300'
-                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-teal-50 hover:border-teal-200'
+                  ? 'bg-teal-700 text-white border-teal-800 shadow-2xs ring-2 ring-teal-300 dark:ring-teal-700'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-teal-50 dark:hover:bg-teal-950/40 hover:border-teal-200 dark:hover:border-teal-700'
               }`}
               title="عرض الاحتمالات التي تتضمن فواتح قرآنية مركبة فقط (مثل حم، طسم، الم...)"
             >
@@ -579,8 +579,8 @@ export function EncryptionResults({
               onClick={() => setShowNearestVocab(!showNearestVocab)}
               className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
                 showNearestVocab
-                  ? 'bg-stone-200 text-stone-800 border-stone-300'
-                  : 'bg-stone-100 text-stone-500 border-stone-200'
+                  ? 'bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-600'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-200 dark:border-stone-700'
               }`}
               title="إظهار أو إخفاء أقرب لفظ قرآني في البطاقات"
             >
@@ -593,22 +593,22 @@ export function EncryptionResults({
               placeholder="تصفية بحرف أو مقطع..."
               value={combinationFilter}
               onChange={(e) => setCombinationFilter(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-amber-500 w-full sm:w-44 text-right bg-stone-50/50"
+              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-500 w-full sm:w-44 text-right bg-stone-50/50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
             />
           </div>
         </div>
 
         {/* On-Demand Trigger Box for 4+ letters when not generated yet */}
         {!hasGenerated && !isGenerating && lettersCount > 3 && (
-          <div className="p-6 rounded-2xl border border-dashed border-amber-300 bg-linear-to-b from-amber-50/70 via-white to-amber-50/70 text-center space-y-3.5 my-2">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center shadow-2xs">
+          <div className="p-6 rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-linear-to-b from-amber-50/70 via-white to-amber-50/70 dark:from-stone-900 dark:via-stone-900 dark:to-stone-900 text-center space-y-3.5 my-2">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 mx-auto flex items-center justify-center shadow-2xs">
               <Layers className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h5 className="text-sm sm:text-base font-extrabold text-stone-900">
+              <h5 className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-stone-100">
                 يوجد {totalCombinationsPossible.toLocaleString('ar-EG')} احتمال تشفيري ممكن
               </h5>
-              <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
+              <p className="text-xs text-stone-600 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
                 تم تفعيل التوليد عند الطلب لضمان سرعة واستجابة المتصفح الفائقة أثناء الكتابة. اضغط الزر لتوليد قائمة الاحتمالات وفرز الكلمات القرآنية والمعجمية.
               </p>
             </div>
@@ -627,14 +627,14 @@ export function EncryptionResults({
         {/* Progress Bar (visible during generation) */}
         {isGenerating && (
           <div className="space-y-1.5 py-1">
-            <div className="flex items-center justify-between text-xs text-stone-500">
+            <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
               <span className="flex items-center gap-1.5">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400" />
                 <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع المعجمين القرآني واللغوي...</span>
               </span>
-              <span className="font-bold text-stone-700">{progressPercent}%</span>
+              <span className="font-bold text-stone-700 dark:text-stone-300">{progressPercent}%</span>
             </div>
-            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden border border-stone-200">
+            <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2 overflow-hidden border border-stone-200 dark:border-stone-700">
               <div
                 className="bg-amber-500 h-2 rounded-full transition-all duration-200"
                 style={{ width: `${progressPercent}%` }}
@@ -645,43 +645,43 @@ export function EncryptionResults({
 
         {/* Active Filter Indicator */}
         {(normalizedFilter || onlyQuranicMatches || onlyQuranicVocab || onlyDictWords) && (
-          <div className="flex items-center justify-between text-xs text-stone-600 bg-amber-50/60 border border-amber-200 px-3 py-1.5 rounded-lg flex-wrap gap-2">
+          <div className="flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 bg-amber-50/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg flex-wrap gap-2">
             <span>
               {onlyQuranicVocab && (
-                <strong className="text-amber-900 ml-1">(المفردات القرآنية المعتمدة فقط)</strong>
+                <strong className="text-amber-900 dark:text-amber-300 ml-1">(المفردات القرآنية المعتمدة فقط)</strong>
               )}
               {onlyDictWords && (
-                <strong className="text-emerald-900 ml-1">(الكلمات العربية القاموسية فقط)</strong>
+                <strong className="text-emerald-900 dark:text-emerald-300 ml-1">(الكلمات العربية القاموسية فقط)</strong>
               )}
               {onlyQuranicMatches && (
-                <strong className="text-teal-800 ml-1">(فواتح قرآنية مركبة فقط)</strong>
+                <strong className="text-teal-800 dark:text-teal-300 ml-1">(فواتح قرآنية مركبة فقط)</strong>
               )}
               {normalizedFilter && (
                 <span>
-                  مطابقة المقطع &quot;<strong className="text-amber-800">{normalizedFilter}</strong>&quot;
+                  مطابقة المقطع &quot;<strong className="text-amber-800 dark:text-amber-300">{normalizedFilter}</strong>&quot;
                 </span>
               )}
             </span>
-            <span className="font-bold text-amber-900">{filteredCombinations.length} احتمال</span>
+            <span className="font-bold text-amber-900 dark:text-amber-300">{filteredCombinations.length} احتمال</span>
           </div>
         )}
 
         {/* Legend for Quranic & Noorani colors */}
-        <div className="flex items-center gap-3 text-xs text-stone-500 flex-wrap pt-0.5">
+        <div className="flex items-center gap-3 text-xs text-stone-500 dark:text-stone-400 flex-wrap pt-0.5">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber-400 border border-amber-500 inline-block shadow-2xs" />
-            <strong className="text-amber-950">ذهبي:</strong> مفردة وردت في القرآن الكريم
+            <strong className="text-amber-950 dark:text-amber-300">ذهبي:</strong> مفردة وردت في القرآن الكريم
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-emerald-500 border border-emerald-600 inline-block shadow-2xs" />
-            <strong className="text-emerald-900">أخضر:</strong> كلمة عربية موثقة في القاموس
+            <strong className="text-emerald-900 dark:text-emerald-300">أخضر:</strong> كلمة عربية موثقة في القاموس
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-teal-600 border border-teal-700 inline-block" />
-            <strong className="text-teal-900">تركواز:</strong> فاتحة قرآنية مركبة ({QURANIC_WORDS.filter((w) => w.length > 1).join('، ')})
+            <strong className="text-teal-900 dark:text-teal-300">تركواز:</strong> فاتحة قرآنية مركبة ({QURANIC_WORDS.filter((w) => w.length > 1).join('، ')})
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-stone-100 border border-stone-300 inline-block" />
+            <span className="w-3 h-3 rounded bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 inline-block" />
             <span>احتمال توليفي</span>
           </span>
         </div>
@@ -703,19 +703,19 @@ export function EncryptionResults({
                   id={`combo-item-${idx}`}
                   className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-2 select-none group relative ${
                     exactMeta
-                      ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white shadow-xs ring-1 ring-amber-300'
+                      ? 'border-amber-400 dark:border-amber-600 bg-linear-to-b from-amber-50 to-white dark:from-amber-950/50 dark:to-stone-900 shadow-xs ring-1 ring-amber-300 dark:ring-amber-800'
                       : isDictWord
-                      ? 'border-emerald-400 bg-emerald-50/70 shadow-2xs ring-1 ring-emerald-300 hover:bg-emerald-50'
+                      ? 'border-emerald-400 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-2xs ring-1 ring-emerald-300 dark:ring-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
                       : hasMultiQuranic
-                      ? 'border-teal-300 bg-teal-50/70 shadow-2xs hover:bg-teal-50'
+                      ? 'border-teal-300 dark:border-teal-700 bg-teal-50/70 dark:bg-teal-950/40 shadow-2xs hover:bg-teal-50 dark:hover:bg-teal-950/60'
                       : hasMatch
-                      ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
-                      : 'border-stone-200 bg-stone-50/70 hover:bg-amber-50/60 hover:border-amber-300'
+                      ? 'border-amber-400 dark:border-amber-600 bg-amber-50/80 dark:bg-amber-950/50 shadow-2xs'
+                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800 hover:bg-amber-50/60 dark:hover:bg-stone-700 hover:border-amber-300 dark:hover:border-stone-700'
                   }`}
                 >
                   {/* Reversed Indicator Badge */}
                   {item.isReversed && (
-                    <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90">
+                    <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 dark:bg-stone-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90 z-10">
                       معكوس
                     </div>
                   )}
@@ -742,10 +742,10 @@ export function EncryptionResults({
                       <span
                         className={`font-black text-base tracking-wider break-all ${
                           exactMeta
-                            ? 'text-amber-950 text-lg'
+                            ? 'text-amber-950 dark:text-amber-200 text-lg'
                             : isDictWord
-                            ? 'text-emerald-950 text-base font-extrabold'
-                            : 'text-stone-900'
+                            ? 'text-emerald-950 dark:text-emerald-200 text-base font-extrabold'
+                            : 'text-stone-900 dark:text-stone-100'
                         }`}
                         title={exactMeta ? `التركيب الأصلي: ${item.word}` : typeof isDictWord === 'string' ? `التركيب الأصلي: ${item.word}` : undefined}
                       >
@@ -759,10 +759,10 @@ export function EncryptionResults({
                         onClick={() => handleSelectCombo(item.original)}
                         className={`opacity-0 group-hover:opacity-100 transition-opacity text-2xs font-bold px-1.5 py-0.5 rounded cursor-pointer ${
                           exactMeta
-                            ? 'text-amber-800 bg-amber-100 hover:bg-amber-200'
+                            ? 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/60 hover:bg-amber-200 dark:hover:bg-amber-800'
                             : isDictWord
-                            ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200'
-                            : 'text-stone-700 bg-stone-200/80 hover:bg-stone-300'
+                            ? 'text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-800'
+                            : 'text-stone-700 dark:text-stone-300 bg-stone-200/80 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600'
                         }`}
                         title="اعتماد هذا المشفر في النص المعتمد"
                       >
@@ -772,11 +772,11 @@ export function EncryptionResults({
                       <button
                         type="button"
                         onClick={() => handleCopy(item.word, `combo-${idx}`)}
-                        className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                        className="p-1 rounded text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200/60 dark:hover:bg-stone-700 transition-colors cursor-pointer"
                         title="نسخ هذا الاحتمال"
                       >
                         {copiedKey === `combo-${idx}` ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -787,8 +787,8 @@ export function EncryptionResults({
                   {/* Quranic & Dictionary Vocabulary Match Details */}
                   <div className="space-y-1">
                     {isDictWord && !exactMeta && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-2xs font-bold w-fit">
-                        <SpellCheck className="w-3 h-3 text-emerald-700 shrink-0" />
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-2xs font-bold w-fit">
+                        <SpellCheck className="w-3 h-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
                         <span>كلمة عربية قاموسية</span>
                       </div>
                     )}
@@ -801,9 +801,9 @@ export function EncryptionResults({
                     />
 
                     {/* Noorani Segmentation Badges & Division */}
-                    <div className="pt-1.5 border-t border-stone-200/60 flex items-center justify-between gap-1 text-2xs">
+                    <div className="pt-1.5 border-t border-stone-200/60 dark:border-stone-800 flex items-center justify-between gap-1 text-2xs">
                       <NooraniSegmentsBadge segmentation={segmentation} />
-                      <span className="text-stone-400 font-mono shrink-0">
+                      <span className="text-stone-400 dark:text-stone-500 font-mono shrink-0">
                         {segmentation.formattedDisplay}
                       </span>
                     </div>
@@ -813,8 +813,8 @@ export function EncryptionResults({
             })}
 
             {filteredCombinations.length === 0 && !isGenerating && (
-              <div className="col-span-full py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
-                <AlertCircle className="w-5 h-5 text-stone-300" />
+              <div className="col-span-full py-8 text-center text-xs text-stone-400 dark:text-stone-500 flex flex-col items-center justify-center gap-1.5">
+                <AlertCircle className="w-5 h-5 text-stone-300 dark:text-stone-600" />
                 <span>لا توجد احتمالات مطابقة لشروط التصفية المدخلة</span>
               </div>
             )}
@@ -823,17 +823,17 @@ export function EncryptionResults({
 
         {/* Pagination / Show More for light DOM */}
         {(hasGenerated || lettersCount <= 3) && filteredCombinations.length > visibleCount && (
-          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100">
-            <span className="text-xs text-stone-500">
-              يتم عرض <strong className="text-stone-800">{displayedCombinations.length}</strong> من أصل{' '}
-              <strong className="text-stone-800">{filteredCombinations.length}</strong> احتمال (الأولوية للكلمات القرآنية والمعجمية)
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100 dark:border-stone-800">
+            <span className="text-xs text-stone-500 dark:text-stone-400">
+              يتم عرض <strong className="text-stone-800 dark:text-stone-200">{displayedCombinations.length}</strong> من أصل{' '}
+              <strong className="text-stone-800 dark:text-stone-200">{filteredCombinations.length}</strong> احتمال (الأولوية للكلمات القرآنية والمعجمية)
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 id="show-more-encryption-combos-btn"
                 onClick={() => setVisibleCount((prev) => Math.min(prev + 48, filteredCombinations.length))}
-                className="px-3.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold transition-colors cursor-pointer"
               >
                 عرض المزيد (+{Math.min(48, filteredCombinations.length - visibleCount)})
               </button>
@@ -841,7 +841,7 @@ export function EncryptionResults({
                 type="button"
                 id="show-all-encryption-combos-btn"
                 onClick={() => setVisibleCount(filteredCombinations.length)}
-                className="px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-700 text-xs font-semibold transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold transition-colors cursor-pointer"
               >
                 عرض الكل ({filteredCombinations.length})
               </button>
@@ -851,15 +851,15 @@ export function EncryptionResults({
       </div>
 
       {/* 3. Current Selected Cipher String Display with Noorani Breakdown (نقل إلى أسفل الصفحة) */}
-      <div id="adopted-cipher-section" className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100">
+      <div id="adopted-cipher-section" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
               النص المشفر المعتمد (بدون فراغات):
             </span>
             {selectedCipherSegmentation.multiWordCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-md">
-                <Sparkles className="w-3 h-3 text-emerald-700" />
+              <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-md">
+                <Sparkles className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                 <span>يتضمن فواتح قرآنية</span>
               </span>
             )}
@@ -870,10 +870,10 @@ export function EncryptionResults({
               type="button"
               id="randomize-cipher-btn"
               onClick={handleRandomize}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               title="توليف عشوائي بين الاحتمالين"
             >
-              <Shuffle className="w-3.5 h-3.5 text-amber-600" />
+              <Shuffle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>توليف عشوائي</span>
             </button>
 
@@ -881,10 +881,10 @@ export function EncryptionResults({
               type="button"
               id="invert-cipher-btn"
               onClick={handleInvert}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               title="عكس الاحتمال الأول والثاني"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-stone-500" />
+              <RefreshCw className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
               <span>عكس الاختيارات</span>
             </button>
 
@@ -892,7 +892,7 @@ export function EncryptionResults({
               type="button"
               id="copy-custom-btn"
               onClick={() => handleCopy(displaySelectedCipher, 'custom')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-stone-900 dark:bg-amber-600 hover:bg-stone-800 dark:hover:bg-amber-700 px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
               title="نسخ المشفر بدون فراغات"
             >
               {copiedKey === 'custom' ? (

@@ -448,9 +448,9 @@ export function DecryptView({
   return (
     <div className="space-y-5">
       {/* Input Card */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden">
+      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-3.5 sm:p-5 max-w-full overflow-hidden transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <label htmlFor="cipher-input" className="text-sm sm:text-base font-bold text-stone-900">
+          <label htmlFor="cipher-input" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
             النص المشفر:
           </label>
 
@@ -476,12 +476,12 @@ export function DecryptView({
               disabled={!cipherInput}
               className={`flex-1 sm:w-full py-2 sm:py-1.5 px-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-1 transition-all ${
                 cipherInput
-                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
-                  : 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
+                  : 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
               }`}
               title="مسح النص المشفر بالكامل"
             >
-              <Eraser className="w-3.5 h-3.5 text-rose-600" />
+              <Eraser className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span>مسح</span>
             </button>
 
@@ -493,16 +493,16 @@ export function DecryptView({
               disabled={!cipherInput.trim()}
               className={`flex-2 sm:w-full sm:flex-1 py-2 sm:py-2 px-2 rounded-xl font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
                 !cipherInput.trim()
-                  ? 'bg-stone-100 text-stone-300 border border-stone-200 cursor-not-allowed opacity-60'
+                  ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
                   : isGenerating
-                  ? 'bg-indigo-100 text-indigo-900 border border-indigo-300 cursor-wait'
+                  ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 cursor-wait'
                   : 'bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 active:scale-95 text-white border border-indigo-700/30 cursor-pointer'
               }`}
               title="توليد وعرض قائمة الاحتمالات (أو اضغط Enter في مربع النص)"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-700 shrink-0" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-700 dark:text-indigo-400 shrink-0" />
                   <span>جاري التوليد...</span>
                 </>
               ) : (
@@ -526,13 +526,13 @@ export function DecryptView({
               }
             }}
             placeholder="اكتب أو انقر أحرف التشفير لفك التشفير (واضغط Enter لتوليد الاحتمالات)..."
-            className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right bg-stone-50/50 transition-all"
+            className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 transition-all"
           />
         </div>
 
         {/* Cipher Buttons for Direct Clicking with Rainbow Colors */}
         <div className="mt-3 flex items-center gap-1.5 flex-wrap max-w-full">
-          <span className="text-xs text-stone-500 ml-1">أحرف التشفير:</span>
+          <span className="text-xs text-stone-500 dark:text-stone-400 ml-1">أحرف التشفير:</span>
           {cipherLayers.map((l) => {
             const color = getLayerColor(l.layer);
             const charsInLayer: string[] = [];
@@ -568,7 +568,7 @@ export function DecryptView({
           <button
             type="button"
             onClick={() => handleAppendChar(' ')}
-            className="px-2.5 h-7 rounded-lg font-bold text-xs bg-stone-200 hover:bg-stone-300 text-stone-800 border border-stone-300 transition-colors cursor-pointer"
+            className="px-2.5 h-7 rounded-lg font-bold text-xs bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 transition-colors cursor-pointer"
           >
             مسافة
           </button>
@@ -607,12 +607,12 @@ export function DecryptView({
 
       {/* Breakdown per letter with Line Breaks on Spaces */}
       {lines.length > 0 && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-            <h3 className="text-sm sm:text-base font-bold text-stone-900">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-4 transition-colors">
+          <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+            <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
               تحليل رموز التشفير إلى الطبقات والأحرف المرشحة
             </h3>
-            <span className="text-xs text-stone-400">
+            <span className="text-xs text-stone-400 dark:text-stone-500">
               {meaningfulLettersCount} رمز مشفر
             </span>
           </div>
@@ -621,7 +621,7 @@ export function DecryptView({
             {lines.map((lineItems, lineIdx) => (
               <div
                 key={lineIdx}
-                className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 border border-stone-100"
+                className="flex flex-wrap items-stretch gap-2.5 sm:gap-3 p-2 rounded-xl bg-stone-50/50 dark:bg-stone-950/50 border border-stone-100 dark:border-stone-800"
               >
                 {lineItems.map(({ originalIndex, detail: item }) => {
                   const matchingList = item.matchingLayers && item.matchingLayers.length > 0
@@ -639,7 +639,7 @@ export function DecryptView({
                   return (
                     <div
                       key={originalIndex}
-                      className="w-[calc(50%-0.35rem)] sm:w-48 p-2.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex flex-col justify-between gap-2"
+                      className="w-[calc(50%-0.35rem)] sm:w-48 p-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xs flex flex-col justify-between gap-2"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span
@@ -649,7 +649,7 @@ export function DecryptView({
                         </span>
                         {isMultiLayer ? (
                           <span
-                            className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300"
+                            className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
                             title="هذا الحرف موجود في عدة طبقات!"
                           >
                             الطبقات: {matchingList.map((ml) => ml.layer).join(' + ')}
@@ -667,7 +667,7 @@ export function DecryptView({
                         {item.candidates.map((cand, cIdx) => (
                           <div
                             key={cIdx}
-                            className="py-1 rounded bg-stone-50 border border-stone-200 text-stone-900 font-bold text-sm font-['Amiri',serif]"
+                            className="py-1 rounded bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-bold text-sm font-['Amiri',serif]"
                           >
                             {cand}
                           </div>
@@ -684,31 +684,31 @@ export function DecryptView({
 
       {/* Permanently Open Combinations with Arabic Dictionary Highlights, Reverse Mode & Progress Bar */}
       {meaningfulLettersCount > 0 && (
-        <div id="decrypt-combinations-container" className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-5 space-y-3">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+        <div id="decrypt-combinations-container" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3 transition-colors">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2 flex-wrap">
-              <Layers className="w-4 h-4 text-stone-600" />
-              <h4 id="all-decrypt-combinations-title" className="text-sm sm:text-base font-bold text-stone-900">
+              <Layers className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+              <h4 id="all-decrypt-combinations-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
                 قائمة احتمالات الكلمات الأصلية (بدون فراغات)
               </h4>
-              <span className="text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md">
                 {totalCombinationsPossible.toLocaleString('ar-EG')} إجمالي
               </span>
 
               {/* Quranic Lexicon Matches Tag */}
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold">
-                <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80 text-xs font-bold">
+                <BookOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                 <span>المفردات القرآنية:</span>
-                <span className="font-extrabold text-amber-950">
+                <span className="font-extrabold text-amber-950 dark:text-amber-200">
                   {quranicMatchesCount} كلمة
                 </span>
               </div>
 
               {/* Dictionary Status Tag */}
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>القاموس العربي:</span>
-                <span className="font-extrabold text-emerald-900">
+                <span className="font-extrabold text-emerald-900 dark:text-emerald-200">
                   {dictLoaded ? `${dictionaryMatchesCount} كلمة` : `تحميل (${dictLoadProgress}%)`}
                 </span>
               </div>
@@ -722,12 +722,12 @@ export function DecryptView({
                 onClick={() => setOnlyQuranicWords(!onlyQuranicWords)}
                 className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   onlyQuranicWords
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300'
-                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-amber-50 hover:border-amber-200'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs ring-2 ring-amber-300 dark:ring-amber-800'
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-amber-50 dark:hover:bg-stone-700 hover:border-amber-200 dark:hover:border-amber-700'
                 }`}
                 title="عرض الكلمات التي تطابق مفردات في القرآن الكريم فقط (مثل وقب)"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                <BookOpen className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>مفردات قرآنية ({quranicMatchesCount})</span>
               </button>
 
@@ -737,8 +737,8 @@ export function DecryptView({
                 onClick={() => setOnlyShowDictionaryWords(!onlyShowDictionaryWords)}
                 className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   onlyShowDictionaryWords
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs ring-2 ring-emerald-300'
-                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-emerald-50 hover:border-emerald-200'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs ring-2 ring-emerald-300 dark:ring-emerald-800'
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-emerald-50 dark:hover:bg-stone-700 hover:border-emerald-200 dark:hover:border-emerald-700'
                 }`}
                 title="عرض الكلمات العربية المعتمدة في القاموس فقط"
               >
@@ -753,7 +753,7 @@ export function DecryptView({
                   placeholder="تصفية بأي حرف (في أي موضع)..."
                   value={combinationFilter}
                   onChange={(e) => setCombinationFilter(e.target.value)}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-56 text-right bg-stone-50/50"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full sm:w-56 text-right bg-stone-50/50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
                 />
               </div>
             </div>
@@ -761,15 +761,15 @@ export function DecryptView({
 
           {/* On-Demand Trigger Box for 3+ letters when not generated yet */}
           {!hasGenerated && !isGenerating && meaningfulLettersCount > 2 && (
-            <div className="p-6 rounded-2xl border border-dashed border-indigo-300 bg-linear-to-b from-indigo-50/70 via-white to-indigo-50/70 text-center space-y-3.5 my-2">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 mx-auto flex items-center justify-center shadow-2xs">
+            <div className="p-6 rounded-2xl border border-dashed border-indigo-300 dark:border-indigo-800 bg-linear-to-b from-indigo-50/70 via-white to-indigo-50/70 dark:from-stone-900 dark:via-stone-900 dark:to-stone-900 text-center space-y-3.5 my-2">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 mx-auto flex items-center justify-center shadow-2xs">
                 <Layers className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h5 className="text-sm sm:text-base font-extrabold text-stone-900">
+                <h5 className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-stone-100">
                   يوجد {totalCombinationsPossible.toLocaleString('ar-EG')} احتمال محتمل لفك التشفير
                 </h5>
-                <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
+                <p className="text-xs text-stone-600 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
                   تم تفعيل التوليد عند الطلب لضمان سرعة واستجابة المتصفح الفائقة أثناء الكتابة. اضغط الزر لتوليد قائمة الاحتمالات وفرز الكلمات القرآنية والمعجمية.
                 </p>
               </div>
@@ -788,16 +788,16 @@ export function DecryptView({
           {/* Smooth Progress Bar (zero freeze guarantee) */}
           {isGenerating && (
             <div className="space-y-1.5 py-1">
-              <div className="flex items-center justify-between text-xs text-stone-500">
+              <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                   <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع القاموس والمعجم القرآني...</span>
                 </span>
-                <span className="font-bold text-stone-700">{progressPercent}%</span>
+                <span className="font-bold text-stone-700 dark:text-stone-300">{progressPercent}%</span>
               </div>
-              <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden border border-stone-200">
+              <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2 overflow-hidden border border-stone-200 dark:border-stone-700">
                 <div
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-150 ease-out"
+                  className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full transition-all duration-150 ease-out"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -806,43 +806,43 @@ export function DecryptView({
 
           {/* Filter Match Summary */}
           {(normalizedFilter || onlyQuranicWords || onlyShowDictionaryWords) && (
-            <div className="flex items-center justify-between text-xs text-stone-600 bg-indigo-50/60 border border-indigo-200 px-3 py-1.5 rounded-lg flex-wrap gap-2">
+            <div className="flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 px-3 py-1.5 rounded-lg flex-wrap gap-2">
               <span className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-indigo-600" />
+                <Filter className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>
                   {onlyQuranicWords && (
-                    <strong className="text-amber-900 ml-1">
+                    <strong className="text-amber-900 dark:text-amber-300 ml-1">
                       (المفردات القرآنية المعتمدة فقط)
                     </strong>
                   )}
                   {onlyShowDictionaryWords && (
-                    <strong className="text-emerald-800 ml-1">
+                    <strong className="text-emerald-800 dark:text-emerald-300 ml-1">
                       (الكلمات العربية الموثقة بالقاموس فقط)
                     </strong>
                   )}
                   {normalizedFilter && (
                     <span>
-                      مطابقة المقطع &quot;<strong className="text-indigo-900">{normalizedFilter}</strong>&quot; في أي موضع
+                      مطابقة المقطع &quot;<strong className="text-indigo-900 dark:text-indigo-200">{normalizedFilter}</strong>&quot; في أي موضع
                     </span>
                   )}
                 </span>
               </span>
-              <span className="font-bold text-indigo-900">{filteredCombinations.length} احتمال</span>
+              <span className="font-bold text-indigo-900 dark:text-indigo-300">{filteredCombinations.length} احتمال</span>
             </div>
           )}
 
           {/* Color Legend */}
-          <div className="flex items-center gap-4 text-xs text-stone-500 pt-1 flex-wrap">
+          <div className="flex items-center gap-4 text-xs text-stone-500 dark:text-stone-400 pt-1 flex-wrap">
             <span className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded bg-amber-400 border border-amber-500 inline-block shadow-2xs" />
-              <strong className="text-amber-950">ذهبي:</strong> مفردة وردت في القرآن الكريم (مثل وقب في سورة الفلق)
+              <strong className="text-amber-950 dark:text-amber-300">ذهبي:</strong> مفردة وردت في القرآن الكريم (مثل وقب في سورة الفلق)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-600 inline-block shadow-2xs" />
-              <strong className="text-emerald-900">أخضر:</strong> كلمة عربية موثقة في القاموس
+              <strong className="text-emerald-900 dark:text-emerald-300">أخضر:</strong> كلمة عربية موثقة في القاموس
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3.5 h-3.5 rounded bg-stone-100 border border-stone-300 inline-block" />
+              <span className="w-3.5 h-3.5 rounded bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 inline-block" />
               <span>رمادي: احتمالات توليفية أخرى</span>
             </span>
           </div>
@@ -861,17 +861,17 @@ export function DecryptView({
                     id={`decode-combo-${idx}`}
                     className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-1.5 select-none relative ${
                       quranicMeta
-                        ? 'border-amber-400 bg-linear-to-b from-amber-50 to-white text-amber-950 shadow-xs ring-1 ring-amber-300 font-black'
+                        ? 'border-amber-400 dark:border-amber-600 bg-linear-to-b from-amber-50 to-white dark:from-stone-900 dark:to-stone-800 text-amber-950 dark:text-amber-200 shadow-xs ring-1 ring-amber-300 dark:ring-amber-500/50 font-black'
                         : isDictWord
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-xs ring-1 ring-emerald-400 font-black'
+                        ? 'border-emerald-500 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 shadow-xs ring-1 ring-emerald-400 dark:ring-emerald-500/50 font-black'
                         : hasFilterMatch
-                        ? 'border-indigo-400 bg-indigo-50/80 text-stone-900'
-                        : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100 text-stone-800'
+                        ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 text-stone-900 dark:text-stone-100'
+                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200'
                     }`}
                   >
                     {/* Reversed Indicator Badge */}
                     {item.isReversed && (
-                      <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90 z-10">
+                      <div className="absolute top-0 right-0 -mt-1.5 -mr-1.5 bg-stone-700 dark:bg-stone-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm opacity-90 z-10">
                         معكوس
                       </div>
                     )}
@@ -891,7 +891,7 @@ export function DecryptView({
                         ) : null}
                         <span
                           className={`text-sm tracking-wider break-all font-bold ${
-                            quranicMeta ? 'text-amber-950 font-black text-base' : ''
+                            quranicMeta ? 'text-amber-950 dark:text-amber-200 font-black text-base' : ''
                           }`}
                         >
                           {item.word}
@@ -903,15 +903,15 @@ export function DecryptView({
                         onClick={() => handleCopy(item.word, `decode-combo-${idx}`)}
                         className={`p-1 rounded transition-colors cursor-pointer shrink-0 ${
                           quranicMeta
-                            ? 'text-amber-800 hover:bg-amber-100'
+                            ? 'text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-stone-700'
                             : isDictWord
-                            ? 'text-emerald-700 hover:bg-emerald-100'
-                            : 'text-stone-400 hover:text-stone-800 hover:bg-stone-200/60'
+                            ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-stone-700'
+                            : 'text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200/60 dark:hover:bg-stone-700'
                         }`}
                         title="نسخ"
                       >
                         {copiedKey === `decode-combo-${idx}` ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-700" />
+                          <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -920,30 +920,30 @@ export function DecryptView({
 
                     {/* Quranic Surah Reference Badge */}
                     {quranicMeta && (
-                      <div className="pt-1 border-t border-amber-200/60 flex items-center justify-between text-2xs text-amber-900 font-extrabold">
+                      <div className="pt-1 border-t border-amber-200/60 dark:border-stone-700 flex items-center justify-between text-2xs text-amber-900 dark:text-amber-300 font-extrabold">
                         {quranicMeta.occurrences > 1 ? (
                           <a
                             href={getQuranTopSearchUrl(quranicMeta.originalQuranicWord || item.word)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 hover:underline hover:text-amber-950 transition-colors group/link"
+                            className="flex items-center gap-1 hover:underline hover:text-amber-950 dark:hover:text-amber-200 transition-colors group/link"
                             title={`بحث عن "${quranicMeta.originalQuranicWord || item.word}" (${quranicMeta.occurrences} مواضع) بمحرك بحث قرآن توب`}
                           >
-                            <Search className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                            <Search className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400 shrink-0" />
                             <span>بحث قرآني ({quranicMeta.occurrences} مواضع)</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-amber-700 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                            <ExternalLink className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
                           </a>
                         ) : (
                           <a
                             href={getQuranTopAyahUrl(quranicMeta.surahNumber || quranicMeta.surahName, quranicMeta.ayahNum)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 hover:underline hover:text-amber-950 transition-colors group/link"
+                            className="flex items-center gap-1 hover:underline hover:text-amber-950 dark:hover:text-amber-200 transition-colors group/link"
                             title={`فتح وتلاوة الآية ${quranicMeta.ayahNum} من سورة ${quranicMeta.surahName} على موقع قرآن توب`}
                           >
-                            <BookOpen className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                            <BookOpen className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400 shrink-0" />
                             <span>سورة {quranicMeta.surahName} (آية {quranicMeta.ayahNum})</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-amber-700 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
+                            <ExternalLink className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
                           </a>
                         )}
                       </div>
@@ -953,8 +953,8 @@ export function DecryptView({
               })}
 
               {filteredCombinations.length === 0 && !isGenerating && (
-                <div className="col-span-full py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
-                  <AlertCircle className="w-5 h-5 text-stone-300" />
+                <div className="col-span-full py-8 text-center text-xs text-stone-400 dark:text-stone-500 flex flex-col items-center justify-center gap-1.5">
+                  <AlertCircle className="w-5 h-5 text-stone-300 dark:text-stone-600" />
                   <span>لا توجد نتائج مطابقة للشروط أو التصفية الحالية</span>
                 </div>
               )}
@@ -963,17 +963,17 @@ export function DecryptView({
 
           {/* Pagination / Show More for light DOM */}
           {(hasGenerated || meaningfulLettersCount <= 2) && filteredCombinations.length > visibleCount && (
-            <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100">
-              <span className="text-xs text-stone-500">
-                يتم عرض <strong className="text-stone-800">{displayedCombinations.length}</strong> من أصل{' '}
-                <strong className="text-stone-800">{filteredCombinations.length}</strong> احتمال (الأولوية للمفردات القرآنية والمعجمية)
+            <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-stone-100 dark:border-stone-800">
+              <span className="text-xs text-stone-500 dark:text-stone-400">
+                يتم عرض <strong className="text-stone-800 dark:text-stone-200">{displayedCombinations.length}</strong> من أصل{' '}
+                <strong className="text-stone-800 dark:text-stone-200">{filteredCombinations.length}</strong> احتمال (الأولوية للمفردات القرآنية والمعجمية)
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   id="show-more-decrypt-combos-btn"
                   onClick={() => setVisibleCount((prev) => Math.min(prev + 48, filteredCombinations.length))}
-                  className="px-3.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-900 text-xs font-bold transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-indigo-900 dark:text-indigo-300 text-xs font-bold transition-colors cursor-pointer"
                 >
                   عرض المزيد (+{Math.min(48, filteredCombinations.length - visibleCount)})
                 </button>
@@ -981,7 +981,7 @@ export function DecryptView({
                   type="button"
                   id="show-all-decrypt-combos-btn"
                   onClick={() => setVisibleCount(filteredCombinations.length)}
-                  className="px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-700 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   عرض الكل ({filteredCombinations.length})
                 </button>
