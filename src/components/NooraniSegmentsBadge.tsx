@@ -18,7 +18,7 @@ export function NooraniSegmentsBadge({ segmentation, className = '' }: NooraniSe
             <span
               key={sIdx}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-black bg-emerald-600 text-white shadow-2xs border border-emerald-700"
-              title={`فاتحة قرآنية نورانية مركبة: (${seg.text})`}
+              title={`فاتحة وتركيب شيفرة: (${seg.text})`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
               {seg.text}
@@ -45,7 +45,7 @@ export function NooraniSegmentsBadge({ segmentation, className = '' }: NooraniSe
             <span
               key={sIdx}
               className="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
-              title={`حرف نوراني: (${seg.text})`}
+              title={`رمز شيفرة: (${seg.text})`}
             >
               {seg.text}
             </span>

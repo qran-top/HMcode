@@ -1,4 +1,4 @@
-import { KeyRound, Sparkles, BookOpen, HelpCircle, Moon, Sun, ExternalLink, Settings } from 'lucide-react';
+import { KeyRound, Sparkles, BookOpen, HelpCircle, Moon, Sun, ExternalLink, Settings, ArrowLeftRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
@@ -90,75 +90,45 @@ export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderPr
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <div className="flex items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-xl border border-stone-200 dark:border-stone-700">
             <button
-              id="tab-encrypt"
-              type="button"
-              onClick={() => setActiveTab('encrypt')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === 'encrypt'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>التشفير</span>
-            </button>
-
-            <button
-              id="tab-decrypt"
-              type="button"
-              onClick={() => setActiveTab('decrypt')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === 'decrypt'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
-              }`}
-            >
-              <KeyRound className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>فك التشفير</span>
-            </button>
-
-            <button
               id="tab-dual"
               type="button"
               onClick={() => setActiveTab('dual')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === 'dual'
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                activeTab === 'dual' || activeTab === 'encrypt' || activeTab === 'decrypt'
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
-              <svg className="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-              <span>المترجم المزدوج</span>
+              <ArrowLeftRight className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>المترجم الذكي</span>
             </button>
 
             <button
               id="tab-table"
               type="button"
               onClick={() => setActiveTab('table')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                 activeTab === 'table'
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
               <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>جدول الطبقات</span>
+              <span>جدول ومحرر الطبقات</span>
             </button>
 
             <button
               id="tab-settings"
               type="button"
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                 activeTab === 'settings'
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
-              <Settings className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-              <span>الإعدادات</span>
+              <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>المكتبة والإعدادات</span>
             </button>
           </div>
 

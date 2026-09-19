@@ -439,7 +439,7 @@ export function LegalModal({ type, onClose }: LegalModalProps) {
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-stone-900 dark:text-stone-100">المصادر المفتوحة والقرآن الكريم:</strong> تم ربط الآيات والسور بمشروع المصحف ومحرك البحث القرآني «قرآن توب» (qran-top.github.io) خدمةً لكتاب الله وتسهيلاً على كل باحث ومطّلع.
+                      <strong className="text-stone-900 dark:text-stone-100">المصادر المفتوحة ومحرك البحث القرآني:</strong> تم ربط الآيات والسور بمحرك البحث القرآني «قرآن توب» (qran-top.github.io) تسهيلاً للبحث ومطابقة النتائج مع النص القرآني المعتمد.
                     </div>
                   </div>
                 </div>

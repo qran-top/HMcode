@@ -181,10 +181,9 @@ export function EncryptionResults({
     requestAnimationFrame(processChunk);
   };
 
-  // Text change handler: auto-generate for small inputs (<= 3 letters = 8 combos),
-  // but for 4+ letters, decouple typing so typing stays 100% instant and butter-smooth!
+  // Automatically generate combinations for inputs so Quranic and dictionary words appear immediately
   useEffect(() => {
-    if (lettersCount <= 3 || isDualMode) {
+    if (lettersCount > 0) {
       startGeneration();
     } else {
       generationRef.current++;
@@ -465,14 +464,17 @@ export function EncryptionResults({
       />
 
       {!isDualMode && (
-        <>
-          {/* 1. LetterAnalysisCard (Moved here to sit below summary) */}
-          <LetterAnalysisCard
-            details={details}
-            selectedProbabilities={selectedProbabilities}
-            onToggleProbability={onToggleProbability}
-          />
-        </>
+        <LetterAnalysisCard
+          details={details}
+          selectedProbabilities={selectedProbabilities}
+          onToggleProbability={onToggleProbability}
+          displaySelectedCipher={displaySelectedCipher}
+          onRandomize={handleRandomize}
+          onInvert={handleInvert}
+          onCopyCipher={() => handleCopy(displaySelectedCipher, 'custom')}
+          isCopiedCipher={copiedKey === 'custom'}
+          segmentation={selectedCipherSegmentation}
+        />
       )}
 
       {/* 2. Quranic Combinations Lexicon (Vocabulary Matching) */}
@@ -498,9 +500,9 @@ export function EncryptionResults({
           <div className="flex items-center gap-2 flex-wrap">
             <Layers className="w-4 h-4 text-stone-600 dark:text-stone-400" />
             <h4 id="all-combinations-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">
-              قائمة الاحتمالات (معجم الأحرف النورانية والمفردات القرآنية)
+              قائمة الاحتمالات (معجم أحرف الشيفرة والمفردات القرآنية)
             </h4>
-            <span className="text-xs font-bold bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-300 border border-stone-200 dark:border-stone-700 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-bold bg-stone-100 dark:stone-800 text-stone-800 dark:text-stone-300 border border-stone-200 dark:border-stone-700 px-2 py-0.5 rounded-md">
               {totalCombinationsPossible.toLocaleString('ar-EG')} إجمالي ممكن
             </span>
 
@@ -522,10 +524,10 @@ export function EncryptionResults({
               </span>
             </div>
 
-            {/* Noorani Dictionary Indicator Badge */}
+            {/* Cipher Dictionary Indicator Badge */}
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span>فواتح نورانية:</span>
+              <span>فواتح الشيفرة:</span>
               <span className="font-extrabold text-teal-900 dark:text-teal-200">
                 {quranicMatchesCount} احتمال
               </span>
@@ -855,107 +857,6 @@ export function EncryptionResults({
             </div>
           </div>
         )}
-      </div>
-      )}
-      {/* 3. Current Selected Cipher String Display with Noorani Breakdown (نقل إلى أسفل الصفحة) */}
-      {!isDualMode && (
-      <div id="adopted-cipher-section" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100 dark:border-stone-800">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-              النص المشفر المعتمد (بدون فراغات):
-            </span>
-            {selectedCipherSegmentation.multiWordCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-md">
-                <Sparkles className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
-                <span>يتضمن فواتح قرآنية</span>
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              id="randomize-cipher-btn"
-              onClick={handleRandomize}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              title="توليف عشوائي بين الاحتمالين"
-            >
-              <Shuffle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>توليف عشوائي</span>
-            </button>
-
-            <button
-              type="button"
-              id="invert-cipher-btn"
-              onClick={handleInvert}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-              title="عكس الاحتمال الأول والثاني"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-              <span>عكس الاختيارات</span>
-            </button>
-
-            <button
-              type="button"
-              id="copy-custom-btn"
-              onClick={() => handleCopy(displaySelectedCipher, 'custom')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-stone-900 dark:bg-amber-600 hover:bg-stone-800 dark:hover:bg-amber-700 px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
-              title="نسخ المشفر بدون فراغات"
-            >
-              {copiedKey === 'custom' ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>تم النسخ!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>نسخ المشفر</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Hero Display */}
-        <div className="bg-stone-900 rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center border border-stone-800 gap-3">
-          <div
-            dir="rtl"
-            className="text-2xl sm:text-4xl font-extrabold text-amber-400 tracking-widest select-all break-all text-center"
-          >
-            {displaySelectedCipher}
-          </div>
-
-          {/* Noorani Segmentation Breakdown of Selected Cipher */}
-          {selectedCipherSegmentation.segments.length > 0 && (
-            <div className="w-full pt-2 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-              <span className="text-stone-400">
-                تقسيم المشفر المعتمد إلى أحرف وفواتح نورانية قدر الإمكان:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <NooraniSegmentsBadge segmentation={selectedCipherSegmentation} />
-                <span className="text-stone-500 text-2xs font-mono mr-1">
-                  ({selectedCipherSegmentation.formattedDisplay})
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Quranic Lexicon Meta for Selected Cipher */}
-          {(selectedCipherQuranicMeta || selectedCipherNearestMeta) && (
-            <div className="w-full pt-2 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-              <span className="text-stone-400">
-                المطابقة في معجم مفردات القرآن الكريم:
-              </span>
-              <QuranicMatchBadge
-                exactMeta={selectedCipherQuranicMeta}
-                nearestMeta={selectedCipherNearestMeta}
-                showNearest={true}
-              />
-            </div>
-          )}
-        </div>
       </div>
       )}
     </div>

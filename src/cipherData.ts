@@ -128,47 +128,49 @@ export function createNineCipherSlotsFromList(chars: string[]): string[] {
 export const DEFAULT_CIPHER_LAYERS: LayerInfo[] = [
   {
     layer: 7,
-    cipherLetters: createNineCipherSlots('ن', 'ق'),
-    arabicLetters: ['أ', 'ب', 'ج', 'د'],
-    description: 'الطبقة السابعة: ن ق المقابلة لـ (أ ب ج د)',
+    cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ا', 'ل', 'م', 'ص']),
+    arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
+    description: 'الطبقة 7: (الم - المص) [ذ ض ظ غ]',
   },
   {
     layer: 6,
-    cipherLetters: createNineCipherSlots('ح', 'م'),
-    arabicLetters: ['ه', 'و', 'ز', 'ح'],
-    description: 'الطبقة السادسة: ح م المقابلة لـ (ه و ز ح)',
+    cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ر']),
+    arabicLetters: ['ش', 'ت', 'ث', 'خ'],
+    description: 'الطبقة 6: (الر - المر) [ش ت ث خ]',
   },
   {
     layer: 5,
-    cipherLetters: createNineCipherSlots('ع', 'س'),
-    arabicLetters: ['ط', 'ي', 'ك', 'ل'],
-    description: 'الطبقة الخامسة: ع س المقابلة لـ (ط ي ك ل)',
+    cipherLetters: createNineCipherSlotsFromList(['ك', 'ه', 'ي', 'ع', 'ص', 'ط', 'ه']),
+    arabicLetters: ['ف', 'ص', 'ق', 'ر'],
+    description: 'الطبقة 5: (كهيعص - طه) [ف ص ق ر]',
   },
   {
     layer: 4,
-    cipherLetters: createNineCipherSlots('ص', 'ي'),
+    cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'م', 'ط', 'س']),
     arabicLetters: ['م', 'ن', 'س', 'ع'],
-    description: 'الطبقة الرابعة: ص ي المقابلة لـ (م ن س ع)',
+    description: 'الطبقة 4: (طسم - طس) [م ن س ع]',
   },
   {
     layer: 3,
-    cipherLetters: createNineCipherSlots('ا', 'ل'),
-    arabicLetters: ['ف', 'ص', 'ق', 'ر'],
-    description: 'الطبقة الثالثة: ا ل المقابلة لـ (ف ص ق ر)',
+    cipherLetters: createNineCipherSlotsFromList(['ي', 'س', 'ص']),
+    arabicLetters: ['ط', 'ي', 'ك', 'ل'],
+    description: 'الطبقة 3: (يس - ص) [ط ي ك ل]',
   },
   {
     layer: 2,
-    cipherLetters: createNineCipherSlots('ط', 'ه'),
-    arabicLetters: ['ش', 'ت', 'ث', 'خ'],
-    description: 'الطبقة الثانية: ط ه المقابلة لـ (ش ت ث خ)',
+    cipherLetters: createNineCipherSlotsFromList(['ح', 'م', 'ح', 'م', 'ع', 'س', 'ق']),
+    arabicLetters: ['ه', 'و', 'ز', 'ح'],
+    description: 'الطبقة 2: (حم - حم عسق) [ه و ز ح]',
   },
   {
     layer: 1,
-    cipherLetters: createNineCipherSlots('ك', 'ر'),
-    arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
-    description: 'الطبقة الأولى: ك ر المقابلة لـ (ذ ض ظ غ)',
+    cipherLetters: createNineCipherSlotsFromList(['ق', 'ن']),
+    arabicLetters: ['أ', 'ب', 'ج', 'د'],
+    description: 'الطبقة 1: (ق - ن) [أ ب ج د]',
   },
 ];
+
+export const BENCHMARK_TABLE_NAME = 'المنظومة المعيارية القياسية (رقم 4 - توزيعة ألف)';
 
 export const CIPHER_LAYERS: LayerInfo[] = DEFAULT_CIPHER_LAYERS;
 
@@ -196,41 +198,11 @@ export interface NooraniDistributionPreset {
 }
 
 export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
-  abjadEastern: {
-    id: 'abjadEastern',
-    name: '1- الترتيب الأبجدي الشرقي المعتمد',
-    badge: 'الافتراضي',
-    description: 'أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ (من أ ب ج د في الطبقة 7 إلى ذ ض ظ غ في الطبقة 1)',
-    arabicLayers: [
-      { layer: 7, letters: ['أ', 'ب', 'ج', 'د'] },
-      { layer: 6, letters: ['ه', 'و', 'ز', 'ح'] },
-      { layer: 5, letters: ['ط', 'ي', 'ك', 'ل'] },
-      { layer: 4, letters: ['م', 'ن', 'س', 'ع'] },
-      { layer: 3, letters: ['ف', 'ص', 'ق', 'ر'] },
-      { layer: 2, letters: ['ش', 'ت', 'ث', 'خ'] },
-      { layer: 1, letters: ['ذ', 'ض', 'ظ', 'غ'] },
-    ],
-  },
-  abjadWestern: {
-    id: 'abjadWestern',
-    name: '2- الترتيب الأبجدي الغربي (المغربي)',
-    badge: 'المغربي',
-    description: 'أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش (من أ ب ج د في الطبقة 7 إلى ذ ظ غ ش في الطبقة 1)',
-    arabicLayers: [
-      { layer: 7, letters: ['أ', 'ب', 'ج', 'د'] },
-      { layer: 6, letters: ['ه', 'و', 'ز', 'ح'] },
-      { layer: 5, letters: ['ط', 'ي', 'ك', 'ل'] },
-      { layer: 4, letters: ['م', 'ن', 'ص', 'ع'] },
-      { layer: 3, letters: ['ف', 'ض', 'ق', 'ر'] },
-      { layer: 2, letters: ['س', 'ت', 'ث', 'خ'] },
-      { layer: 1, letters: ['ذ', 'ظ', 'غ', 'ش'] },
-    ],
-  },
   abjadEasternAscending: {
     id: 'abjadEasternAscending',
-    name: '3- الترتيب الأبجدي الشرقي الصاعد',
-    badge: 'صاعد ⬆️',
-    description: 'يبدأ من (أ ب ج د) في الطبقة 1 صعوداً إلى (ذ ض ظ غ) في الطبقة 7',
+    name: '1- الترتيب الأبجدي الشرقي التصاعدي',
+    badge: 'الافتراضي ⬆️',
+    description: 'يبدأ من (أ ب ج د) في الطبقة 1 صعوداً إلى (ذ ض ظ غ) في الطبقة 7 (أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ)',
     arabicLayers: [
       { layer: 7, letters: ['ذ', 'ض', 'ظ', 'غ'] },
       { layer: 6, letters: ['ش', 'ت', 'ث', 'خ'] },
@@ -241,9 +213,24 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
       { layer: 1, letters: ['أ', 'ب', 'ج', 'د'] },
     ],
   },
+  abjadEastern: {
+    id: 'abjadEastern',
+    name: '2- الترتيب الأبجدي الشرقي التنازلي',
+    badge: 'تنازلي ⬇️',
+    description: 'أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ (من أ ب ج د في الطبقة 7 نزولاً إلى ذ ض ظ غ في الطبقة 1)',
+    arabicLayers: [
+      { layer: 7, letters: ['أ', 'ب', 'ج', 'د'] },
+      { layer: 6, letters: ['ه', 'و', 'ز', 'ح'] },
+      { layer: 5, letters: ['ط', 'ي', 'ك', 'ل'] },
+      { layer: 4, letters: ['م', 'ن', 'س', 'ع'] },
+      { layer: 3, letters: ['ف', 'ص', 'ق', 'ر'] },
+      { layer: 2, letters: ['ش', 'ت', 'ث', 'خ'] },
+      { layer: 1, letters: ['ذ', 'ض', 'ظ', 'غ'] },
+    ],
+  },
   abjadWesternAscending: {
     id: 'abjadWesternAscending',
-    name: '4- الترتيب الأبجدي الغربي الصاعد',
+    name: '3- الترتيب الأبجدي الغربي التصاعدي',
     badge: 'مغربي صاعد ⬆️',
     description: 'يبدأ من (أ ب ج د) في الطبقة 1 صعوداً إلى (ذ ظ غ ش) في الطبقة 7',
     arabicLayers: [
@@ -256,24 +243,24 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
       { layer: 1, letters: ['أ', 'ب', 'ج', 'د'] },
     ],
   },
-  alphabeticalHijai: {
-    id: 'alphabeticalHijai',
-    name: '5- الترتيب الهجائي الألفبائي الحديث',
-    badge: 'هجائي',
-    description: 'أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي (من ط7 نزولاً إلى ط1)',
+  abjadWestern: {
+    id: 'abjadWestern',
+    name: '4- الترتيب الأبجدي الغربي (المغربي التنازلي)',
+    badge: 'مغربي ⬇️',
+    description: 'أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش (من أ ب ج د في الطبقة 7 إلى ذ ظ غ ش في الطبقة 1)',
     arabicLayers: [
-      { layer: 7, letters: ['أ', 'ب', 'ت', 'ث'] },
-      { layer: 6, letters: ['ج', 'ح', 'خ', 'د'] },
-      { layer: 5, letters: ['ذ', 'ر', 'ز', 'س'] },
-      { layer: 4, letters: ['ش', 'ص', 'ض', 'ط'] },
-      { layer: 3, letters: ['ظ', 'ع', 'غ', 'ف'] },
-      { layer: 2, letters: ['ق', 'ك', 'ل', 'م'] },
-      { layer: 1, letters: ['ن', 'ه', 'و', 'ي'] },
+      { layer: 7, letters: ['أ', 'ب', 'ج', 'د'] },
+      { layer: 6, letters: ['ه', 'و', 'ز', 'ح'] },
+      { layer: 5, letters: ['ط', 'ي', 'ك', 'ل'] },
+      { layer: 4, letters: ['م', 'ن', 'ص', 'ع'] },
+      { layer: 3, letters: ['ف', 'ض', 'ق', 'ر'] },
+      { layer: 2, letters: ['س', 'ت', 'ث', 'خ'] },
+      { layer: 1, letters: ['ذ', 'ظ', 'غ', 'ش'] },
     ],
   },
   alphabeticalHijaiAscending: {
     id: 'alphabeticalHijaiAscending',
-    name: '6- الترتيب الهجائي الألفبائي الصاعد',
+    name: '5- الترتيب الهجائي الألفبائي التصاعدي',
     badge: 'هجائي صاعد ⬆️',
     description: 'يبدأ من (أ ب ت ث) في الطبقة 1 صعوداً حتى (ن هـ و ي) في الطبقة 7',
     arabicLayers: [
@@ -286,11 +273,26 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
       { layer: 1, letters: ['أ', 'ب', 'ت', 'ث'] },
     ],
   },
+  alphabeticalHijai: {
+    id: 'alphabeticalHijai',
+    name: '6- الترتيب الهجائي الألفبائي التنازلي',
+    badge: 'هجائي ⬇️',
+    description: 'أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي (من ط7 نزولاً إلى ط1)',
+    arabicLayers: [
+      { layer: 7, letters: ['أ', 'ب', 'ت', 'ث'] },
+      { layer: 6, letters: ['ج', 'ح', 'خ', 'د'] },
+      { layer: 5, letters: ['ذ', 'ر', 'ز', 'س'] },
+      { layer: 4, letters: ['ش', 'ص', 'ض', 'ط'] },
+      { layer: 3, letters: ['ظ', 'ع', 'غ', 'ف'] },
+      { layer: 2, letters: ['ق', 'ك', 'ل', 'م'] },
+      { layer: 1, letters: ['ن', 'ه', 'و', 'ي'] },
+    ],
+  },
   clearArabic: {
     id: 'clearArabic',
     name: '7- تفريغ الأحرف العربية فقط',
     badge: 'تفريغ',
-    description: 'تفريغ جميع خانات الأحرف العربية الـ 28 مع الإبقاء على أحرف التشفير النورانية',
+    description: 'تفريغ جميع خانات الأحرف العربية الـ 28 مع الإبقاء على أحرف التشفير',
     arabicLayers: [
       { layer: 7, letters: ['', '', '', ''] },
       { layer: 6, letters: ['', '', '', ''] },
@@ -392,7 +394,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distributionNoon: {
     id: 'distributionNoon',
-    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
+    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً)',
     badge: 'توزيعة ن ⬆️',
     description: 'المجموعات 1 إلى 7 صعوداً: (ن-ق)، (حم-حم عسق)، (ص-يس)، (الم-طسم)، (طس-طه)، (كهيعص-الر)، (المر-المص)',
     nooraniLayers: [
@@ -407,7 +409,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distributionAlef: {
     id: 'distributionAlef',
-    name: '4- توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
+    name: '4- توزيعة الف (فلترة من فوق لتحت - نزولاً)',
     badge: 'توزيعة الف ⬇️',
     description: 'المجموعات 1 إلى 7 نزولاً: (الم-المص)، (الر-المر)، (كهيعص-طه)، (طسم-طس)، (يس-ص)، (حم-حم عسق)، (ق-ن)',
     nooraniLayers: [
@@ -422,8 +424,8 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   defaultQuranicPairs: {
     id: 'defaultQuranicPairs',
-    name: '5- الترتيب الثنائي المعتمد (جدول الفرقان)',
-    badge: 'الافتراضي',
+    name: '5- الترتيب الثنائي المعتمد (أزواج الشيفرة)',
+    badge: 'أزواج الشيفرة',
     description: 'ن ق، ح م، ع س، ص ي، ا ل، ط ه، ك ر (حرفان لكل طبقة)',
     nooraniLayers: [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), description: 'الطبقة السابعة: ن ق' },
@@ -437,9 +439,9 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   distinct14Noorani: {
     id: 'distinct14Noorani',
-    name: '6- الحروف النورانية الـ 14 بدون تكرار',
+    name: '6- أحرف الشيفرة الـ 14 بدون تكرار',
     badge: '14 حرفاً',
-    description: 'توزيع الحروف النورانية الـ 14 بدون أي تكرار عبر الطبقات السبع (حرفان في كل طبقة)',
+    description: 'توزيع أحرف الشيفرة الـ 14 بدون أي تكرار عبر الطبقات السبع (حرفان في كل طبقة)',
     nooraniLayers: [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), description: 'الطبقة 7: ن ق' },
       { layer: 6, cipherLetters: createNineCipherSlots('ص', 'ي'), description: 'الطبقة 6: ص ي' },
@@ -467,7 +469,7 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
   clearNoorani: {
     id: 'clearNoorani',
-    name: '8- تفريغ أحرف التشفير النورانية فقط',
+    name: '8- تفريغ أحرف التشفير فقط',
     badge: 'تفريغ',
     description: 'تفريغ جميع خانات أحرف التشفير في كافة الطبقات مع الإبقاء على الأحرف العربية',
     nooraniLayers: [
@@ -482,28 +484,47 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
 };
 
+export const BENCHMARK_PRESET = {
+  id: 'distributionAlef',
+  name: 'المنظومة المعيارية القياسية (رقم 4 - توزيعة ألف)',
+  badge: 'المقياس الأساسي ⚖️',
+  description: 'المجموعات 1 إلى 7 نزولاً: (الم-المص)، (الر-المر)، (كهيعص-طه)، (طسم-طس)، (يس-ص)، (حم-حم عسق)، (ق-ن)',
+  createLayers: (): LayerInfo[] => JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS)),
+};
+
 export const PRESET_TABLES = {
-  distribution29: {
-    id: 'distribution29',
-    name: '1- توزيعة 29',
+  distributionAlef: BENCHMARK_PRESET,
+};
+
+export interface InitialBrowserTable {
+  id: string;
+  name: string;
+  description: string;
+  layers: LayerInfo[];
+}
+
+export const INITIAL_OPTIONAL_BROWSER_TABLES: InitialBrowserTable[] = [
+  {
+    id: 'opt_distribution29',
+    name: '1- توزيعة 29 (فواتح السور الـ 29)',
     description: 'توزيع فواتح السور الـ 29 بالأحرف المفردة مع الأحرف العربية المعتمدة',
-    createLayers: (): LayerInfo[] => [
+    layers: [
       {
         layer: 7,
         cipherLetters: createNineCipherSlotsFromList(['ن', 'ق', 'ح', 'م', 'ح', 'م', 'ح', 'م']),
-        arabicLetters: ['أ', 'ب', 'ج', 'د'],
+        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
         description: 'الطبقة 7: ن (القلم)، ق (ق)، حم (الأحقاف)، حم (الجاثية)، حم (الدخان)',
       },
       {
         layer: 6,
         cipherLetters: createNineCipherSlotsFromList(['ح', 'م', 'ح', 'م', 'ع', 'س', 'ق', 'ح', 'م', 'ح', 'م']),
-        arabicLetters: ['ه', 'و', 'ز', 'ح'],
+        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
         description: 'الطبقة 6: حم (الزخرف)، حم عسق (الشورى)، حم (فصلت)، حم (غافر)',
       },
       {
         layer: 5,
         cipherLetters: createNineCipherSlotsFromList(['ص', 'ي', 'س', 'ا', 'ل', 'م', 'ا', 'ل', 'م']),
-        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
+        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
         description: 'الطبقة 5: ص (ص)، يس (يس)، الم (السجدة)، الم (لقمان)',
       },
       {
@@ -515,44 +536,44 @@ export const PRESET_TABLES = {
       {
         layer: 3,
         cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'م', 'ط', 'ه', 'ك', 'ه', 'ي', 'ع', 'ص', 'ا', 'ل', 'ر']),
-        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
+        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
         description: 'الطبقة 3: طسم (الشعراء)، طه (طه)، كهيعص (مريم)، الر (الحجر)',
       },
       {
         layer: 2,
         cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ر', 'ا', 'ل', 'ر', 'ا', 'ل', 'ر']),
-        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
+        arabicLetters: ['ه', 'و', 'ز', 'ح'],
         description: 'الطبقة 2: الر (إبراهيم)، المر (الرعد)، الر (يوسف)، الر (هود)',
       },
       {
         layer: 1,
         cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ص', 'ا', 'ل', 'م', 'ا', 'ل', 'م']),
-        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
+        arabicLetters: ['أ', 'ب', 'ج', 'د'],
         description: 'الطبقة 1: الر (يونس)، المص (الأعراف)، الم (آل عمران)، الم (البقرة)',
       },
     ],
   },
-  distribution30: {
-    id: 'distribution30',
-    name: '2- توزيعة 30',
-    description: 'توزيع فواتح السور الـ 30 بالأحرف المفردة (بفصل عسق كفاتحة مستقلة في الشورى) مع الأحرف العربية المعتمدة',
-    createLayers: (): LayerInfo[] => [
+  {
+    id: 'opt_distribution30',
+    name: '2- توزيعة 30 (فواتح السور الـ 30)',
+    description: 'توزيع فواتح السور الـ 30 بالأحرف المفردة (بفصل عسق كفاتحة مستقلة في الشورى)',
+    layers: [
       {
         layer: 7,
         cipherLetters: createNineCipherSlotsFromList(['ن', 'ق', 'ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م']),
-        arabicLetters: ['أ', 'ب', 'ج', 'د'],
+        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
         description: 'الطبقة 7: ن (القلم)، ق (ق)، حم (الأحقاف)، حم (الجاثية)، حم (الدخان)، حم (الزخرف)',
       },
       {
         layer: 6,
         cipherLetters: createNineCipherSlotsFromList(['ع', 'س', 'ق', 'ح', 'م', 'ح', 'م', 'ح', 'م']),
-        arabicLetters: ['ه', 'و', 'ز', 'ح'],
+        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
         description: 'الطبقة 6: عسق (الشورى آية 2)، حم (الشورى آية 1)، حم (فصلت)، حم (غافر)',
       },
       {
         layer: 5,
         cipherLetters: createNineCipherSlotsFromList(['ص', 'ي', 'س', 'ا', 'ل', 'م', 'ا', 'ل', 'م']),
-        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
+        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
         description: 'الطبقة 5: ص (ص)، يس (يس)، الم (السجدة)، الم (لقمان)',
       },
       {
@@ -564,181 +585,70 @@ export const PRESET_TABLES = {
       {
         layer: 3,
         cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'م', 'ط', 'ه', 'ك', 'ه', 'ي', 'ع', 'ص', 'ا', 'ل', 'ر']),
-        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
+        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
         description: 'الطبقة 3: طسم (الشعراء)، طه (طه)، كهيعص (مريم)، الر (الحجر)',
       },
       {
         layer: 2,
         cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ر', 'ا', 'ل', 'ر', 'ا', 'ل', 'ر']),
-        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
+        arabicLetters: ['ه', 'و', 'ز', 'ح'],
         description: 'الطبقة 2: الر (إبراهيم)، المر (الرعد)، الر (يوسف)، الر (هود)',
       },
       {
         layer: 1,
         cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ص', 'ا', 'ل', 'م', 'ا', 'ل', 'م']),
-        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
+        arabicLetters: ['أ', 'ب', 'ج', 'د'],
         description: 'الطبقة 1: الر (يونس)، المص (الأعراف)، الم (آل عمران)، الم (البقرة)',
       },
     ],
   },
-  distributionNoon: {
-    id: 'distributionNoon',
-    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً من آخر المصحف)',
+  {
+    id: 'opt_distributionNoon',
+    name: '3- توزيعة ن (فلترة من تحت لفوق - صعوداً)',
     description: 'المجموعات 1 إلى 7 صعوداً: (ن-ق)، (حم-حم عسق)، (ص-يس)، (الم-طسم)، (طس-طه)، (كهيعص-الر)، (المر-المص)',
-    createLayers: (): LayerInfo[] => [
-      {
-        layer: 7,
-        cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']),
-        arabicLetters: ['أ', 'ب', 'ج', 'د'],
-        description: 'المجموعة 1: القلم + ق (ن - ق)',
-      },
-      {
-        layer: 6,
-        cipherLetters: createNineCipherSlotsFromList(['ح', 'م', 'ح', 'م', 'ع', 'س', 'ق']),
-        arabicLetters: ['ه', 'و', 'ز', 'ح'],
-        description: 'المجموعة 2: الأحقاف + الشورى (حم - حم عسق)',
-      },
-      {
-        layer: 5,
-        cipherLetters: createNineCipherSlotsFromList(['ص', 'ي', 'س']),
-        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
-        description: 'المجموعة 3: ص + يس (ص - يس)',
-      },
-      {
-        layer: 4,
-        cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ط', 'س', 'م']),
-        arabicLetters: ['م', 'ن', 'س', 'ع'],
-        description: 'المجموعة 4: السجدة + القصص (الم - طسم)',
-      },
-      {
-        layer: 3,
-        cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'ط', 'ه']),
-        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
-        description: 'المجموعة 5: النمل + طه (طس - طه)',
-      },
-      {
-        layer: 2,
-        cipherLetters: createNineCipherSlotsFromList(['ك', 'ه', 'ي', 'ع', 'ص', 'ا', 'ل', 'ر']),
-        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
-        description: 'المجموعة 6: مريم + الحجر (كهيعص - الر)',
-      },
-      {
-        layer: 1,
-        cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ر', 'ا', 'ل', 'م', 'ص']),
-        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
-        description: 'المجموعة 7: الرعد + الأعراف (المر - المص)',
-      },
+    layers: [
+      { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), arabicLetters: ['ذ', 'ض', 'ظ', 'غ'], description: 'المجموعة 1: القلم + ق (ن - ق)' },
+      { layer: 6, cipherLetters: createNineCipherSlotsFromList(['ح', 'م', 'ح', 'م', 'ع', 'س', 'ق']), arabicLetters: ['ش', 'ت', 'ث', 'خ'], description: 'المجموعة 2: الأحقاف + الشورى (حم - حم عسق)' },
+      { layer: 5, cipherLetters: createNineCipherSlotsFromList(['ص', 'ي', 'س']), arabicLetters: ['ف', 'ص', 'ق', 'ر'], description: 'المجموعة 3: ص + يس (ص - يس)' },
+      { layer: 4, cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ط', 'س', 'م']), arabicLetters: ['م', 'ن', 'س', 'ع'], description: 'المجموعة 4: السجدة + القصص (الم - طسم)' },
+      { layer: 3, cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'ط', 'ه']), arabicLetters: ['ط', 'ي', 'ك', 'ل'], description: 'المجموعة 5: النمل + طه (طس - طه)' },
+      { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ك', 'ه', 'ي', 'ع', 'ص', 'ا', 'ل', 'ر']), arabicLetters: ['ه', 'و', 'ز', 'ح'], description: 'المجموعة 6: مريم + الحجر (كهيعص - الر)' },
+      { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ر', 'ا', 'ل', 'م', 'ص']), arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'المجموعة 7: الرعد + الأعراف (المر - المص)' },
     ],
   },
-  distributionAlef: {
-    id: 'distributionAlef',
-    name: '4- توزيعة الف (فلترة من فوق لتحت - نزولاً من أول المصحف)',
-    description: 'المجموعات 1 إلى 7 نزولاً: (الم-المص)، (الر-المر)، (كهيعص-طه)، (طسم-طس)، (يس-ص)، (حم-حم عسق)، (ق-ن)',
-    createLayers: (): LayerInfo[] => [
-      {
-        layer: 7,
-        cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'م', 'ا', 'ل', 'م', 'ص']),
-        arabicLetters: ['أ', 'ب', 'ج', 'د'],
-        description: 'المجموعة 1: البقرة + الأعراف (الم - المص)',
-      },
-      {
-        layer: 6,
-        cipherLetters: createNineCipherSlotsFromList(['ا', 'ل', 'ر', 'ا', 'ل', 'م', 'ر']),
-        arabicLetters: ['ه', 'و', 'ز', 'ح'],
-        description: 'المجموعة 2: يونس + الرعد (الر - المر)',
-      },
-      {
-        layer: 5,
-        cipherLetters: createNineCipherSlotsFromList(['ك', 'ه', 'ي', 'ع', 'ص', 'ط', 'ه']),
-        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
-        description: 'المجموعة 3: مريم + طه (كهيعص - طه)',
-      },
-      {
-        layer: 4,
-        cipherLetters: createNineCipherSlotsFromList(['ط', 'س', 'م', 'ط', 'س']),
-        arabicLetters: ['م', 'ن', 'س', 'ع'],
-        description: 'المجموعة 4: الشعراء + النمل (طسم - طس)',
-      },
-      {
-        layer: 3,
-        cipherLetters: createNineCipherSlotsFromList(['ي', 'س', 'ص']),
-        arabicLetters: ['ف', 'ص', 'ق', 'ر'],
-        description: 'المجموعة 5: يس + ص (يس - ص)',
-      },
-      {
-        layer: 2,
-        cipherLetters: createNineCipherSlotsFromList(['ح', 'م', 'ح', 'م', 'ع', 'س', 'ق']),
-        arabicLetters: ['ش', 'ت', 'ث', 'خ'],
-        description: 'المجموعة 6: غافر + الشورى (حم - حم عسق)',
-      },
-      {
-        layer: 1,
-        cipherLetters: createNineCipherSlotsFromList(['ق', 'ن']),
-        arabicLetters: ['ذ', 'ض', 'ظ', 'غ'],
-        description: 'المجموعة 7: ق + القلم (ق - ن)',
-      },
+  {
+    id: 'opt_defaultQuranicPairs',
+    name: '5- الترتيب الأبجدي الثنائي (جدول أزواج الشيفرة)',
+    description: 'الترتيب الثنائي: ن ق، ح م، ع س، ص ي، ا ل، ط ه، ك ر',
+    layers: [
+      { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['ذ', 'ض', 'ظ', 'غ'], description: 'الطبقة السابعة: ن ق المقابلة لـ (ذ ض ظ غ)' },
+      { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['ش', 'ت', 'ث', 'خ'], description: 'الطبقة السادسة: ح م المقابلة لـ (ش ت ث خ)' },
+      { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['ف', 'ص', 'ق', 'ر'], description: 'الطبقة الخامسة: ع س المقابلة لـ (ف ص ق ر)' },
+      { layer: 4, cipherLetters: createNineCipherSlots('ص', 'ي'), arabicLetters: ['م', 'ن', 'س', 'ع'], description: 'الطبقة الرابعة: ص ي المقابلة لـ (م ن س ع)' },
+      { layer: 3, cipherLetters: createNineCipherSlots('ا', 'ل'), arabicLetters: ['ط', 'ي', 'ك', 'ل'], description: 'الطبقة الثالثة: ا ل المقابلة لـ (ط ي ك ل)' },
+      { layer: 2, cipherLetters: createNineCipherSlots('ط', 'ه'), arabicLetters: ['ه', 'و', 'ز', 'ح'], description: 'الطبقة الثانية: ط ه المقابلة لـ (ه و ز ح)' },
+      { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'الطبقة الأولى: ك ر المقابلة لـ (أ ب ج د)' },
     ],
   },
-  defaultQuranic: {
-    id: 'defaultQuranic',
-    name: '5- الترتيب الأبجدي الشرقي المعتمد (جدول الفرقان)',
-    description: 'الطبقة 7 (أ ب ج د) إلى 1 (ذ ض ظ غ) - أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ',
-    createLayers: (): LayerInfo[] => JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS)),
-  },
-  abjadWestern: {
-    id: 'abjadWestern',
+  {
+    id: 'opt_abjadWestern',
     name: '6- الترتيب الأبجدي الغربي (المغربي)',
     description: 'الطبقة 7 (أ ب ج د) إلى 1 (ذ ظ غ ش) - أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش',
-    createLayers: (): LayerInfo[] => [
-      {
-        layer: 7,
-        cipherLetters: createNineCipherSlots('ن', 'ق'),
-        arabicLetters: ['أ', 'ب', 'ج', 'د'],
-        description: 'الطبقة السابعة: ن ق المقابلة لـ (أ ب ج د) [أبجد]',
-      },
-      {
-        layer: 6,
-        cipherLetters: createNineCipherSlots('ح', 'م'),
-        arabicLetters: ['ه', 'و', 'ز', 'ح'],
-        description: 'الطبقة السادسة: ح م المقابلة لـ (ه و ز ح) [هوز + ح]',
-      },
-      {
-        layer: 5,
-        cipherLetters: createNineCipherSlots('ع', 'س'),
-        arabicLetters: ['ط', 'ي', 'ك', 'ل'],
-        description: 'الطبقة الخامسة: ع س المقابلة لـ (ط ي ك ل) [طي + كل]',
-      },
-      {
-        layer: 4,
-        cipherLetters: createNineCipherSlots('ص', 'ي'),
-        arabicLetters: ['م', 'ن', 'ص', 'ع'],
-        description: 'الطبقة الرابعة: ص ي المقابلة لـ (م ن ص ع) [من + صع]',
-      },
-      {
-        layer: 3,
-        cipherLetters: createNineCipherSlots('ا', 'ل'),
-        arabicLetters: ['ف', 'ض', 'ق', 'ر'],
-        description: 'الطبقة الثالثة: ا ل المقابلة لـ (ف ض ق ر) [فض + قر]',
-      },
-      {
-        layer: 2,
-        cipherLetters: createNineCipherSlots('ط', 'ه'),
-        arabicLetters: ['س', 'ت', 'ث', 'خ'],
-        description: 'الطبقة الثانية: ط ه المقابلة لـ (س ت ث خ) [ست + ثخ]',
-      },
-      {
-        layer: 1,
-        cipherLetters: createNineCipherSlots('ك', 'ر'),
-        arabicLetters: ['ذ', 'ظ', 'غ', 'ش'],
-        description: 'الطبقة الأولى: ك ر المقابلة لـ (ذ ظ غ ش) [ذ + ظغش]',
-      },
+    layers: [
+      { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'الطبقة 7: ن ق (أ ب ج د)' },
+      { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['ه', 'و', 'ز', 'ح'], description: 'الطبقة 6: ح م (ه و ز ح)' },
+      { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['ط', 'ي', 'ك', 'ل'], description: 'الطبقة 5: ع س (ط ي ك ل)' },
+      { layer: 4, cipherLetters: createNineCipherSlots('ص', 'ي'), arabicLetters: ['م', 'ن', 'ص', 'ع'], description: 'الطبقة 4: ص ي (م ن ص ع)' },
+      { layer: 3, cipherLetters: createNineCipherSlots('ا', 'ل'), arabicLetters: ['ف', 'ض', 'ق', 'ر'], description: 'الطبقة 3: ا ل (ف ض ق ر)' },
+      { layer: 2, cipherLetters: createNineCipherSlots('ط', 'ه'), arabicLetters: ['س', 'ت', 'ث', 'خ'], description: 'الطبقة 2: ط ه (س ت ث خ)' },
+      { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['ذ', 'ظ', 'غ', 'ش'], description: 'الطبقة 1: ك ر (ذ ظ غ ش)' },
     ],
   },
-  abjadAscending: {
-    id: 'abjadAscending',
+  {
+    id: 'opt_abjadAscending',
     name: '7- الترتيب الأبجدي الشرقي الصاعد',
     description: 'الطبقة 1 (أ ب ج د) صعوداً إلى الطبقة 7 (ذ ض ظ غ)',
-    createLayers: (): LayerInfo[] => [
+    layers: [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['ذ', 'ض', 'ظ', 'غ'], description: 'الطبقة 7: ذ ض ظ غ' },
       { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['ش', 'ت', 'ث', 'خ'], description: 'الطبقة 6: ش ت ث خ' },
       { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['ف', 'ص', 'ق', 'ر'], description: 'الطبقة 5: ف ص ق ر' },
@@ -748,11 +658,11 @@ export const PRESET_TABLES = {
       { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'الطبقة 1: أ ب ج د' },
     ],
   },
-  abjadWesternAscending: {
-    id: 'abjadWesternAscending',
+  {
+    id: 'opt_abjadWesternAscending',
     name: '8- الترتيب الأبجدي الغربي الصاعد',
     description: 'الطبقة 1 (أ ب ج د) صعوداً إلى الطبقة 7 (ذ ظ غ ش)',
-    createLayers: (): LayerInfo[] => [
+    layers: [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['ذ', 'ظ', 'غ', 'ش'], description: 'الطبقة 7: ذ ظ غ ش' },
       { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['س', 'ت', 'ث', 'خ'], description: 'الطبقة 6: س ت ث خ' },
       { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['ف', 'ض', 'ق', 'ر'], description: 'الطبقة 5: ف ض ق ر' },
@@ -762,11 +672,11 @@ export const PRESET_TABLES = {
       { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['أ', 'ب', 'ج', 'د'], description: 'الطبقة 1: أ ب ج د' },
     ],
   },
-  alphabeticalHijai: {
-    id: 'alphabeticalHijai',
+  {
+    id: 'opt_alphabeticalHijai',
     name: '9- الترتيب الهجائي الألفبائي',
     description: 'من (أ ب ت ث) في الطبقة 7 حتى (ن هـ و ي) في الطبقة 1',
-    createLayers: (): LayerInfo[] => [
+    layers: [
       { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['أ', 'ب', 'ت', 'ث'], description: 'الطبقة 7: أ ب ت ث' },
       { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['ج', 'ح', 'خ', 'د'], description: 'الطبقة 6: ج ح خ د' },
       { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['ذ', 'ر', 'ز', 'س'], description: 'الطبقة 5: ذ ر ز س' },
@@ -776,21 +686,21 @@ export const PRESET_TABLES = {
       { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['ن', 'ه', 'و', 'ي'], description: 'الطبقة 1: ن ه و ي' },
     ],
   },
-  emptyTable: {
-    id: 'emptyTable',
-    name: '10- جدول فارغ تماماً (إنشاء مخصص من الصفر)',
-    description: 'تفريغ جميع الخانات الـ 28 لتوزيع الحروف يدوياً',
-    createLayers: (): LayerInfo[] => [
-      { layer: 7, cipherLetters: createNineCipherSlots('ن', 'ق'), arabicLetters: ['', '', '', ''], description: 'الطبقة 7' },
-      { layer: 6, cipherLetters: createNineCipherSlots('ح', 'م'), arabicLetters: ['', '', '', ''], description: 'الطبقة 6' },
-      { layer: 5, cipherLetters: createNineCipherSlots('ع', 'س'), arabicLetters: ['', '', '', ''], description: 'الطبقة 5' },
-      { layer: 4, cipherLetters: createNineCipherSlots('ص', 'ي'), arabicLetters: ['', '', '', ''], description: 'الطبقة 4' },
-      { layer: 3, cipherLetters: createNineCipherSlots('ا', 'ل'), arabicLetters: ['', '', '', ''], description: 'الطبقة 3' },
-      { layer: 2, cipherLetters: createNineCipherSlots('ط', 'ه'), arabicLetters: ['', '', '', ''], description: 'الطبقة 2' },
-      { layer: 1, cipherLetters: createNineCipherSlots('ك', 'ر'), arabicLetters: ['', '', '', ''], description: 'الطبقة 1' },
+  {
+    id: 'opt_emptyTable',
+    name: '10- جدول فارغ تماماً (إنشاء مخصص)',
+    description: 'تفريغ جميع الخانات لتوزيع الحروف يدوياً',
+    layers: [
+      { layer: 7, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 7' },
+      { layer: 6, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 6' },
+      { layer: 5, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 5' },
+      { layer: 4, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 4' },
+      { layer: 3, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 3' },
+      { layer: 2, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 2' },
+      { layer: 1, cipherLetters: Array(9).fill(''), arabicLetters: ['', '', '', ''], description: 'الطبقة 1' },
     ],
   },
-};
+];
 
 export const VALID_CIPHER_LETTERS = new Set<string>([
   'ك', 'ر',

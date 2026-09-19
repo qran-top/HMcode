@@ -300,12 +300,12 @@ export function ResultsSummaryBox({
               </div>
             )}
 
-            {/* 4. Noorani Multi-Letter Opening Matches */}
+            {/* 4. Cipher Multi-Letter Opening Matches */}
             {nooraniMatchesCount > 0 && (
               <div className="pt-1">
                 <div className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-300 px-3 py-1 rounded-xl text-xs font-bold shadow-2xs">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" />
-                  <span>{nooraniMatchesCount.toLocaleString('ar-EG')} تركيب نوراني (فواتح السور)</span>
+                  <span>{nooraniMatchesCount.toLocaleString('ar-EG')} تركيب شيفرة (فواتح السور)</span>
                 </div>
               </div>
             )}

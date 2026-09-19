@@ -45,7 +45,7 @@ export function DecryptView({
   isDualMode = false,
 }: DecryptViewProps = {}) {
   const { layers: cipherLayers, validCipherLetters } = useCipherLayers();
-  const [internalCipherInput, setInternalCipherInput] = useState('طسم');
+  const [internalCipherInput, setInternalCipherInput] = useState('');
   const cipherInput = externalCipherInput !== undefined ? externalCipherInput : internalCipherInput;
   const setCipherInput = (val: string | ((prev: string) => string)) => {
     const nextVal = typeof val === 'function' ? val(cipherInput) : val;

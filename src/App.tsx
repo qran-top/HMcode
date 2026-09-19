@@ -9,6 +9,7 @@ import { SettingsView } from './components/SettingsView';
 import { CompactLayersIndicator } from './components/CompactLayersIndicator';
 import { Footer, PolicyModalType } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
+import { PWAPrompt } from './components/PWAPrompt';
 import { analyzeWord } from './cipherData';
 import { useCipherLayers } from './context/CipherLayersContext';
 import { Eraser, Sparkles, Loader2, Settings2 } from 'lucide-react';
@@ -16,8 +17,8 @@ import { Eraser, Sparkles, Loader2, Settings2 } from 'lucide-react';
 export function App() {
   const { analyzeText, isCustomized } = useCipherLayers();
   const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings'>('dual');
-  const [inputText, setInputText] = useState('بقرة');
-  const [decryptCipherInput, setDecryptCipherInput] = useState('طسم');
+  const [inputText, setInputText] = useState('');
+  const [decryptCipherInput, setDecryptCipherInput] = useState('');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
   const [activeLegalModal, setActiveLegalModal] = useState<PolicyModalType>(null);
   const [generateSignal, setGenerateSignal] = useState<number>(0);
@@ -237,6 +238,7 @@ export function App() {
       <Footer onOpenModal={(type) => setActiveLegalModal(type)} />
 
       {/* Modal Dialog for Policies & Instructions */}
+      <PWAPrompt />
       <LegalModal
         type={activeLegalModal}
         onClose={() => setActiveLegalModal(null)}

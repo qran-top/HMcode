@@ -20,6 +20,7 @@ interface BulkPasteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccessNotification?: (message: string) => void;
+  isPage?: boolean;
 }
 
 type TargetType = 'arabic' | 'cipher';
@@ -31,6 +32,7 @@ export function BulkPasteModal({
   isOpen,
   onClose,
   onSuccessNotification,
+  isPage = false,
 }: BulkPasteModalProps) {
   const { layers, bulkFillArabicLetters, bulkFillCipherLetters } = useCipherLayers();
 
@@ -187,33 +189,36 @@ export function BulkPasteModal({
 
   if (!isOpen) return null;
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200"
-      dir="rtl"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50/70 dark:bg-stone-850">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-xs shrink-0">
-              <ClipboardPaste className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                <span>لصق وتوزيع الأحرف في جدول الطبقات</span>
-                <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                  تلقائي
-                </span>
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                الصق أي قائمة من الأحرف وسيتم استخراجها وتوزيعها بالترتيب من أول طبقة لآخر طبقة
-              </p>
-            </div>
+  const cardContent = (
+    <div className={`bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col ${isPage ? 'w-full shadow-xs' : 'shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200'}`}>
+      {/* Header */}
+      <div className="p-4 sm:p-5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between gap-3 bg-stone-50/70 dark:bg-stone-850">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-xs shrink-0">
+            <ClipboardPaste className="w-5 h-5" />
           </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <span>لصق وتوزيع الأحرف في جدول الطبقات</span>
+              <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                تلقائي
+              </span>
+            </h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              الصق أي قائمة من الأحرف وسيتم استخراجها وتوزيعها بالترتيب من أول طبقة لآخر طبقة
+            </p>
+          </div>
+        </div>
 
+        {isPage ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs hover:bg-stone-200 dark:hover:bg-stone-750 transition-colors cursor-pointer"
+          >
+            <span>← العودة إلى جدول الطبقات</span>
+          </button>
+        ) : (
           <button
             type="button"
             onClick={onClose}
@@ -222,10 +227,11 @@ export function BulkPasteModal({
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
+      </div>
 
-        {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+      {/* Body */}
+      <div className={`p-4 sm:p-6 space-y-5 flex-1 text-xs ${isPage ? '' : 'overflow-y-auto'}`}>
           {/* Target Selection & Quick Action Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl">
@@ -249,7 +255,7 @@ export function BulkPasteModal({
                     : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
                 }`}
               >
-                أحرف التشفير النورانية
+                أحرف التشفير (الشيفرة)
               </button>
             </div>
 
@@ -558,6 +564,24 @@ export function BulkPasteModal({
           </button>
         </div>
       </div>
+  );
+
+  if (isPage) {
+    return (
+      <div className="w-full space-y-4 animate-in fade-in duration-200" dir="rtl">
+        {cardContent}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      dir="rtl"
+      role="dialog"
+      aria-modal="true"
+    >
+      {cardContent}
     </div>
   );
 }

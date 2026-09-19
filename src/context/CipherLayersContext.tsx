@@ -4,6 +4,9 @@ import {
   DEFAULT_CIPHER_LAYERS,
   ALL_ARABIC_LETTERS_28,
   PRESET_TABLES,
+  BENCHMARK_PRESET,
+  BENCHMARK_TABLE_NAME,
+  INITIAL_OPTIONAL_BROWSER_TABLES,
   ARABIC_PRESETS,
   NOORANI_PRESETS,
   ArabicDistributionPreset,
@@ -97,23 +100,35 @@ export interface CipherLayersContextType {
   saveCurrentTable: (name: string, description?: string) => SavedCustomTable;
   loadSavedTable: (id: string) => boolean;
   deleteSavedTable: (id: string) => void;
+  deleteAllSavedTables: () => void;
+  restoreOptionalPresets: () => void;
   updateSavedTableName: (id: string, name: string) => void;
+  updateSavedTable: (
+    id: string,
+    updates: { name?: string; description?: string; updateWithCurrentLayers?: boolean }
+  ) => void;
   exportCurrentTableAsFile: (customName?: string) => void;
+  exportCurrentTableAsTextFile: (customName?: string) => void;
   exportSingleSavedTableAsFile: (tableId: string) => void;
+  exportSingleSavedTableAsTextFile: (tableId: string) => void;
   exportAllSavedTablesAsFile: () => void;
-  importTablesFromJson: (jsonStr: string) => ImportResult;
+  importTablesFromJson: (jsonOrTextStr: string) => ImportResult;
+  serializeCurrentTableToText: () => string;
+  applyTableFromText: (text: string) => ImportResult;
   // Arabic distributions
   savedArabicPresets: SavedArabicPreset[];
   activeArabicPresetName: string | null;
   saveCurrentArabicPreset: (name: string, description?: string) => SavedArabicPreset;
   applyArabicDistribution: (presetOrId: ArabicDistributionPreset | SavedArabicPreset | string) => void;
   deleteSavedArabicPreset: (id: string) => void;
+  updateSavedArabicPresetName: (id: string, name: string) => void;
   // Noorani distributions
   savedNooraniPresets: SavedNooraniPreset[];
   activeNooraniPresetName: string | null;
   saveCurrentNooraniPreset: (name: string, description?: string) => SavedNooraniPreset;
   applyNooraniDistribution: (presetOrId: NooraniDistributionPreset | SavedNooraniPreset | string) => void;
   deleteSavedNooraniPreset: (id: string) => void;
+  updateSavedNooraniPresetName: (id: string, name: string) => void;
   // Row duplicates removal
   removeRowDuplicates: () => { arabicRemoved: number; cipherRemoved: number; totalRemoved: number };
   // Column duplicates summary
@@ -193,6 +208,14 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
 
 function loadInitialLayers(): LayerInfo[] {
   try {
+    const v5BenchmarkKey = localStorage.getItem('quran_cipher_preset_v5_eastern_ascending_baseline_set');
+    if (!v5BenchmarkKey) {
+      // Seed to Eastern Ascending standard default
+      localStorage.setItem('quran_cipher_preset_v5_eastern_ascending_baseline_set', 'true');
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_CIPHER_LAYERS));
+      return JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS));
+    }
+
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -217,6 +240,21 @@ function loadInitialSavedTables(): SavedCustomTable[] {
           layers: normalizeLayers(t.layers || []),
         }));
       }
+    }
+
+    // If first time loading in browser, seed the optional presets into browser library
+    const initializedFlag = localStorage.getItem('cipher_saved_browser_tables_v4');
+    if (!initializedFlag) {
+      localStorage.setItem('cipher_saved_browser_tables_v4', 'true');
+      const seeded: SavedCustomTable[] = INITIAL_OPTIONAL_BROWSER_TABLES.map((t) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        createdAt: Date.now(),
+        layers: normalizeLayers(t.layers),
+      }));
+      localStorage.setItem(SAVED_TABLES_STORAGE_KEY, JSON.stringify(seeded));
+      return seeded;
     }
   } catch (e) {
     console.error('Failed to load saved tables library from localStorage:', e);
@@ -271,6 +309,151 @@ function triggerJsonDownload(filename: string, data: unknown) {
   }
 }
 
+function triggerTextDownload(filename: string, text: string) {
+  try {
+    // UTF-8 BOM (\uFEFF) ensures Windows Notepad & mobile editors open Arabic cleanly without scrambling
+    const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename.endsWith('.txt') ? filename : `${filename}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Text download error:', err);
+  }
+}
+
+/**
+ * Pure Arabic line-by-line format:
+ * Each field is on its own separate line to completely eliminate BiDi / RTL mixed-language editing issues.
+ */
+export function serializeLayersToText(tableName: string, layers: LayerInfo[]): string {
+  const sorted = layers.slice().sort((a, b) => b.layer - a.layer);
+  const lines: string[] = [];
+  lines.push(`المنظومة: ${tableName}`);
+  lines.push('');
+  for (const l of sorted) {
+    const cipherStr = (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' ');
+    const arabicStr = (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' ');
+    lines.push(`[الطبقة ${l.layer}]`);
+    lines.push(`الشيفرة: ${cipherStr}`);
+    lines.push(`العربي: ${arabicStr}`);
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+/**
+ * Resilient parser for the pure Arabic line-by-line format
+ */
+export function parseLayersFromText(text: string): { name: string; layers: LayerInfo[] } | null {
+  if (!text || typeof text !== 'string') return null;
+  const rawLines = text.split(/\r?\n/);
+
+  let tableName = 'منظومة مستوردة';
+  const layerMap = new Map<number, { cipher: string[]; arabic: string[] }>();
+  let currentLayerNum: number | null = null;
+  let expectingType: 'cipher' | 'arabic' | null = null;
+  let hasValidLayers = false;
+
+  for (let rawLine of rawLines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Check table name
+    const nameMatch = line.match(/^(?:المنظومة|منظومة|الاسم|اسم|name)\s*[:=]\s*(.*)$/i);
+    if (nameMatch && nameMatch[1].trim()) {
+      tableName = nameMatch[1].trim();
+      continue;
+    }
+
+    // Check layer header: [الطبقة 7] or الطبقة 7 or layer 7 or [7] or just 7
+    const layerMatch = line.match(/^(?:\[\s*)?(?:الطبقة|طبقة|layer)?\s*([1-7])(?:\s*\])?$/i);
+    if (layerMatch) {
+      currentLayerNum = parseInt(layerMatch[1], 10);
+      hasValidLayers = true;
+      expectingType = 'cipher';
+      if (!layerMap.has(currentLayerNum)) {
+        layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
+      }
+      continue;
+    }
+
+    // Check explicit cipher line: الشيفرة: ...
+    const cipherMatch = line.match(/^(?:الشيفرة|الشفره|شيفرة|شفرة|تشفير|cipher|نورانية)\s*[:=]\s*(.*)$/i);
+    if (cipherMatch) {
+      hasValidLayers = true;
+      const content = cipherMatch[1].trim();
+      const tokens = content ? (content.includes(' ') || content.includes(',') ? content.split(/[\s,]+/) : content.split('')) : [];
+      const validTokens = tokens.filter(Boolean);
+      if (currentLayerNum === null) currentLayerNum = 7;
+      if (!layerMap.has(currentLayerNum)) layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
+      layerMap.get(currentLayerNum)!.cipher = validTokens;
+      expectingType = 'arabic';
+      continue;
+    }
+
+    // Check explicit arabic line: العربي: ...
+    const arabicMatch = line.match(/^(?:العربي|عربي|الأحرف|الاحرف|حروف|arabic|letters)\s*[:=]\s*(.*)$/i);
+    if (arabicMatch) {
+      hasValidLayers = true;
+      const content = arabicMatch[1].trim();
+      const tokens = content ? (content.includes(' ') || content.includes(',') ? content.split(/[\s,]+/) : content.split('')) : [];
+      const validTokens = tokens.filter(Boolean);
+      if (currentLayerNum === null) currentLayerNum = 7;
+      if (!layerMap.has(currentLayerNum)) layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
+      layerMap.get(currentLayerNum)!.arabic = validTokens;
+      expectingType = null;
+      continue;
+    }
+
+    // Implicit content line if directly below layer header
+    if (currentLayerNum !== null && expectingType) {
+      const tokens = line.includes(' ') || line.includes(',') ? line.split(/[\s,]+/) : line.split('');
+      const validTokens = tokens.filter(Boolean);
+      if (expectingType === 'cipher') {
+        layerMap.get(currentLayerNum)!.cipher = validTokens;
+        expectingType = 'arabic';
+      } else if (expectingType === 'arabic') {
+        layerMap.get(currentLayerNum)!.arabic = validTokens;
+        expectingType = null;
+      }
+    }
+  }
+
+  if (!hasValidLayers && layerMap.size === 0) return null;
+
+  // Build standard 7 layers
+  const allLayerNums = [7, 6, 5, 4, 3, 2, 1];
+  const resultLayers: LayerInfo[] = [];
+
+  for (const num of allLayerNums) {
+    const data = layerMap.get(num) || { cipher: [], arabic: [] };
+    const cipherSlots = Array.from(
+      { length: Math.max(9, data.cipher.length) },
+      (_, i) => (data.cipher[i] || '').trim()
+    );
+    const arabicSlots = Array.from(
+      { length: Math.max(4, data.arabic.length) },
+      (_, i) => (data.arabic[i] || '').trim()
+    );
+    resultLayers.push({
+      layer: num,
+      cipherLetters: cipherSlots,
+      arabicLetters: arabicSlots,
+      description: `الطبقة ${num}`,
+    });
+  }
+
+  return {
+    name: tableName,
+    layers: normalizeLayers(resultLayers),
+  };
+}
+
 function validateLayersStructure(candidate: unknown): candidate is LayerInfo[] {
   if (!Array.isArray(candidate) || candidate.length === 0) return false;
   return candidate.every(
@@ -288,7 +471,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [savedTables, setSavedTables] = useState<SavedCustomTable[]>(loadInitialSavedTables);
   const [savedArabicPresets, setSavedArabicPresets] = useState<SavedArabicPreset[]>(loadInitialArabicPresets);
   const [savedNooraniPresets, setSavedNooraniPresets] = useState<SavedNooraniPreset[]>(loadInitialNooraniPresets);
-  const [activeTableName, setActiveTableName] = useState<string | null>(null);
+  const [activeTableName, setActiveTableName] = useState<string | null>(BENCHMARK_TABLE_NAME);
   const [activeArabicPresetName, setActiveArabicPresetName] = useState<string | null>(null);
   const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
@@ -719,10 +902,10 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const resetToDefault = useCallback(() => {
     const defaults = JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS));
     setLayers(defaults);
-    setActiveTableName(null);
+    setActiveTableName(BENCHMARK_TABLE_NAME);
     setSelectedSlot(null);
     try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(defaults));
     } catch (e) {
       console.error(e);
     }
@@ -734,6 +917,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (preset) {
       setLayers(preset.createLayers());
       setActiveTableName(preset.name);
+      setActiveArabicPresetName(null);
+      setActiveNooraniPresetName(null);
       setSelectedSlot(null);
     }
   }, []);
@@ -941,12 +1126,63 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setSavedTables((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Delete all saved tables from browser library
+  const deleteAllSavedTables = useCallback(() => {
+    setSavedTables([]);
+    try {
+      localStorage.removeItem(SAVED_TABLES_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Restore initial optional presets into browser library
+  const restoreOptionalPresets = useCallback(() => {
+    const restored: SavedCustomTable[] = INITIAL_OPTIONAL_BROWSER_TABLES.map((t) => ({
+      id: `tbl_${Date.now()}_${t.id}`,
+      name: t.name,
+      description: t.description,
+      createdAt: Date.now(),
+      layers: normalizeLayers(t.layers),
+    }));
+
+    setSavedTables((prev) => {
+      const existingNames = new Set(prev.map((t) => t.name));
+      const toAdd = restored.filter((r) => !existingNames.has(r.name));
+      return [...prev, ...toAdd];
+    });
+  }, []);
+
   // Rename a saved table
   const updateSavedTableName = useCallback((id: string, name: string) => {
     setSavedTables((prev) =>
       prev.map((t) => (t.id === id ? { ...t, name: name.trim() || t.name } : t))
     );
   }, []);
+
+  // Update saved table (name, description, or update content with current layers)
+  const updateSavedTable = useCallback(
+    (
+      id: string,
+      updates: { name?: string; description?: string; updateWithCurrentLayers?: boolean }
+    ) => {
+      setSavedTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          return {
+            ...t,
+            name: updates.name !== undefined ? (updates.name.trim() || t.name) : t.name,
+            description: updates.description !== undefined ? updates.description.trim() : t.description,
+            layers: updates.updateWithCurrentLayers ? JSON.parse(JSON.stringify(layers)) : t.layers,
+          };
+        })
+      );
+      if (updates.name && activeTableName) {
+        setActiveTableName(updates.name.trim());
+      }
+    },
+    [layers, activeTableName]
+  );
 
   // Remove duplicates within the same row (Arabic or Cipher letters)
   const removeRowDuplicates = useCallback(() => {
@@ -1116,7 +1352,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 
   const deleteSavedArabicPreset = useCallback((id: string) => {
+  
     setSavedArabicPresets((prev) => prev.filter((p) => p.id !== id));
+  
+  }, []);
+  const updateSavedArabicPresetName = useCallback((id: string, name: string) => {
+    setSavedArabicPresets((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
   }, []);
 
   // Noorani distributions handlers
@@ -1182,7 +1423,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const saveCurrentNooraniPreset = useCallback(
     (name: string, description?: string): SavedNooraniPreset => {
-      const cleanName = name.trim() || `توزيعة أحرف نورانية ${new Date().toLocaleDateString('ar-EG')}`;
+      const cleanName = name.trim() || `توزيعة أحرف الشيفرة ${new Date().toLocaleDateString('ar-EG')}`;
       const newPreset: SavedNooraniPreset = {
         id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: cleanName,
@@ -1202,46 +1443,30 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 
   const deleteSavedNooraniPreset = useCallback((id: string) => {
+  
     setSavedNooraniPresets((prev) => prev.filter((p) => p.id !== id));
+  
+  }, []);
+  const updateSavedNooraniPresetName = useCallback((id: string, name: string) => {
+    setSavedNooraniPresets((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
   }, []);
 
-  // Export current full map (cipher letters + arabic letters) in a single unified JSON file
+  // Export current table with minimal parameters for easy manual editing
   const exportCurrentTableAsFile = useCallback(
     (customName?: string) => {
-      const targetName = customName || activeTableName || 'خريطة_شفرة_الفرقان_الكاملة';
+      const targetName = customName || activeTableName || BENCHMARK_TABLE_NAME;
 
-      const fullMapLayers = layers.map((l) => {
-        const activeCipherKeys = (l.cipherLetters || []).filter((c) => (c || '').trim());
-        const activeArabic = (l.arabicLetters || []).filter((a) => (a || '').trim());
-        const pairings = activeArabic.map((char) => ({
-          arabicLetter: char,
-          layer: l.layer,
-          cipherKeys: activeCipherKeys,
-        }));
-
-        return {
-          layer: l.layer,
-          description: l.description || `الطبقة ${l.layer}`,
-          cipherLetters: l.cipherLetters,
-          arabicLetters: l.arabicLetters,
-          activeCipherKeys,
-          pairings,
-        };
-      });
-
+      // Ultra-minimal JSON schema requested by user: easy to edit in any text editor
       const fileData = {
-        app: 'quran_seven_layers_cipher',
-        version: 2,
-        exportedAt: new Date().toISOString(),
-        tableName: targetName,
-        description: 'خريطة شفرة كاملة تجمع أحرف التشفير النورانية والأحرف العربية موزعة على الطبقات السبع',
-        fullMap: {
-          totalLayers: 7,
-          title: targetName,
-          exportedAt: new Date().toISOString(),
-          layers: fullMapLayers,
-        },
-        layers,
+        name: targetName,
+        layers: layers
+          .slice()
+          .sort((a, b) => b.layer - a.layer)
+          .map((l) => ({
+            layer: l.layer,
+            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
+            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+          })),
       };
 
       const safeFileName = targetName.replace(/[\/\\?%*:|"<>]/g, '_');
@@ -1250,18 +1475,21 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [activeTableName, layers]
   );
 
-  // Export a single saved table from library
+  // Export a single saved table from library in minimal format
   const exportSingleSavedTableAsFile = useCallback(
     (tableId: string) => {
       const target = savedTables.find((t) => t.id === tableId);
       if (!target) return;
       const fileData = {
-        app: 'quran_seven_layers_cipher',
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        tableName: target.name,
-        description: target.description,
-        layers: target.layers,
+        name: target.name,
+        layers: (target.layers || [])
+          .slice()
+          .sort((a, b) => b.layer - a.layer)
+          .map((l) => ({
+            layer: l.layer,
+            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
+            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+          })),
       };
       const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, '_');
       triggerJsonDownload(`${safeFileName}.json`, fileData);
@@ -1269,151 +1497,247 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [savedTables]
   );
 
-  // Export all saved tables as a full backup JSON file
+  // Export all saved tables as a minimal backup
   const exportAllSavedTablesAsFile = useCallback(() => {
     const fileData = {
-      app: 'quran_seven_layers_cipher',
-      version: 1,
-      type: 'backup_all_tables',
-      exportedAt: new Date().toISOString(),
-      totalTables: savedTables.length,
-      currentActiveLayers: layers,
-      tables: savedTables,
+      backupDate: new Date().toISOString().slice(0, 10),
+      tables: savedTables.map((t) => ({
+        name: t.name,
+        layers: (t.layers || [])
+          .slice()
+          .sort((a, b) => b.layer - a.layer)
+          .map((l) => ({
+            layer: l.layer,
+            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
+            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+          })),
+      })),
     };
     triggerJsonDownload(
-      `نسخة_احتياطية_لجداول_الطبقات_${new Date().toISOString().slice(0, 10)}.json`,
+      `نسخة_احتياطية_للمنظومات_${new Date().toISOString().slice(0, 10)}.json`,
       fileData
     );
-  }, [savedTables, layers]);
+  }, [savedTables]);
 
-  // Import JSON file with smart parsing (supports single table, list of tables, backup files, or fullMap)
-  const importTablesFromJson = useCallback((jsonStr: string): ImportResult => {
+  // Export current table as pure Arabic text file (each line on its own)
+  const exportCurrentTableAsTextFile = useCallback(
+    (customName?: string) => {
+      const targetName = customName || activeTableName || BENCHMARK_TABLE_NAME;
+      const textContent = serializeLayersToText(targetName, layers);
+      const safeFileName = targetName.replace(/[\/\\?%*:|"<>]/g, '_');
+      triggerTextDownload(`${safeFileName}.txt`, textContent);
+    },
+    [activeTableName, layers]
+  );
+
+  // Export a single saved table from library as pure Arabic text file
+  const exportSingleSavedTableAsTextFile = useCallback(
+    (tableId: string) => {
+      const target = savedTables.find((t) => t.id === tableId);
+      if (!target) return;
+      const textContent = serializeLayersToText(target.name, target.layers);
+      const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, '_');
+      triggerTextDownload(`${safeFileName}.txt`, textContent);
+    },
+    [savedTables]
+  );
+
+  // Serialize current table to pure Arabic text for inline editor
+  const serializeCurrentTableToText = useCallback(() => {
+    return serializeLayersToText(activeTableName || BENCHMARK_TABLE_NAME, layers);
+  }, [activeTableName, layers]);
+
+  // Apply table directly from pure Arabic text (used by inline text editor)
+  const applyTableFromText = useCallback((text: string): ImportResult => {
+    const parsed = parseLayersFromText(text);
+    if (!parsed || parsed.layers.length === 0) {
+      return {
+        success: false,
+        message: 'تعذر استخراج المنظومة من النص. تأكد من كتابة أرقام الطبقات والشيفرة والأحرف.',
+        importedCount: 0,
+        appliedDirectly: false,
+      };
+    }
+
+    setLayers(parsed.layers);
+    setActiveTableName(parsed.name);
+    setSelectedSlot(null);
+
+    const newSaved: SavedCustomTable = {
+      id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name: parsed.name,
+      description: 'تم تحريرها عبر المحرر النصي المباشر',
+      createdAt: Date.now(),
+      layers: parsed.layers,
+    };
+    setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== parsed.name)]);
+
+    return {
+      success: true,
+      message: `تم تطبيق المنظومة [${parsed.name}] بنجاح وحفظها في مكتبة المتصفح.`,
+      importedCount: 1,
+      appliedDirectly: true,
+    };
+  }, []);
+
+  // Import file with resilient parser (supports pure Arabic .txt line-by-line, minimal JSON, legacy formats, backups)
+  const importTablesFromJson = useCallback((jsonOrTextStr: string): ImportResult => {
+    // 1. Try parsing as pure Arabic line-by-line text first
+    const textParsed = parseLayersFromText(jsonOrTextStr);
+    if (textParsed && textParsed.layers.length > 0) {
+      setLayers(textParsed.layers);
+      setActiveTableName(textParsed.name);
+      setSelectedSlot(null);
+
+      const newSaved: SavedCustomTable = {
+        id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: textParsed.name,
+        description: 'منظومة مستوردة من ملف نصي',
+        createdAt: Date.now(),
+        layers: textParsed.layers,
+      };
+      setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== textParsed.name)]);
+
+      return {
+        success: true,
+        message: `تم استيراد المنظومة النصية [${textParsed.name}] بنجاح وحفظها في مكتبتك.`,
+        importedCount: 1,
+        appliedDirectly: true,
+      };
+    }
+
+    // 2. Fall back to JSON parsing
     try {
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonOrTextStr);
 
-      // Case 0: Full Map format with `fullMap.layers`
-      if (parsed && typeof parsed === 'object' && parsed.fullMap && validateLayersStructure(parsed.fullMap.layers)) {
-        const tableName = parsed.fullMap.title || parsed.tableName || `خريطة كاملة مستوردة ${new Date().toLocaleDateString('ar-EG')}`;
-        const importedLayers: LayerInfo[] = normalizeLayers(parsed.fullMap.layers);
+      const parseLayerItem = (item: any, defaultLayer: number): LayerInfo => {
+        const layerNum = typeof item?.layer === 'number' ? item.layer : defaultLayer;
 
-        setLayers(importedLayers);
+        // Parse cipher: space/comma separated or array or single string
+        let rawCipher: string[] = [];
+        if (typeof item?.cipher === 'string') {
+          const trimmed = item.cipher.trim();
+          if (trimmed.includes(' ') || trimmed.includes(',')) {
+            rawCipher = trimmed.split(/[\s,]+/).filter(Boolean);
+          } else {
+            rawCipher = trimmed.split('').filter((c: string) => !/\s/.test(c));
+          }
+        } else if (Array.isArray(item?.cipher)) {
+          rawCipher = item.cipher.map(String).filter((s: string) => s.trim());
+        } else if (Array.isArray(item?.cipherLetters)) {
+          rawCipher = item.cipherLetters.map(String).filter((s: string) => s.trim());
+        }
+
+        // Parse arabic: space/comma separated or array or single string
+        let rawArabic: string[] = [];
+        if (typeof item?.arabic === 'string') {
+          const trimmed = item.arabic.trim();
+          if (trimmed.includes(' ') || trimmed.includes(',')) {
+            rawArabic = trimmed.split(/[\s,]+/).filter(Boolean);
+          } else {
+            rawArabic = trimmed.split('').filter((c: string) => !/\s/.test(c));
+          }
+        } else if (Array.isArray(item?.arabic)) {
+          rawArabic = item.arabic.map(String).filter((s: string) => s.trim());
+        } else if (Array.isArray(item?.arabicLetters)) {
+          rawArabic = item.arabicLetters.map(String).filter((s: string) => s.trim());
+        }
+
+        const cipherSlots = Array.from(
+          { length: Math.max(9, rawCipher.length) },
+          (_, i) => (rawCipher[i] || '').trim()
+        );
+        const arabicSlots = Array.from(
+          { length: Math.max(4, rawArabic.length) },
+          (_, i) => (rawArabic[i] || '').trim()
+        );
+
+        return {
+          layer: layerNum,
+          cipherLetters: cipherSlots,
+          arabicLetters: arabicSlots,
+          description: item?.description || `الطبقة ${layerNum}`,
+        };
+      };
+
+      // Case 1: Single table minimal format { name, layers } or { fullMap } or array of layers
+      const rawLayers = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.layers)
+        ? parsed.layers
+        : Array.isArray(parsed?.fullMap?.layers)
+        ? parsed.fullMap.layers
+        : null;
+
+      if (rawLayers && rawLayers.length > 0) {
+        const tableName = (parsed?.name || parsed?.tableName || parsed?.fullMap?.title || 'منظومة مستوردة').trim();
+        const parsedLayers = normalizeLayers(
+          rawLayers.map((l: any, idx: number) => parseLayerItem(l, 7 - idx))
+        );
+
+        setLayers(parsedLayers);
         setActiveTableName(tableName);
         setSelectedSlot(null);
 
         const newSaved: SavedCustomTable = {
           id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           name: tableName,
-          description: parsed.description || 'خريطة كاملة مستوردة تتضمن أحرف التشفير والأحرف العربية',
+          description: parsed?.description || 'منظومة مستوردة من ملف خارجي',
           createdAt: Date.now(),
-          layers: importedLayers,
+          layers: parsedLayers,
         };
-        setSavedTables((prev) => [newSaved, ...prev]);
+        setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== tableName)]);
 
         return {
           success: true,
-          message: `تم استيراد الخريطة الكاملة [${tableName}] وتطبيق كافة أحرف التشفير والأحرف العربية بنجاح وحفظها في مكتبتك.`,
+          message: `تم استيراد المنظومة [${tableName}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
           importedCount: 1,
           appliedDirectly: true,
         };
       }
 
-      // Case 1: Backup format with `tables: SavedCustomTable[]`
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.tables)) {
+      // Case 2: Multi-table backup format { tables: [...] }
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
         const validTables: SavedCustomTable[] = [];
-        parsed.tables.forEach((item: unknown) => {
-          if (typeof item === 'object' && item !== null) {
-            const maybeTable = item as Partial<SavedCustomTable>;
-            if (validateLayersStructure(maybeTable.layers)) {
-              validTables.push({
-                id: maybeTable.id || `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                name: maybeTable.name?.trim() || `جدول مستورد ${validTables.length + 1}`,
-                description: maybeTable.description || '',
-                createdAt: maybeTable.createdAt || Date.now(),
-                layers: maybeTable.layers,
-              });
-            }
+        parsed.tables.forEach((item: any, idx: number) => {
+          const itemLayers = Array.isArray(item?.layers) ? item.layers : null;
+          if (itemLayers) {
+            const parsedL = normalizeLayers(
+              itemLayers.map((l: any, lIdx: number) => parseLayerItem(l, 7 - lIdx))
+            );
+            validTables.push({
+              id: item.id || `tbl_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+              name: item.name?.trim() || `منظومة مستوردة ${idx + 1}`,
+              description: item.description || '',
+              createdAt: item.createdAt || Date.now(),
+              layers: parsedL,
+            });
           }
         });
 
         if (validTables.length > 0) {
           setSavedTables((prev) => {
-            const existingIds = new Set(prev.map((t) => t.id));
-            const newOnes = validTables.map((vt) =>
-              existingIds.has(vt.id)
-                ? { ...vt, id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}` }
-                : vt
-            );
+            const existingNames = new Set(prev.map((t) => t.name));
+            const newOnes = validTables.filter((vt) => !existingNames.has(vt.name));
             return [...newOnes, ...prev];
           });
-
           const first = validTables[0];
-          setLayers(JSON.parse(JSON.stringify(first.layers)));
+          setLayers(first.layers);
           setActiveTableName(first.name);
           setSelectedSlot(null);
 
           return {
             success: true,
-            message: `تم استيراد ${validTables.length} جدول/جداول وحفظها في مكتبتك، وتطبيق [${first.name}] مباشرة.`,
+            message: `تم استيراد ${validTables.length} منظومة وحفظها في مكتبتك، وتطبيق [${first.name}] مباشرة.`,
             importedCount: validTables.length,
             appliedDirectly: true,
           };
         }
       }
 
-      // Case 2: Object with `layers: LayerInfo[]` (Single exported table)
-      if (parsed && typeof parsed === 'object' && validateLayersStructure(parsed.layers)) {
-        const tableName = parsed.tableName?.trim() || parsed.name?.trim() || `جدول مستورد ${new Date().toLocaleDateString('ar-EG')}`;
-        const importedLayers: LayerInfo[] = JSON.parse(JSON.stringify(parsed.layers));
-
-        setLayers(importedLayers);
-        setActiveTableName(tableName);
-        setSelectedSlot(null);
-
-        const newSaved: SavedCustomTable = {
-          id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: tableName,
-          description: parsed.description || 'تم استيراده من ملف JSON',
-          createdAt: Date.now(),
-          layers: importedLayers,
-        };
-        setSavedTables((prev) => [newSaved, ...prev]);
-
-        return {
-          success: true,
-          message: `تم استيراد الجدول [${tableName}] وتطبيقه بنجاح وحفظه في مكتبتك.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      }
-
-      // Case 3: Raw array of 7 layers `[ { layer: 1, ... }, ... ]`
-      if (validateLayersStructure(parsed)) {
-        const tableName = `جدول مستورد ${new Date().toLocaleDateString('ar-EG')}`;
-        const importedLayers: LayerInfo[] = JSON.parse(JSON.stringify(parsed));
-
-        setLayers(importedLayers);
-        setActiveTableName(tableName);
-        setSelectedSlot(null);
-
-        const newSaved: SavedCustomTable = {
-          id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: tableName,
-          createdAt: Date.now(),
-          layers: importedLayers,
-        };
-        setSavedTables((prev) => [newSaved, ...prev]);
-
-        return {
-          success: true,
-          message: `تم استيراد مصفوفة الطبقات السبع بنجاح وحفظها كـ [${tableName}].`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      }
-
       return {
         success: false,
-        message: 'الملف لا يحتوي على بنية طبقات سبع صالحة. يرجى التأكد من اختيار ملف جدول صالح.',
+        message: 'الملف لا يحتوي على بنية طبقات صالحة. يرجى التأكد من اختيار ملف منظومة صالح.',
         importedCount: 0,
         appliedDirectly: false,
       };
@@ -1483,21 +1807,30 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       saveCurrentTable,
       loadSavedTable,
       deleteSavedTable,
+      deleteAllSavedTables,
+      restoreOptionalPresets,
       updateSavedTableName,
+      updateSavedTable,
       exportCurrentTableAsFile,
+      exportCurrentTableAsTextFile,
       exportSingleSavedTableAsFile,
+      exportSingleSavedTableAsTextFile,
       exportAllSavedTablesAsFile,
       importTablesFromJson,
+      serializeCurrentTableToText,
+      applyTableFromText,
       savedArabicPresets,
       activeArabicPresetName,
       saveCurrentArabicPreset,
       applyArabicDistribution,
       deleteSavedArabicPreset,
+      updateSavedArabicPresetName,
       savedNooraniPresets,
       activeNooraniPresetName,
       saveCurrentNooraniPreset,
       applyNooraniDistribution,
       deleteSavedNooraniPreset,
+      updateSavedNooraniPresetName,
       removeRowDuplicates,
       columnDuplicatesSummary,
       addLayer,
@@ -1545,21 +1878,30 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       saveCurrentTable,
       loadSavedTable,
       deleteSavedTable,
+      deleteAllSavedTables,
+      restoreOptionalPresets,
       updateSavedTableName,
+      updateSavedTable,
       exportCurrentTableAsFile,
+      exportCurrentTableAsTextFile,
       exportSingleSavedTableAsFile,
+      exportSingleSavedTableAsTextFile,
       exportAllSavedTablesAsFile,
       importTablesFromJson,
+      serializeCurrentTableToText,
+      applyTableFromText,
       savedArabicPresets,
       activeArabicPresetName,
       saveCurrentArabicPreset,
       applyArabicDistribution,
       deleteSavedArabicPreset,
+      updateSavedArabicPresetName,
       savedNooraniPresets,
       activeNooraniPresetName,
       saveCurrentNooraniPreset,
       applyNooraniDistribution,
       deleteSavedNooraniPreset,
+      updateSavedNooraniPresetName,
       removeRowDuplicates,
       columnDuplicatesSummary,
       addLayer,
