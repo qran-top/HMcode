@@ -37,12 +37,13 @@ import {
   CheckCircle,
   BookmarkPlus,
   BookMarked,
-  ClipboardPaste
+  ClipboardPaste,
+  ArrowDownUp
 } from 'lucide-react';
 import { MultiSystemScanner } from './MultiSystemScanner';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import { SaveSystemModal } from './SaveSystemModal';
-import { getAllNooraniItems, getAllArabicItems, applyWawToCelestialLayers } from '../utils/multiSystemSearch';
+import { getAllNooraniItems, getAllArabicItems, applyWawToCelestialLayers, buildCrossLayersFromPair } from '../utils/multiSystemSearch';
 
 interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
@@ -82,15 +83,32 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   // Feature Options: Consider 'و' (Waw) in all cipher layers (افتراضياً مفعل)
   const [includeWawInAllLayers, setIncludeWawInAllLayers] = useState(true);
 
+  // Reverse / Inversion toggles for Sky and Earth selectors
+  const [isNooraniReversed, setIsNooraniReversed] = useState(false);
+  const [isArabicReversed, setIsArabicReversed] = useState(false);
+
   // Fast Sentence Translation Mode state
   const [fastTranslationMode, setFastTranslationMode] = useState(false);
   const [selectedWordCandidates, setSelectedWordCandidates] = useState<Record<number, string>>({});
 
-  // Dynamic layers including 'و' if feature option enabled strictly for celestial letters containing (ن، ق، ص)
+  // Dynamic layers applying reversal (if toggled) and optional Waw inclusion
   const effectiveLayers = useMemo(() => {
-    if (!includeWawInAllLayers) return layers;
-    return applyWawToCelestialLayers(layers);
-  }, [layers, includeWawInAllLayers]);
+    let currentLayers = layers;
+    if (isNooraniReversed || isArabicReversed) {
+      currentLayers = layers.map((layer) => {
+        const matchingLayerNum = 8 - layer.layer;
+        const nooraniLayer = isNooraniReversed ? layers.find((l) => l.layer === matchingLayerNum) : layer;
+        const arabicLayer = isArabicReversed ? layers.find((l) => l.layer === matchingLayerNum) : layer;
+        return {
+          ...layer,
+          cipherLetters: nooraniLayer ? [...nooraniLayer.cipherLetters] : [...layer.cipherLetters],
+          arabicLetters: arabicLayer ? [...arabicLayer.arabicLetters] : [...layer.arabicLetters],
+        };
+      });
+    }
+    if (!includeWawInAllLayers) return currentLayers;
+    return applyWawToCelestialLayers(currentLayers);
+  }, [layers, isNooraniReversed, isArabicReversed, includeWawInAllLayers]);
   
   // Persistent Search History
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
@@ -690,6 +708,19 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={() => setIsNooraniReversed(!isNooraniReversed)}
+                className={`p-1.5 rounded-lg border text-2xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                  isNooraniReversed
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                    : 'bg-white dark:bg-stone-800 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+                }`}
+                title={isNooraniReversed ? 'عكس طبقات السماء مفعل (من الطبقة 1 إلى 7)' : 'انقر لعكس طبقات السماء (من الطبقة 1 إلى 7)'}
+              >
+                <ArrowDownUp className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-3xs">{isNooraniReversed ? 'معكوس' : 'عكس'}</span>
+              </button>
             </div>
 
             {/* Earth Table Selector (أرض - اللون الكهرماني / البرتقالي الموحد للتشفير والأرض) */}
@@ -711,6 +742,19 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={() => setIsArabicReversed(!isArabicReversed)}
+                className={`p-1.5 rounded-lg border text-2xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                  isArabicReversed
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
+                    : 'bg-white dark:bg-stone-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                }`}
+                title={isArabicReversed ? 'عكس طبقات الأرض مفعل (من الطبقة 1 إلى 7)' : 'انقر لعكس طبقات الأرض (من الطبقة 1 إلى 7)'}
+              >
+                <ArrowDownUp className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-3xs">{isArabicReversed ? 'معكوس' : 'عكس'}</span>
+              </button>
             </div>
           </div>
 

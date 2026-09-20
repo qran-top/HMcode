@@ -1433,13 +1433,23 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
           });
         } else {
-          const sp = savedArabicPresets.find((s) => s.id === presetOrId);
+          const sp = savedArabicPresets.find((s) => s.id === presetOrId || s.name === presetOrId);
           if (sp) {
             presetName = sp.name;
             targetLettersMap = {};
             sp.arabicLayers.forEach((al) => {
               targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
             });
+          } else {
+            // Check in savedTables
+            const customMatch = savedTables.find((st) => `custom_table_arabic_${st.id}` === presetOrId || st.arabicOrderName === presetOrId);
+            if (customMatch && customMatch.arabicOrderName) {
+              presetName = customMatch.arabicOrderName;
+              targetLettersMap = {};
+              customMatch.layers.forEach((l) => {
+                targetLettersMap![l.layer] = [...(l.arabicLetters || ['', '', '', ''])] as [string, string, string, string];
+              });
+            }
           }
         }
       } else if ('arabicLayers' in presetOrId) {
@@ -1464,7 +1474,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSelectedSlot(null);
       }
     },
-    [savedArabicPresets]
+    [savedArabicPresets, savedTables]
   );
 
   const saveCurrentArabicPreset = useCallback(
@@ -1514,7 +1524,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             };
           });
         } else {
-          const sn = savedNooraniPresets.find((s) => s.id === presetOrId);
+          const sn = savedNooraniPresets.find((s) => s.id === presetOrId || s.name === presetOrId);
           if (sn) {
             presetName = sn.name;
             targetCipherMap = {};
@@ -1524,6 +1534,19 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 description: nl.description,
               };
             });
+          } else {
+            // Check in savedTables
+            const customMatch = savedTables.find((st) => `custom_table_noorani_${st.id}` === presetOrId || st.nooraniOrderName === presetOrId);
+            if (customMatch && customMatch.nooraniOrderName) {
+              presetName = customMatch.nooraniOrderName;
+              targetCipherMap = {};
+              customMatch.layers.forEach((l) => {
+                targetCipherMap![l.layer] = {
+                  ciphers: createNineCipherSlotsFromList(l.cipherLetters || []),
+                  description: l.description,
+                };
+              });
+            }
           }
         }
       } else if ('nooraniLayers' in presetOrId) {
@@ -1554,7 +1577,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSelectedSlot(null);
       }
     },
-    [savedNooraniPresets]
+    [savedNooraniPresets, savedTables]
   );
 
   const saveCurrentNooraniPreset = useCallback(
