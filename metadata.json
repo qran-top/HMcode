@@ -1,0 +1,8 @@
+{
+  "name": "التشفير العربي",
+  "description": "برنامج تفاعلي لتشفير وفك تشفير النصوص العربية وفق نظام الطبقات السبع المتناظرة، مع استخراج كافة الاحتمالات وفحص المفردات القرآنية والمعجمية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
