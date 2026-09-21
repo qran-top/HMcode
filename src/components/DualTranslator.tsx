@@ -37,6 +37,8 @@ import {
   CheckCircle,
   BookmarkPlus,
   BookMarked,
+  Share2,
+  ShareCheck,
   ClipboardPaste,
   ArrowDownUp
 } from 'lucide-react';
@@ -165,6 +167,105 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       localStorage.removeItem(STORAGE_KEY_HISTORY);
     } catch {
       // ignore
+    }
+  };
+
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+
+  // Initialize state from URL params on mount if present
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const textParam = params.get('q') || params.get('text');
+      const skyParam = params.get('sky') || params.get('noorani');
+      const earthParam = params.get('earth') || params.get('arabic');
+      const skyRevParam = params.get('skyRev');
+      const earthRevParam = params.get('earthRev');
+      const scannerParam = params.get('scanner');
+      const wawParam = params.get('waw');
+      const viewParam = params.get('view');
+
+      if (textParam) {
+        setInputText(textParam);
+        setSubmittedText(textParam);
+      }
+      if (skyParam) {
+        applyNooraniDistribution(skyParam);
+      }
+      if (earthParam) {
+        applyArabicDistribution(earthParam);
+      }
+      if (skyRevParam !== null) {
+        setIsNooraniReversed(skyRevParam === '1' || skyRevParam === 'true');
+      }
+      if (earthRevParam !== null) {
+        setIsArabicReversed(earthRevParam === '1' || earthRevParam === 'true');
+      }
+      if (wawParam !== null) {
+        setIncludeWawInAllLayers(wawParam === '1' || wawParam === 'true');
+      }
+      if (scannerParam === '1' || scannerParam === 'true') {
+        setShowMultiSystemScanner(true);
+      }
+      if (viewParam && (viewParam === 'both' || viewParam === 'decrypt' || viewParam === 'encrypt')) {
+        setViewMode(viewParam as 'both' | 'decrypt' | 'encrypt');
+      }
+    } catch {
+      // ignore URL parsing errors
+    }
+  }, []);
+
+  // Copy full configuration URL to share with friends
+  const handleCopyShareLink = () => {
+    try {
+      const url = new URL(window.location.href);
+      const text = inputText.trim() || submittedText.trim();
+      if (text) {
+        url.searchParams.set('q', text);
+      } else {
+        url.searchParams.delete('q');
+      }
+
+      if (selectedNooraniId) {
+        url.searchParams.set('sky', selectedNooraniId);
+      }
+      if (selectedArabicId) {
+        url.searchParams.set('earth', selectedArabicId);
+      }
+      if (isNooraniReversed) {
+        url.searchParams.set('skyRev', '1');
+      } else {
+        url.searchParams.delete('skyRev');
+      }
+      if (isArabicReversed) {
+        url.searchParams.set('earthRev', '1');
+      } else {
+        url.searchParams.delete('earthRev');
+      }
+      if (!includeWawInAllLayers) {
+        url.searchParams.set('waw', '0');
+      } else {
+        url.searchParams.delete('waw');
+      }
+      if (showMultiSystemScanner) {
+        url.searchParams.set('scanner', '1');
+      } else {
+        url.searchParams.delete('scanner');
+      }
+      if (viewMode !== 'both') {
+        url.searchParams.set('view', viewMode);
+      } else {
+        url.searchParams.delete('view');
+      }
+
+      // Update current URL quietly without reloads
+      window.history.replaceState({}, '', url.toString());
+
+      navigator.clipboard.writeText(url.toString());
+      setCopiedShareLink(true);
+      setTimeout(() => setCopiedShareLink(false), 2500);
+    } catch (err) {
+      console.warn('Share link copy error:', err);
     }
   };
 
@@ -761,6 +862,30 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           {/* Quick Actions & Rainbow Indicators */}
           <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 shrink-0 flex-wrap">
             <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers.length > 0 ? activeLayersNumbers : [1, 2, 3, 4, 5, 6, 7]} />
+
+            {/* Share Configuration Link Button */}
+            <button
+              type="button"
+              onClick={handleCopyShareLink}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
+                copiedShareLink
+                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                  : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border-indigo-200 dark:border-indigo-800'
+              }`}
+              title="نسخ رابط مباشر ينقل جميع إعدادات الشاشة الحالية (السماء، الأرض، خيارات العكس، الكلمة، والبحث الشامل) لأصدقائك"
+            >
+              {copiedShareLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>تم نسخ الرابط! ✓</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>مشاركة الرابط</span>
+                </>
+              )}
+            </button>
 
             {/* Save Current System to Notebook */}
             <button
