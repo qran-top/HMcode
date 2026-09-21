@@ -92,6 +92,23 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   const [fastTranslationMode, setFastTranslationMode] = useState(false);
   const [selectedWordCandidates, setSelectedWordCandidates] = useState<Record<number, string>>({});
 
+  // Dictionary loaded counts for reactive re-evaluations
+  const [dictCount, setDictCount] = useState<number>(arabicDictionary.getWordCount());
+  const [quranicCount, setQuranicCount] = useState<number>(quranicDictionary.getWordCount());
+
+  useEffect(() => {
+    const unsubDict = arabicDictionary.subscribe((_prog, _done, count) => {
+      setDictCount(count || arabicDictionary.getWordCount());
+    });
+    const unsubQuranic = quranicDictionary.subscribe((_loaded, count) => {
+      setQuranicCount(count || quranicDictionary.getWordCount());
+    });
+    return () => {
+      unsubDict();
+      unsubQuranic();
+    };
+  }, []);
+
   // Dynamic layers applying reversal (if toggled) and optional Waw inclusion
   const effectiveLayers = useMemo(() => {
     let currentLayers = layers;
@@ -436,7 +453,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
     }
     return list;
-  }, [processedEncCombinations]);
+  }, [processedEncCombinations, quranicCount]);
 
   // Nearest Quranic vocabulary matches for encryption combinations
   const encNearestQuranicMatches = useMemo(() => {
@@ -456,7 +473,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
     }
     return list.sort((a, b) => b.nearest.similarity - a.nearest.similarity).slice(0, 10);
-  }, [processedEncCombinations, encQuranicMatches]);
+  }, [processedEncCombinations, encQuranicMatches, quranicCount]);
 
   // Confirmed Arabic dictionary matches for encryption combinations
   const encArabicDictionaryMatches = useMemo(() => {
@@ -470,7 +487,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
     }
     return list;
-  }, [processedEncCombinations, encQuranicMatches]);
+  }, [processedEncCombinations, encQuranicMatches, dictCount]);
 
   // Noorani openings / segmentation for the primary cipher output
   const encCipherSegmentation = useMemo(() => {
@@ -665,7 +682,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
         candidates: candidatesList,
       };
     });
-  }, [fastTranslationMode, sentenceWords, effectiveLayers]);
+  }, [fastTranslationMode, sentenceWords, effectiveLayers, quranicCount]);
 
   // Assembled full sentence
   const assembledSentence = useMemo(() => {
@@ -734,7 +751,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
     }
     return list;
-  }, [rawCombinations]);
+  }, [rawCombinations, quranicCount]);
 
   // Find confirmed Arabic dictionary matches (excluding duplicates from quranic list)
   const arabicDictionaryMatches = useMemo(() => {
@@ -754,7 +771,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
     }
     return list;
-  }, [rawCombinations, quranicMatches]);
+  }, [rawCombinations, quranicMatches, dictCount]);
 
   // Filtered list of permutations for researcher view
   const filteredPermutations = useMemo(() => {
@@ -1016,7 +1033,11 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleEnterKey();
+                  if (e.ctrlKey || e.metaKey) {
+                    handleComprehensiveSearchClick();
+                  } else {
+                    handleEnterKey();
+                  }
                 }
               }}
               placeholder="اكتب كلمة عربية أو شفرة (طسم، كهيعص، بقرة)..."
@@ -1087,7 +1108,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                 ? 'bg-emerald-700 dark:bg-emerald-600 text-white ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
                 : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
             }`}
-            title="بحث وفحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية"
+            title="بحث وفحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية (Ctrl + Enter)"
           >
             <Layers className="w-3.5 h-3.5" />
             <span>البحث الشامل</span>
@@ -1146,7 +1167,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
 
             {/* Unified Waw Option & Quick Filter */}
             <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto shrink-0">
-              <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
+              <label
+                className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
+              >
                 <input
                   type="checkbox"
                   checked={includeWawInAllLayers}
@@ -1154,7 +1178,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
                 />
                 <span className={`font-bold transition-colors text-2xs ${includeWawInAllLayers ? 'text-indigo-800 dark:text-indigo-300' : 'text-stone-600 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-stone-200'}`}>
-                  اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)
+                  اعتبار (و) سماوياً
                 </span>
                 {includeWawInAllLayers && (
                   <span className="px-1.5 py-0.2 rounded-full text-3xs font-extrabold bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300/60">
@@ -1180,7 +1204,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
             <span className="text-3xs text-stone-400 dark:text-stone-500">
               اكتب كلمة في مربع البحث لعرض التوجيه الذكي ومسار التشفير
             </span>
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
+            <label
+              className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+              title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
+            >
               <input
                 type="checkbox"
                 checked={includeWawInAllLayers}
@@ -1188,7 +1215,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                 className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
               />
               <span className={`font-bold transition-colors text-2xs ${includeWawInAllLayers ? 'text-indigo-800 dark:text-indigo-300' : 'text-stone-600 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-stone-200'}`}>
-                اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)
+                اعتبار (و) سماوياً
               </span>
             </label>
           </div>
