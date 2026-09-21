@@ -1357,16 +1357,16 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           </div>
 
           {/* Quick Legend for Fast Translation (المفتاح) */}
-          <div className="flex items-center gap-3 flex-wrap text-2xs p-2.5 rounded-xl bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400">
-            <span className="font-extrabold text-stone-700 dark:text-stone-300 shrink-0">المفتاح:</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold">
-              <span>خلفية زرقاء: فك تشفير</span>
+          <div className="flex items-center gap-1.5 flex-wrap text-3xs p-1.5 px-2 rounded-lg bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400">
+            <span className="font-extrabold text-stone-700 dark:text-stone-300 shrink-0 text-3xs me-0.5">المفتاح:</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-3xs">
+              <span>فك تشفير</span>
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
-              <span>خلفية برتقالية: تشفير</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-3xs">
+              <span>تشفير</span>
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold">
-              <span>خلفية رمادية: أصلية</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-3xs">
+              <span>أصلية</span>
             </span>
           </div>
 

@@ -547,32 +547,32 @@ export function MultiSystemScanner({
       </div>
 
       {/* Symbol Legend (مفتاح الدلالات) */}
-      <div className="flex items-center gap-3 flex-wrap text-2xs p-2.5 rounded-xl bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300">
-        <span className="font-extrabold text-stone-800 dark:text-stone-200 shrink-0">المفتاح:</span>
+      <div className="flex items-center gap-1.5 flex-wrap text-3xs p-1.5 px-2 rounded-lg bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800/80 text-stone-600 dark:text-stone-300">
+        <span className="font-extrabold text-stone-800 dark:text-stone-200 shrink-0 text-3xs me-0.5">المفتاح:</span>
 
         {/* تمييز الإطارات: قرآني ومعجمي */}
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border-2 border-emerald-500 dark:border-emerald-400 font-bold text-emerald-800 dark:text-emerald-300">
-          <span>إطار أخضر: كلمة قرآنية</span>
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border-2 border-emerald-500 dark:border-emerald-400 font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/30 text-3xs">
+          <span>قرآنية</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 font-bold text-stone-700 dark:text-stone-300">
-          <span>إطار رمادي: كلمة معجمية</span>
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-300 dark:border-stone-700 font-bold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 text-3xs">
+          <span>معجمية</span>
         </span>
 
         {/* خلفيات الكلمات: فك تشفير وتشفير وأصلية */}
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold">
-          <span>خلفية زرقاء: فك تشفير</span>
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-3xs">
+          <span>فك تشفير</span>
         </span>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
-          <span>خلفية برتقالية: تشفير</span>
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-3xs">
+          <span>تشفير</span>
         </span>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold">
-          <span>خلفية رمادية: أصلية</span>
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-3xs">
+          <span>أصلية</span>
         </span>
 
         {/* رمز المعكوس */}
-        <span className="inline-flex items-center gap-1 font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60">
+        <span className="inline-flex items-center gap-1 font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60 text-3xs">
           <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
-          <span>رمز 🔄: كلمة معكوسة</span>
+          <span>معكوسة</span>
         </span>
       </div>
 
