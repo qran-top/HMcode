@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { QuranicWordMeta, QuranicNearestMatch, getQuranTopSearchUrl, getArabicDictSearchUrl } from '../utils/quranicDictionary';
+import React, { useState, useMemo } from 'react';
+import { QuranicWordMeta, QuranicNearestMatch, getQuranTopSearchUrl, getQuranTopWordUrl, getArabicDictSearchUrl } from '../utils/quranicDictionary';
 import { BookOpen, Sparkles, Loader2, RefreshCcw, Check, ExternalLink, Search, Repeat, ArrowLeftRight, Filter } from 'lucide-react';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import {
@@ -13,6 +13,7 @@ import {
   MirrorSymmetryBadge,
 } from './AdvancedAnalysisBadges';
 import { useCipherLayers } from '../context/CipherLayersContext';
+import { LayerInfo } from '../cipherData';
 
 interface ResultsSummaryBoxProps {
   exactQuranicList: { combo: string; meta: QuranicWordMeta; isReversed?: boolean; original?: string }[];
@@ -26,6 +27,7 @@ interface ResultsSummaryBoxProps {
   totalCombinations?: number;
   mode?: 'encryption' | 'decryption';
   searchedWord?: string;
+  layers?: LayerInfo[];
 }
 
 export function ResultsSummaryBox({
@@ -40,8 +42,11 @@ export function ResultsSummaryBox({
   totalCombinations,
   mode = 'decryption',
   searchedWord = '',
+  layers: passedLayers,
 }: ResultsSummaryBoxProps) {
-  const { layers } = useCipherLayers();
+  const { layers: contextLayers } = useCipherLayers();
+  const layers = passedLayers || contextLayers;
+  const isDecryption = mode === 'decryption';
   const [copiedWord, setCopiedWord] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'pure_noorani' | 'closed_loop' | 'mirror_twin'>('all');
 
@@ -129,19 +134,31 @@ export function ResultsSummaryBox({
   return (
     <div
       id="meaningful-accepted-results-box"
-      className="bg-white dark:bg-stone-900 rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/60 shadow-xs p-3.5 sm:p-4 transition-all"
+      className={`bg-white dark:bg-stone-900 rounded-2xl border-2 ${
+        isDecryption
+          ? 'border-indigo-300/80 dark:border-indigo-700/60'
+          : 'border-amber-300/80 dark:border-amber-700/60'
+      } shadow-xs p-3.5 sm:p-4 transition-all`}
     >
       {/* Header with Title and Badges */}
       <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-stone-100 dark:border-stone-800 flex-wrap">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+          <div className={`w-7 h-7 rounded-lg ${
+            isDecryption
+              ? 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+              : 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400'
+          } flex items-center justify-center font-bold`}>
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <span>النتائج المفهومة والمقبولة والتطابق القرآني</span>
               {hasResults && (
-                <span className="text-xs font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 px-2 py-0.5 rounded-full">
+                <span className={`text-xs font-bold ${
+                  isDecryption
+                    ? 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700/60'
+                    : 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60'
+                } px-2 py-0.5 rounded-full`}>
                   {totalMeaningful > 0 ? `${totalMeaningful.toLocaleString('ar-EG')} كلمة مطابقة` : `${topNearest.length} مفردة مقاربة`}
                 </span>
               )}

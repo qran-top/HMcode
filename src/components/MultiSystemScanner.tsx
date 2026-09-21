@@ -26,6 +26,7 @@ import {
 
 interface MultiSystemScannerProps {
   initialQuery?: string;
+  scanTrigger?: number;
   onApplySystem?: (layers: any[], name: string) => void;
   onApplySystemPair?: (
     nooraniId: string,
@@ -42,6 +43,7 @@ interface MultiSystemScannerProps {
 
 export function MultiSystemScanner({
   initialQuery = '',
+  scanTrigger,
   onApplySystem,
   onApplySystemPair,
   onClose,
@@ -226,13 +228,13 @@ export function MultiSystemScanner({
   useEffect(() => {
     const target = (initialQuery || queryText).trim();
     const effectiveWaw = typeof includeWawInCelestial === 'boolean' ? includeWawInCelestial : includeWaw;
-    const scanKey = `${target}::${effectiveWaw}`;
-    if (target && scanKey !== lastScannedKeyRef.current) {
+    const scanKey = `${target}::${effectiveWaw}::${scanTrigger || ''}`;
+    if (target && (scanKey !== lastScannedKeyRef.current || scanTrigger)) {
       lastScannedKeyRef.current = scanKey;
       setQueryText(target);
       runScan(target, effectiveWaw);
     }
-  }, [initialQuery, includeWawInCelestial, includeWaw, runScan]);
+  }, [initialQuery, includeWawInCelestial, includeWaw, scanTrigger, runScan]);
 
   // Filtered and Sorted Results
   const filteredAndSortedResults = useMemo(() => {

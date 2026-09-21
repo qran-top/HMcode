@@ -38,7 +38,6 @@ import {
   BookmarkPlus,
   BookMarked,
   Share2,
-  ShareCheck,
   ClipboardPaste,
   ArrowDownUp
 } from 'lucide-react';
@@ -283,6 +282,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   };
 
   const [showSaveCurrentSystemModal, setShowSaveCurrentSystemModal] = useState(false);
+  const [multiScannerTrigger, setMultiScannerTrigger] = useState(0);
 
   const handleNormalSearchClick = () => {
     // Automatically close comprehensive scanner unconditionally when clicking normal search button
@@ -294,23 +294,25 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     }
   };
 
+  const handleComprehensiveSearchClick = () => {
+    const targetText = inputText.trim() || submittedText.trim();
+    if (targetText) {
+      setSubmittedText(targetText);
+      setInputText(targetText);
+      addToHistory(targetText);
+    }
+    setMultiScannerTrigger(Date.now());
+    setShowMultiSystemScanner(true);
+  };
+
   const handleEnterKey = () => {
     const trimmed = inputText.trim() || submittedText.trim();
     if (!trimmed) return;
 
-    // If input changed, update submittedText, run normal search and close multi system scanner
-    if (trimmed !== submittedText || showMultiSystemScanner) {
-      if (showMultiSystemScanner) {
-        setShowMultiSystemScanner(false);
-      } else {
-        // First Enter: run normal search
-        setSubmittedText(trimmed);
-        addToHistory(trimmed);
-      }
-    } else {
-      // Second Enter with same text and scanner closed: open comprehensive Multi-System Scanner
-      setShowMultiSystemScanner(true);
-    }
+    // Normal search on Enter: close scanner immediately and execute normal search
+    setShowMultiSystemScanner(false);
+    setSubmittedText(trimmed);
+    addToHistory(trimmed);
   };
 
   const handleGenerate = handleNormalSearchClick;
@@ -1048,29 +1050,24 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
             onClick={handleGenerate}
             disabled={!showMultiSystemScanner && !inputText.trim() && !submittedText.trim()}
             className="p-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white transition-all shadow-2xs flex items-center justify-center cursor-pointer shrink-0"
-            title={showMultiSystemScanner ? 'إغلاق البحث الشامل والعودة للبحث العادي' : 'بحث وفحص النص في المنظومة الحالية'}
+            title="بحث وفحص النص في المنظومة الحالية"
           >
             <Search className="w-4 h-4" />
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setShowMultiSystemScanner(!showMultiSystemScanner);
-              if (!submittedText && inputText) {
-                setSubmittedText(inputText.trim());
-              }
-            }}
+            onClick={handleComprehensiveSearchClick}
+            disabled={!inputText.trim() && !submittedText.trim()}
             className={`px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               showMultiSystemScanner
-                ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 border border-stone-700'
+                ? 'bg-emerald-700 dark:bg-emerald-600 text-white ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
                 : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
             }`}
-            title="بحث وفحص شامل عبر كافة المنظومات الـ 50+ مع مؤشر تقدم وإلغاء فوري"
+            title="بحث وفحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{showMultiSystemScanner ? 'إغلاق البحث الشامل' : 'البحث الشامل'}</span>
-            <span className="sm:hidden">{showMultiSystemScanner ? 'إغلاق' : 'البحث الشامل'}</span>
+            <span>البحث الشامل</span>
           </button>
         </div>
 
@@ -1179,6 +1176,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           <div className="pt-2">
             <MultiSystemScanner
               initialQuery={submittedText || inputText}
+              scanTrigger={multiScannerTrigger}
               includeWawInCelestial={includeWawInAllLayers}
               onToggleIncludeWaw={(val) => setIncludeWawInAllLayers(val)}
               onApplySystemPair={(nooraniId, arabicId, nooraniRev, arabicRev) => {
