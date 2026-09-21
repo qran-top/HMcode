@@ -1433,7 +1433,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
           });
         } else {
-          const sp = savedArabicPresets.find((s) => s.id === presetOrId || s.name === presetOrId);
+          const sp = savedArabicPresets.find(
+            (s) => s.id === presetOrId || `saved_arabic_${s.id}` === presetOrId || s.name === presetOrId
+          );
           if (sp) {
             presetName = sp.name;
             targetLettersMap = {};
@@ -1524,7 +1526,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             };
           });
         } else {
-          const sn = savedNooraniPresets.find((s) => s.id === presetOrId || s.name === presetOrId);
+          const sn = savedNooraniPresets.find(
+            (s) => s.id === presetOrId || `saved_noorani_${s.id}` === presetOrId || s.name === presetOrId
+          );
           if (sn) {
             presetName = sn.name;
             targetCipherMap = {};
