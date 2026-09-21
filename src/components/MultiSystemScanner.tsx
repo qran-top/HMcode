@@ -27,6 +27,14 @@ import {
 interface MultiSystemScannerProps {
   initialQuery?: string;
   onApplySystem?: (layers: any[], name: string) => void;
+  onApplySystemPair?: (
+    nooraniId: string,
+    arabicId: string,
+    isNooraniReversed: boolean,
+    isArabicReversed: boolean,
+    layers: any[],
+    name: string
+  ) => void;
   onClose?: () => void;
   includeWawInCelestial?: boolean;
   onToggleIncludeWaw?: (val: boolean) => void;
@@ -35,6 +43,7 @@ interface MultiSystemScannerProps {
 export function MultiSystemScanner({
   initialQuery = '',
   onApplySystem,
+  onApplySystemPair,
   onClose,
   includeWawInCelestial = true,
   onToggleIncludeWaw,
@@ -73,16 +82,25 @@ export function MultiSystemScanner({
 
   const isCancelledRef = useRef(false);
 
-  const handleApplyCustomLayers = (layers: any[], name: string, id: string, e?: React.MouseEvent) => {
+  const handleApplyCustomLayers = (match: CrossDecipherMatch, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (onApplySystem) {
-      onApplySystem(layers, name);
+    if (onApplySystemPair && match.nooraniId && match.arabicId) {
+      onApplySystemPair(
+        match.nooraniId,
+        match.arabicId,
+        Boolean(match.isNooraniReversed),
+        Boolean(match.isArabicReversed),
+        match.layers,
+        match.label
+      );
+    } else if (onApplySystem) {
+      onApplySystem(match.layers, match.label);
     } else {
-      importLayersJson(JSON.stringify(layers));
-      setActiveTableName(name);
+      importLayersJson(JSON.stringify(match.layers));
+      setActiveTableName(match.label);
     }
-    setAppliedSystemId(id);
-    setAppliedSystemName(name);
+    setAppliedSystemId(match.id);
+    setAppliedSystemName(match.label);
     setTimeout(() => {
       setAppliedSystemId(null);
     }, 3500);
@@ -110,6 +128,10 @@ export function MultiSystemScanner({
       secondaryName?: string;
       nooraniSourceLabel?: string;
       arabicSourceLabel?: string;
+      nooraniId: string;
+      arabicId: string;
+      isNooraniReversed: boolean;
+      isArabicReversed: boolean;
       type: 'cross_hybrid' | 'cross_reversed';
       id: string;
     }[] = [];
@@ -125,6 +147,10 @@ export function MultiSystemScanner({
           secondaryName: `أرض ${arabic.index}: ${arabic.name}`,
           nooraniSourceLabel: `سماء ${noorani.index}: ${noorani.name}`,
           arabicSourceLabel: `أرض ${arabic.index}: ${arabic.name}`,
+          nooraniId: noorani.id,
+          arabicId: arabic.id,
+          isNooraniReversed: false,
+          isArabicReversed: false,
           type: 'cross_hybrid',
           id: `cross_${noorani.id}_${arabic.id}_norm${useWaw ? '_waw' : ''}`,
         });
@@ -139,6 +165,10 @@ export function MultiSystemScanner({
           secondaryName: `معكوس أرض ${arabic.index}: ${arabic.name}`,
           nooraniSourceLabel: `سماء ${noorani.index}: ${noorani.name}`,
           arabicSourceLabel: `أرض ${arabic.index}: ${arabic.name} (معكوس)`,
+          nooraniId: noorani.id,
+          arabicId: arabic.id,
+          isNooraniReversed: false,
+          isArabicReversed: true,
           type: 'cross_reversed',
           id: `cross_${noorani.id}_${arabic.id}_rev${useWaw ? '_waw' : ''}`,
         });
@@ -163,7 +193,11 @@ export function MultiSystemScanner({
         t.arabicSourceLabel,
         t.type,
         trimmed,
-        t.id
+        t.id,
+        t.nooraniId,
+        t.arabicId,
+        t.isNooraniReversed,
+        t.isArabicReversed
       );
 
       if (match) {
@@ -568,7 +602,7 @@ export function MultiSystemScanner({
           return (
             <div
               key={match.id}
-              onClick={(e) => handleApplyCustomLayers(match.layers, match.label, match.id, e)}
+              onClick={(e) => handleApplyCustomLayers(match, e)}
               className={`group rounded-2xl border transition-all cursor-pointer p-3 space-y-2 ${
                 isApplied
                   ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20 shadow-md'
@@ -624,7 +658,7 @@ export function MultiSystemScanner({
                   {/* Apply / Activate Button */}
                   <button
                     type="button"
-                    onClick={(e) => handleApplyCustomLayers(match.layers, match.label, match.id, e)}
+                    onClick={(e) => handleApplyCustomLayers(match, e)}
                     className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                       isApplied
                         ? 'bg-emerald-600 text-white shadow-xs'

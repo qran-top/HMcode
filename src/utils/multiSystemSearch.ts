@@ -551,6 +551,10 @@ export function analyzeSystemForSearch(system: SystemDefinition, rawInput: strin
 
 export interface CrossDecipherMatch {
   id: string;
+  nooraniId?: string;
+  arabicId?: string;
+  isNooraniReversed?: boolean;
+  isArabicReversed?: boolean;
   primarySystemName: string;
   secondarySystemName?: string;
   nooraniSourceLabel?: string;
@@ -634,7 +638,11 @@ export function analyzeLayersForCrossDecipher(
   arabicSourceLabel: string | undefined,
   type: 'single_reversed' | 'cross_hybrid' | 'cross_reversed',
   rawInput: string,
-  id: string
+  id: string,
+  nooraniId?: string,
+  arabicId?: string,
+  isNooraniReversed?: boolean,
+  isArabicReversed?: boolean
 ): CrossDecipherMatch | null {
   const cleaned = cleanText(rawInput).trim();
   if (!cleaned) return null;
@@ -749,6 +757,10 @@ export function analyzeLayersForCrossDecipher(
 
   return {
     id,
+    nooraniId,
+    arabicId,
+    isNooraniReversed,
+    isArabicReversed,
     primarySystemName: primaryName,
     secondarySystemName: secondaryName,
     nooraniSourceLabel,

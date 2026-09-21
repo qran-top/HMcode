@@ -1054,6 +1054,12 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               initialQuery={submittedText || inputText}
               includeWawInCelestial={includeWawInAllLayers}
               onToggleIncludeWaw={(val) => setIncludeWawInAllLayers(val)}
+              onApplySystemPair={(nooraniId, arabicId, nooraniRev, arabicRev) => {
+                applyNooraniDistribution(nooraniId);
+                applyArabicDistribution(arabicId);
+                setIsNooraniReversed(nooraniRev);
+                setIsArabicReversed(arabicRev);
+              }}
               onClose={() => setShowMultiSystemScanner(false)}
             />
           </div>
