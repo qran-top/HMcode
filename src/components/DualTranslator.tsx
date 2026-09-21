@@ -39,7 +39,8 @@ import {
   BookMarked,
   Share2,
   ClipboardPaste,
-  ArrowDownUp
+  ArrowDownUp,
+  Loader2
 } from 'lucide-react';
 import { MultiSystemScanner } from './MultiSystemScanner';
 import { AddToNotebookButton } from './AddToNotebookButton';
@@ -92,13 +93,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   const [fastTranslationMode, setFastTranslationMode] = useState(false);
   const [selectedWordCandidates, setSelectedWordCandidates] = useState<Record<number, string>>({});
 
-  // Dictionary loaded counts for reactive re-evaluations
+  // Dictionary loaded counts & background loading state for reactive re-evaluations
   const [dictCount, setDictCount] = useState<number>(arabicDictionary.getWordCount());
+  const [dictLoading, setDictLoading] = useState<boolean>(arabicDictionary.isLoading());
+  const [dictProgress, setDictProgress] = useState<number>(arabicDictionary.getProgress());
   const [quranicCount, setQuranicCount] = useState<number>(quranicDictionary.getWordCount());
 
   useEffect(() => {
-    const unsubDict = arabicDictionary.subscribe((_prog, _done, count) => {
+    const unsubDict = arabicDictionary.subscribe((prog, done, count) => {
       setDictCount(count || arabicDictionary.getWordCount());
+      setDictProgress(prog);
+      setDictLoading(!done || prog < 100);
     });
     const unsubQuranic = quranicDictionary.subscribe((_loaded, count) => {
       setQuranicCount(count || quranicDictionary.getWordCount());
@@ -1163,6 +1168,15 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   )}
                 </span>
               </span>
+              {dictLoading && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-100/90 dark:bg-indigo-950/90 border border-indigo-300/80 dark:border-indigo-700/80 text-indigo-900 dark:text-indigo-200 text-3xs font-extrabold animate-pulse"
+                  title="جاري معالجة وتدقيق المعجم العربي الشامل خلف الكواليس"
+                >
+                  <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>تحميل المعجم... ({dictProgress}%)</span>
+                </span>
+              )}
             </div>
 
             {/* Unified Waw Option & Quick Filter */}
@@ -1575,9 +1589,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               {/* Priority 2: Confirmed Arabic Lexicon Matches (خلفية نيلية فك تشفير وإطار رمادي معجمي) */}
               {arabicDictionaryMatches.length > 0 && (
                 <div className="space-y-1.5 pt-1 border-t border-stone-100 dark:border-stone-800">
-                  <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>الكلمات المعجمية ({arabicDictionaryMatches.length})</span>
+                  <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>الكلمات المعجمية ({arabicDictionaryMatches.length})</span>
+                    </div>
+                    {dictLoading && (
+                      <span className="inline-flex items-center gap-1 text-3xs font-semibold text-indigo-600 dark:text-indigo-400 animate-pulse me-1">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
+                        <span>جاري فحص باقي المعجم ({dictProgress}%)...</span>
+                      </span>
+                    )}
                   </h4>
                   <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
                     {arabicDictionaryMatches.slice(0, 60).map((item, idx) => (
@@ -1616,6 +1638,20 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                         />
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {arabicDictionaryMatches.length === 0 && dictLoading && (
+                <div className="pt-1 border-t border-stone-100 dark:border-stone-800">
+                  <div className="p-2 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-2xs text-indigo-900 dark:text-indigo-200 font-bold animate-pulse">
+                    <div className="flex items-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span>جاري تحميل المعجم العربي الشامل واكتشاف الكلمات المعجمية...</span>
+                    </div>
+                    <span className="text-3xs bg-indigo-200/60 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded-full font-black">
+                      {dictProgress}%
+                    </span>
                   </div>
                 </div>
               )}
@@ -1914,9 +1950,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   {/* Priority 3: Confirmed Arabic Lexicon Matches (خلفية كهرمانية تشفير وإطار رمادي معجمي) */}
                   {encArabicDictionaryMatches.length > 0 && (
                     <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
-                      <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>الكلمات المعجمية ({encArabicDictionaryMatches.length})</span>
+                      <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>الكلمات المعجمية ({encArabicDictionaryMatches.length})</span>
+                        </div>
+                        {dictLoading && (
+                          <span className="inline-flex items-center gap-1 text-3xs font-semibold text-amber-600 dark:text-amber-400 animate-pulse me-1">
+                            <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
+                            <span>جاري فحص باقي المعجم ({dictProgress}%)...</span>
+                          </span>
+                        )}
                       </h4>
                       <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
                         {encArabicDictionaryMatches.map((item, idx) => (
@@ -1955,6 +1999,20 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                             />
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {encArabicDictionaryMatches.length === 0 && dictLoading && (
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <div className="p-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 flex items-center justify-between gap-2 text-2xs text-amber-900 dark:text-amber-200 font-bold animate-pulse">
+                        <div className="flex items-center gap-1.5">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>جاري تحميل المعجم العربي الشامل واكتشاف الكلمات المعجمية...</span>
+                        </div>
+                        <span className="text-3xs bg-amber-200/60 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-full font-black">
+                          {dictProgress}%
+                        </span>
                       </div>
                     </div>
                   )}

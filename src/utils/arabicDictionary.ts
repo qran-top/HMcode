@@ -38,6 +38,10 @@ class DictionaryService {
     }
   }
 
+  isLoading(): boolean {
+    return this.loading;
+  }
+
   subscribe(listener: (progress: number, done: boolean, count: number) => void) {
     this.listeners.push(listener);
     listener(this.loadProgress, this.loaded, this.wordSet.size);
@@ -57,6 +61,9 @@ class DictionaryService {
     // If we already loaded a large set (> 100,000 words), we're done
     if (this.wordSet.size > 100000) return;
     this.loading = true;
+    this.loaded = false;
+    this.loadProgress = 0;
+    this.notify();
 
     try {
       // Build candidate URLs to be resilient against varying base paths and hosting environments
