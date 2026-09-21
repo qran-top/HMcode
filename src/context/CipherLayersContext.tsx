@@ -1428,8 +1428,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const cleanInput = presetOrId.trim();
         const numIndex = parseInt(cleanInput, 10);
 
-        if (ARABIC_PRESETS[cleanInput]) {
-          const p = ARABIC_PRESETS[cleanInput];
+        const matchedStandard = Object.values(ARABIC_PRESETS).find(
+          (p) => p.id === cleanInput || p.name === cleanInput || p.badge === cleanInput
+        );
+
+        if (ARABIC_PRESETS[cleanInput] || matchedStandard) {
+          const p = ARABIC_PRESETS[cleanInput] || matchedStandard!;
           presetName = p.name;
           targetLettersMap = {};
           p.arabicLayers.forEach((al) => {
@@ -1556,8 +1560,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const cleanInput = presetOrId.trim();
         const numIndex = parseInt(cleanInput, 10);
 
-        if (NOORANI_PRESETS[cleanInput]) {
-          const p = NOORANI_PRESETS[cleanInput];
+        const matchedStandard = Object.values(NOORANI_PRESETS).find(
+          (p) => p.id === cleanInput || p.name === cleanInput || p.badge === cleanInput
+        );
+
+        if (NOORANI_PRESETS[cleanInput] || matchedStandard) {
+          const p = NOORANI_PRESETS[cleanInput] || matchedStandard!;
           presetName = p.name;
           targetCipherMap = {};
           p.nooraniLayers.forEach((nl) => {

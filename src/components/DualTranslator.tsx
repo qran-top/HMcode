@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useNotebook } from '../context/NotebookContext';
-import { PRESET_TABLES, cleanText, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord } from '../cipherData';
+import { PRESET_TABLES, cleanText, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS } from '../cipherData';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
 import { 
@@ -178,8 +178,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       const textParam = params.get('q') || params.get('text');
       const skyParam = params.get('s') || params.get('sky') || params.get('noorani');
       const earthParam = params.get('e') || params.get('earth') || params.get('arabic');
-      const skyRevParam = params.get('skyRev');
-      const earthRevParam = params.get('earthRev');
+      const skyRevParam = params.get('skyRev') || params.get('sr');
+      const earthRevParam = params.get('earthRev') || params.get('er');
       const scannerParam = params.get('scan') || params.get('scanner') || params.get('all');
       const wawParam = params.get('w') || params.get('waw');
       const viewParam = params.get('v') || params.get('view');
@@ -190,21 +190,36 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       }
 
       if (skyParam) {
-        const isRev =
-          skyParam.toLowerCase().endsWith('r') ||
-          skyRevParam === '1' ||
-          skyRevParam === 'true';
-        const cleanSky = skyParam.replace(/r$/i, '').trim();
+        let isRev = skyRevParam === '1' || skyRevParam === 'true';
+        let cleanSky = skyParam.trim();
+        // Fallback for legacy 'r' suffix if skyRevParam wasn't explicitly supplied
+        if (
+          !skyRevParam &&
+          cleanSky.length > 1 &&
+          cleanSky.toLowerCase().endsWith('r') &&
+          !NOORANI_PRESETS[cleanSky] &&
+          !Object.values(NOORANI_PRESETS).some((p) => p.id === cleanSky || p.name === cleanSky)
+        ) {
+          isRev = true;
+          cleanSky = cleanSky.slice(0, -1).trim();
+        }
         applyNooraniDistribution(cleanSky);
         setIsNooraniReversed(isRev);
       }
 
       if (earthParam) {
-        const isRev =
-          earthParam.toLowerCase().endsWith('r') ||
-          earthRevParam === '1' ||
-          earthRevParam === 'true';
-        const cleanEarth = earthParam.replace(/r$/i, '').trim();
+        let isRev = earthRevParam === '1' || earthRevParam === 'true';
+        let cleanEarth = earthParam.trim();
+        if (
+          !earthRevParam &&
+          cleanEarth.length > 1 &&
+          cleanEarth.toLowerCase().endsWith('r') &&
+          !ARABIC_PRESETS[cleanEarth] &&
+          !Object.values(ARABIC_PRESETS).some((p) => p.id === cleanEarth || p.name === cleanEarth)
+        ) {
+          isRev = true;
+          cleanEarth = cleanEarth.slice(0, -1).trim();
+        }
         applyArabicDistribution(cleanEarth);
         setIsArabicReversed(isRev);
       }
@@ -238,36 +253,44 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
         url.searchParams.set('q', text);
       }
 
-      // Sky (سماء) parameter: index or custom letters, with 'r' suffix if reversed
-      if (currentNooraniItem && currentNooraniItem.index) {
-        const sVal = `${currentNooraniItem.index}${isNooraniReversed ? 'r' : ''}`;
-        url.searchParams.set('s', sVal);
+      // Sky (سماء) parameter: preset ID or custom layer sequence
+      if (currentNooraniItem && currentNooraniItem.id) {
+        url.searchParams.set('s', currentNooraniItem.id);
       } else if (selectedNooraniId) {
-        const customCipherSeq = layers.map((l) => l.cipherLetters.join('')).join('-');
-        const sVal = customCipherSeq ? `${customCipherSeq}${isNooraniReversed ? 'r' : ''}` : selectedNooraniId;
-        url.searchParams.set('s', sVal);
+        url.searchParams.set('s', selectedNooraniId);
+      } else {
+        const customCipherSeq = layers.map((l) => (l.cipherLetters || []).filter(Boolean).join('')).join('-');
+        if (customCipherSeq) {
+          url.searchParams.set('s', customCipherSeq);
+        }
       }
 
-      // Earth (أرض) parameter: index or custom letters, with 'r' suffix if reversed
-      if (currentArabicItem && currentArabicItem.index) {
-        const eVal = `${currentArabicItem.index}${isArabicReversed ? 'r' : ''}`;
-        url.searchParams.set('e', eVal);
+      // Earth (أرض) parameter: preset ID or custom layer sequence
+      if (currentArabicItem && currentArabicItem.id) {
+        url.searchParams.set('e', currentArabicItem.id);
       } else if (selectedArabicId) {
-        const customArabicSeq = layers.map((l) => (l.arabicLetters || []).join('')).join('');
-        const eVal = customArabicSeq ? `${customArabicSeq}${isArabicReversed ? 'r' : ''}` : selectedArabicId;
-        url.searchParams.set('e', eVal);
+        url.searchParams.set('e', selectedArabicId);
+      } else {
+        const customArabicSeq = layers.map((l) => (l.arabicLetters || []).filter(Boolean).join('')).join('-');
+        if (customArabicSeq) {
+          url.searchParams.set('e', customArabicSeq);
+        }
       }
+
+      // Explicit flags for reversals
+      url.searchParams.set('sr', isNooraniReversed ? '1' : '0');
+      url.searchParams.set('er', isArabicReversed ? '1' : '0');
 
       if (showMultiSystemScanner) {
         url.searchParams.set('scan', '1');
       }
-      if (!includeWawInAllLayers) {
-        url.searchParams.set('w', '0');
-      }
+      url.searchParams.set('w', includeWawInAllLayers ? '1' : '0');
       if (viewMode === 'decrypt') {
         url.searchParams.set('v', 'd');
       } else if (viewMode === 'encrypt') {
         url.searchParams.set('v', 'e');
+      } else {
+        url.searchParams.set('v', 'b');
       }
 
       // Update current URL quietly without reloads
