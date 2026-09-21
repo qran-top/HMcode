@@ -1425,16 +1425,41 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       let presetName = '';
 
       if (typeof presetOrId === 'string') {
-        if (ARABIC_PRESETS[presetOrId]) {
-          const p = ARABIC_PRESETS[presetOrId];
+        const cleanInput = presetOrId.trim();
+        const numIndex = parseInt(cleanInput, 10);
+
+        if (ARABIC_PRESETS[cleanInput]) {
+          const p = ARABIC_PRESETS[cleanInput];
           presetName = p.name;
           targetLettersMap = {};
           p.arabicLayers.forEach((al) => {
             targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
           });
+        } else if (!isNaN(numIndex) && String(numIndex) === cleanInput) {
+          // Numeric index matching (1-based index among presets)
+          const allStandardPresets = Object.values(ARABIC_PRESETS);
+          if (numIndex >= 1 && numIndex <= allStandardPresets.length) {
+            const p = allStandardPresets[numIndex - 1];
+            presetName = p.name;
+            targetLettersMap = {};
+            p.arabicLayers.forEach((al) => {
+              targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+            });
+          } else {
+            // Check saved presets
+            const savedIdx = numIndex - allStandardPresets.length - 1;
+            if (savedIdx >= 0 && savedIdx < savedArabicPresets.length) {
+              const sp = savedArabicPresets[savedIdx];
+              presetName = sp.name;
+              targetLettersMap = {};
+              sp.arabicLayers.forEach((al) => {
+                targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+              });
+            }
+          }
         } else {
           const sp = savedArabicPresets.find(
-            (s) => s.id === presetOrId || `saved_arabic_${s.id}` === presetOrId || s.name === presetOrId
+            (s) => s.id === cleanInput || `saved_arabic_${s.id}` === cleanInput || s.name === cleanInput
           );
           if (sp) {
             presetName = sp.name;
@@ -1444,13 +1469,26 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             });
           } else {
             // Check in savedTables
-            const customMatch = savedTables.find((st) => `custom_table_arabic_${st.id}` === presetOrId || st.arabicOrderName === presetOrId);
+            const customMatch = savedTables.find((st) => `custom_table_arabic_${st.id}` === cleanInput || st.arabicOrderName === cleanInput);
             if (customMatch && customMatch.arabicOrderName) {
               presetName = customMatch.arabicOrderName;
               targetLettersMap = {};
               customMatch.layers.forEach((l) => {
                 targetLettersMap![l.layer] = [...(l.arabicLetters || ['', '', '', ''])] as [string, string, string, string];
               });
+            } else {
+              // Check if raw Arabic letters sequence was passed (e.g. 28 letters or hyphenated)
+              const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
+              if (rawChars.length >= 14) {
+                targetLettersMap = {};
+                for (let layerNum = 7; layerNum >= 1; layerNum--) {
+                  const start = (7 - layerNum) * 4;
+                  const slice = rawChars.slice(start, start + 4);
+                  while (slice.length < 4) slice.push('');
+                  targetLettersMap[layerNum] = slice as [string, string, string, string];
+                }
+                presetName = `أرض مخصصة (${rawChars.slice(0, 2).join('')}..${rawChars.slice(-2).join('')})`;
+              }
             }
           }
         }
@@ -1515,8 +1553,11 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       let presetName = '';
 
       if (typeof presetOrId === 'string') {
-        if (NOORANI_PRESETS[presetOrId]) {
-          const p = NOORANI_PRESETS[presetOrId];
+        const cleanInput = presetOrId.trim();
+        const numIndex = parseInt(cleanInput, 10);
+
+        if (NOORANI_PRESETS[cleanInput]) {
+          const p = NOORANI_PRESETS[cleanInput];
           presetName = p.name;
           targetCipherMap = {};
           p.nooraniLayers.forEach((nl) => {
@@ -1525,9 +1566,37 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               description: nl.description,
             };
           });
+        } else if (!isNaN(numIndex) && String(numIndex) === cleanInput) {
+          // Numeric index matching (1-based index among presets)
+          const allStandardPresets = Object.values(NOORANI_PRESETS);
+          if (numIndex >= 1 && numIndex <= allStandardPresets.length) {
+            const p = allStandardPresets[numIndex - 1];
+            presetName = p.name;
+            targetCipherMap = {};
+            p.nooraniLayers.forEach((nl) => {
+              targetCipherMap![nl.layer] = {
+                ciphers: createNineCipherSlotsFromList(nl.cipherLetters),
+                description: nl.description,
+              };
+            });
+          } else {
+            // Check saved presets
+            const savedIdx = numIndex - allStandardPresets.length - 1;
+            if (savedIdx >= 0 && savedIdx < savedNooraniPresets.length) {
+              const sn = savedNooraniPresets[savedIdx];
+              presetName = sn.name;
+              targetCipherMap = {};
+              sn.nooraniLayers.forEach((nl) => {
+                targetCipherMap![nl.layer] = {
+                  ciphers: createNineCipherSlotsFromList(nl.cipherLetters),
+                  description: nl.description,
+                };
+              });
+            }
+          }
         } else {
           const sn = savedNooraniPresets.find(
-            (s) => s.id === presetOrId || `saved_noorani_${s.id}` === presetOrId || s.name === presetOrId
+            (s) => s.id === cleanInput || `saved_noorani_${s.id}` === cleanInput || s.name === cleanInput
           );
           if (sn) {
             presetName = sn.name;
@@ -1540,7 +1609,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             });
           } else {
             // Check in savedTables
-            const customMatch = savedTables.find((st) => `custom_table_noorani_${st.id}` === presetOrId || st.nooraniOrderName === presetOrId);
+            const customMatch = savedTables.find((st) => `custom_table_noorani_${st.id}` === cleanInput || st.nooraniOrderName === cleanInput);
             if (customMatch && customMatch.nooraniOrderName) {
               presetName = customMatch.nooraniOrderName;
               targetCipherMap = {};
@@ -1550,6 +1619,30 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   description: l.description,
                 };
               });
+            } else {
+              // Check if hyphenated or raw Arabic sequence was passed
+              if (cleanInput.includes('-') || cleanInput.replace(/[^ء-ي]/g, '').length >= 7) {
+                let parts: string[][] = [];
+                if (cleanInput.includes('-')) {
+                  parts = cleanInput.split('-').map((p) => p.replace(/[^ء-ي]/g, '').split(''));
+                } else {
+                  const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
+                  const perLayer = rawChars.length >= 28 ? 4 : 2;
+                  for (let i = 0; i < 7; i++) {
+                    parts.push(rawChars.slice(i * perLayer, (i + 1) * perLayer));
+                  }
+                }
+                targetCipherMap = {};
+                for (let layerNum = 7; layerNum >= 1; layerNum--) {
+                  const layerIdx = 7 - layerNum;
+                  const ciphers = parts[layerIdx] || [];
+                  targetCipherMap[layerNum] = {
+                    ciphers: createNineCipherSlotsFromList(ciphers),
+                    description: `سماء ${layerNum}: ${ciphers.join(' ')}`,
+                  };
+                }
+                presetName = `سماء مخصصة`;
+              }
             }
           }
         }

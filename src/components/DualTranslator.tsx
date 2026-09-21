@@ -177,85 +177,98 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     try {
       const params = new URLSearchParams(window.location.search);
       const textParam = params.get('q') || params.get('text');
-      const skyParam = params.get('sky') || params.get('noorani');
-      const earthParam = params.get('earth') || params.get('arabic');
+      const skyParam = params.get('s') || params.get('sky') || params.get('noorani');
+      const earthParam = params.get('e') || params.get('earth') || params.get('arabic');
       const skyRevParam = params.get('skyRev');
       const earthRevParam = params.get('earthRev');
-      const scannerParam = params.get('scanner');
-      const wawParam = params.get('waw');
-      const viewParam = params.get('view');
+      const scannerParam = params.get('scan') || params.get('scanner') || params.get('all');
+      const wawParam = params.get('w') || params.get('waw');
+      const viewParam = params.get('v') || params.get('view');
 
       if (textParam) {
         setInputText(textParam);
         setSubmittedText(textParam);
       }
+
       if (skyParam) {
-        applyNooraniDistribution(skyParam);
+        const isRev =
+          skyParam.toLowerCase().endsWith('r') ||
+          skyRevParam === '1' ||
+          skyRevParam === 'true';
+        const cleanSky = skyParam.replace(/r$/i, '').trim();
+        applyNooraniDistribution(cleanSky);
+        setIsNooraniReversed(isRev);
       }
+
       if (earthParam) {
-        applyArabicDistribution(earthParam);
+        const isRev =
+          earthParam.toLowerCase().endsWith('r') ||
+          earthRevParam === '1' ||
+          earthRevParam === 'true';
+        const cleanEarth = earthParam.replace(/r$/i, '').trim();
+        applyArabicDistribution(cleanEarth);
+        setIsArabicReversed(isRev);
       }
-      if (skyRevParam !== null) {
-        setIsNooraniReversed(skyRevParam === '1' || skyRevParam === 'true');
-      }
-      if (earthRevParam !== null) {
-        setIsArabicReversed(earthRevParam === '1' || earthRevParam === 'true');
-      }
+
       if (wawParam !== null) {
-        setIncludeWawInAllLayers(wawParam === '1' || wawParam === 'true');
+        setIncludeWawInAllLayers(wawParam !== '0' && wawParam !== 'false');
       }
       if (scannerParam === '1' || scannerParam === 'true') {
         setShowMultiSystemScanner(true);
       }
-      if (viewParam && (viewParam === 'both' || viewParam === 'decrypt' || viewParam === 'encrypt')) {
-        setViewMode(viewParam as 'both' | 'decrypt' | 'encrypt');
+      if (viewParam) {
+        if (viewParam === 'd' || viewParam === 'decrypt') {
+          setViewMode('decrypt');
+        } else if (viewParam === 'e' || viewParam === 'encrypt') {
+          setViewMode('encrypt');
+        } else if (viewParam === 'b' || viewParam === 'both') {
+          setViewMode('both');
+        }
       }
     } catch {
       // ignore URL parsing errors
     }
   }, []);
 
-  // Copy full configuration URL to share with friends
+  // Copy concise configuration URL to share with friends
   const handleCopyShareLink = () => {
     try {
-      const url = new URL(window.location.href);
+      const url = new URL(window.location.origin + window.location.pathname);
       const text = inputText.trim() || submittedText.trim();
       if (text) {
         url.searchParams.set('q', text);
-      } else {
-        url.searchParams.delete('q');
       }
 
-      if (selectedNooraniId) {
-        url.searchParams.set('sky', selectedNooraniId);
+      // Sky (سماء) parameter: index or custom letters, with 'r' suffix if reversed
+      if (currentNooraniItem && currentNooraniItem.index) {
+        const sVal = `${currentNooraniItem.index}${isNooraniReversed ? 'r' : ''}`;
+        url.searchParams.set('s', sVal);
+      } else if (selectedNooraniId) {
+        const customCipherSeq = layers.map((l) => l.cipherLetters.join('')).join('-');
+        const sVal = customCipherSeq ? `${customCipherSeq}${isNooraniReversed ? 'r' : ''}` : selectedNooraniId;
+        url.searchParams.set('s', sVal);
       }
-      if (selectedArabicId) {
-        url.searchParams.set('earth', selectedArabicId);
+
+      // Earth (أرض) parameter: index or custom letters, with 'r' suffix if reversed
+      if (currentArabicItem && currentArabicItem.index) {
+        const eVal = `${currentArabicItem.index}${isArabicReversed ? 'r' : ''}`;
+        url.searchParams.set('e', eVal);
+      } else if (selectedArabicId) {
+        const customArabicSeq = layers.map((l) => (l.arabicLetters || []).join('')).join('');
+        const eVal = customArabicSeq ? `${customArabicSeq}${isArabicReversed ? 'r' : ''}` : selectedArabicId;
+        url.searchParams.set('e', eVal);
       }
-      if (isNooraniReversed) {
-        url.searchParams.set('skyRev', '1');
-      } else {
-        url.searchParams.delete('skyRev');
-      }
-      if (isArabicReversed) {
-        url.searchParams.set('earthRev', '1');
-      } else {
-        url.searchParams.delete('earthRev');
+
+      if (showMultiSystemScanner) {
+        url.searchParams.set('scan', '1');
       }
       if (!includeWawInAllLayers) {
-        url.searchParams.set('waw', '0');
-      } else {
-        url.searchParams.delete('waw');
+        url.searchParams.set('w', '0');
       }
-      if (showMultiSystemScanner) {
-        url.searchParams.set('scanner', '1');
-      } else {
-        url.searchParams.delete('scanner');
-      }
-      if (viewMode !== 'both') {
-        url.searchParams.set('view', viewMode);
-      } else {
-        url.searchParams.delete('view');
+      if (viewMode === 'decrypt') {
+        url.searchParams.set('v', 'd');
+      } else if (viewMode === 'encrypt') {
+        url.searchParams.set('v', 'e');
       }
 
       // Update current URL quietly without reloads
