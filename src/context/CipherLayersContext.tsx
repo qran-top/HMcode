@@ -1482,16 +1482,66 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               });
             } else {
               // Check if raw Arabic letters sequence was passed (e.g. 28 letters or hyphenated)
-              const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
-              if (rawChars.length >= 14) {
-                targetLettersMap = {};
-                for (let layerNum = 7; layerNum >= 1; layerNum--) {
-                  const start = (7 - layerNum) * 4;
-                  const slice = rawChars.slice(start, start + 4);
-                  while (slice.length < 4) slice.push('');
-                  targetLettersMap[layerNum] = slice as [string, string, string, string];
+              if (cleanInput.includes('-') || cleanInput.replace(/[^ء-ي]/g, '').length >= 14) {
+                let parts: string[][] = [];
+                if (cleanInput.includes('-')) {
+                  parts = cleanInput.split('-').map((p) => p.replace(/[^ء-ي]/g, '').split(''));
+                } else {
+                  const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
+                  for (let i = 0; i < 7; i++) {
+                    parts.push(rawChars.slice(i * 4, (i + 1) * 4));
+                  }
                 }
-                presetName = `أرض مخصصة (${rawChars.slice(0, 2).join('')}..${rawChars.slice(-2).join('')})`;
+
+                if (parts.length > 0 && parts.some((p) => p.length > 0)) {
+                  targetLettersMap = {};
+                  for (let layerNum = 7; layerNum >= 1; layerNum--) {
+                    const layerIdx = 7 - layerNum;
+                    const slice = [...(parts[layerIdx] || [])];
+                    while (slice.length < 4) slice.push('');
+                    targetLettersMap[layerNum] = slice as [string, string, string, string];
+                  }
+
+                  // Check if this custom sequence matches an existing savedArabicPreset
+                  const existingSaved = savedArabicPresets.find((sp) => {
+                    return sp.arabicLayers.every((al) => {
+                      const layerIdx = 7 - al.layer;
+                      const expected = (parts[layerIdx] || []).join('');
+                      const actual = (al.letters || []).filter(Boolean).join('');
+                      return expected === actual;
+                    });
+                  });
+
+                  if (existingSaved) {
+                    presetName = existingSaved.name;
+                  } else {
+                    // Only auto-save the first custom imported code to prevent library accumulation
+                    const importedCount = savedArabicPresets.filter((sp) => sp.id.startsWith('ar_imported_')).length;
+                    if (importedCount === 0) {
+                      const importedName = `أرض مخصصة #1`;
+                      const newPreset: SavedArabicPreset = {
+                        id: `ar_imported_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                        name: importedName,
+                        description: `استيراد تلقائي من رابط المشاركة`,
+                        createdAt: Date.now(),
+                        arabicLayers: [7, 6, 5, 4, 3, 2, 1].map((layerNum) => {
+                          const layerIdx = 7 - layerNum;
+                          const letters = [...(parts[layerIdx] || [])];
+                          while (letters.length < 4) letters.push('');
+                          return {
+                            layer: layerNum,
+                            letters: letters,
+                          };
+                        }),
+                      };
+                      setSavedArabicPresets((prev) => [newPreset, ...prev]);
+                      presetName = importedName;
+                    } else {
+                      // Apply on screen for current session without cluttering permanent library
+                      presetName = `أرض مخصصة (غير محفوظة)`;
+                    }
+                  }
+                }
               }
             }
           }
@@ -1649,7 +1699,46 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     description: `سماء ${layerNum}: ${ciphers.join(' ')}`,
                   };
                 }
-                presetName = `سماء مخصصة`;
+
+                // Check if this custom sequence matches an existing savedNooraniPreset
+                const existingSaved = savedNooraniPresets.find((sp) => {
+                  return sp.nooraniLayers.every((nl) => {
+                    const layerIdx = 7 - nl.layer;
+                    const expected = (parts[layerIdx] || []).join('');
+                    const actual = (nl.cipherLetters || []).filter(Boolean).join('');
+                    return expected === actual;
+                  });
+                });
+
+                if (existingSaved) {
+                  presetName = existingSaved.name;
+                } else {
+                  // Only auto-save the first custom imported code to prevent library accumulation
+                  const importedCount = savedNooraniPresets.filter((sp) => sp.id.startsWith('noor_imported_')).length;
+                  if (importedCount === 0) {
+                    const importedName = `سماء مخصصة #1`;
+                    const newPreset: SavedNooraniPreset = {
+                      id: `noor_imported_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                      name: importedName,
+                      description: `استيراد تلقائي من رابط المشاركة`,
+                      createdAt: Date.now(),
+                      nooraniLayers: [7, 6, 5, 4, 3, 2, 1].map((layerNum) => {
+                        const layerIdx = 7 - layerNum;
+                        const ciphers = parts[layerIdx] || [];
+                        return {
+                          layer: layerNum,
+                          cipherLetters: ciphers,
+                          description: `سماء ${layerNum}: ${ciphers.join(' ')}`,
+                        };
+                      }),
+                    };
+                    setSavedNooraniPresets((prev) => [newPreset, ...prev]);
+                    presetName = importedName;
+                  } else {
+                    // Apply on screen for current session without cluttering permanent library
+                    presetName = `سماء مخصصة (غير محفوظة)`;
+                  }
+                }
               }
             }
           }

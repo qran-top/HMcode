@@ -94,6 +94,10 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenInstructions={() => setActiveLegalModal('instructions')}
+        onGoHome={() => {
+          setActiveTab('dual');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* Main Container */}

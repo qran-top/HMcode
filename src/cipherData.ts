@@ -412,6 +412,43 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
   },
 };
 
+// Short alias maps for ultra-compact URL sharing
+export const PRESET_SHORT_MAP: Record<string, string> = {
+  // Noorani (Sky)
+  noorani_an: 'nan',
+  noorani_kn: 'nkn',
+  noorani_nr: 'nnr',
+  noorani_nr_alt: 'nnra',
+  // Arabic (Earth)
+  arabic_ehsa_i: 'ae1',
+  arabic_alphabetical: 'aal',
+  arabic_abjad_sheen: 'aas',
+  arabic_abjad_ghain: 'aag',
+  arabic_sowti: 'aso',
+  arabic_noorani: 'ano',
+  arabic_al_togh: 'aat',
+  arabic_sar_zaza: 'asz',
+  arabic_mar_daza: 'amd',
+  arabic_zal_dagh: 'azd',
+};
+
+// Reverse map for URL parsing
+export const PRESET_EXPAND_MAP: Record<string, string> = Object.entries(PRESET_SHORT_MAP).reduce(
+  (acc, [longId, shortCode]) => {
+    acc[shortCode] = longId;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+export function getShortPresetId(id: string): string {
+  return PRESET_SHORT_MAP[id] || id;
+}
+
+export function getExpandedPresetId(idOrShort: string): string {
+  return PRESET_EXPAND_MAP[idOrShort] || idOrShort;
+}
+
 export const BENCHMARK_PRESET = {
   id: 'noorani_nr_arabic_alphabetical',
   name: 'سماء: ن - ر × أرض: اب - وي',

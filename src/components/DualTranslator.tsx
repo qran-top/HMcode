@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useNotebook } from '../context/NotebookContext';
-import { PRESET_TABLES, cleanText, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS } from '../cipherData';
+import { PRESET_TABLES, cleanText, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS, getShortPresetId, getExpandedPresetId } from '../cipherData';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
 import { 
@@ -192,6 +192,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   };
 
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [copiedSummaryLink, setCopiedSummaryLink] = useState(false);
 
   // Initialize state from URL params on mount if present
   useEffect(() => {
@@ -214,9 +215,21 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       if (skyParam) {
         let isRev = skyRevParam === '1' || skyRevParam === 'true';
         let cleanSky = skyParam.trim();
+        const expandedSky = getExpandedPresetId(cleanSky);
+        if (expandedSky !== cleanSky) {
+          cleanSky = expandedSky;
+        } else if (cleanSky.endsWith('r')) {
+          const baseShort = cleanSky.slice(0, -1);
+          const expandedBase = getExpandedPresetId(baseShort);
+          if (expandedBase !== baseShort) {
+            cleanSky = expandedBase;
+            isRev = true;
+          }
+        }
         // Fallback for legacy 'r' suffix if skyRevParam wasn't explicitly supplied
         if (
           !skyRevParam &&
+          !isRev &&
           cleanSky.length > 1 &&
           cleanSky.toLowerCase().endsWith('r') &&
           !NOORANI_PRESETS[cleanSky] &&
@@ -232,8 +245,20 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       if (earthParam) {
         let isRev = earthRevParam === '1' || earthRevParam === 'true';
         let cleanEarth = earthParam.trim();
+        const expandedEarth = getExpandedPresetId(cleanEarth);
+        if (expandedEarth !== cleanEarth) {
+          cleanEarth = expandedEarth;
+        } else if (cleanEarth.endsWith('r')) {
+          const baseShort = cleanEarth.slice(0, -1);
+          const expandedBase = getExpandedPresetId(baseShort);
+          if (expandedBase !== baseShort) {
+            cleanEarth = expandedBase;
+            isRev = true;
+          }
+        }
         if (
           !earthRevParam &&
+          !isRev &&
           cleanEarth.length > 1 &&
           cleanEarth.toLowerCase().endsWith('r') &&
           !ARABIC_PRESETS[cleanEarth] &&
@@ -266,63 +291,226 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     }
   }, []);
 
+  // Listen for browser Back/Forward navigation (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const textParam = params.get('q') || params.get('text') || '';
+        const skyParam = params.get('s') || params.get('sky') || params.get('noorani');
+        const earthParam = params.get('e') || params.get('earth') || params.get('arabic');
+        const skyRevParam = params.get('skyRev') || params.get('sr');
+        const earthRevParam = params.get('earthRev') || params.get('er');
+        const scannerParam = params.get('scan') || params.get('scanner') || params.get('all');
+        const wawParam = params.get('w') || params.get('waw');
+        const viewParam = params.get('v') || params.get('view');
+
+        setInputText(textParam);
+        setSubmittedText(textParam);
+
+        if (skyParam) {
+          let isRev = skyRevParam === '1' || skyRevParam === 'true';
+          let cleanSky = skyParam.trim();
+          const expandedSky = getExpandedPresetId(cleanSky);
+          if (expandedSky !== cleanSky) {
+            cleanSky = expandedSky;
+          } else if (cleanSky.endsWith('r')) {
+            const baseShort = cleanSky.slice(0, -1);
+            const expandedBase = getExpandedPresetId(baseShort);
+            if (expandedBase !== baseShort) {
+              cleanSky = expandedBase;
+              isRev = true;
+            }
+          }
+          applyNooraniDistribution(cleanSky);
+          setIsNooraniReversed(isRev);
+        }
+
+        if (earthParam) {
+          let isRev = earthRevParam === '1' || earthRevParam === 'true';
+          let cleanEarth = earthParam.trim();
+          const expandedEarth = getExpandedPresetId(cleanEarth);
+          if (expandedEarth !== cleanEarth) {
+            cleanEarth = expandedEarth;
+          } else if (cleanEarth.endsWith('r')) {
+            const baseShort = cleanEarth.slice(0, -1);
+            const expandedBase = getExpandedPresetId(baseShort);
+            if (expandedBase !== baseShort) {
+              cleanEarth = expandedBase;
+              isRev = true;
+            }
+          }
+          applyArabicDistribution(cleanEarth);
+          setIsArabicReversed(isRev);
+        }
+
+        if (wawParam !== null) {
+          setIncludeWawInAllLayers(wawParam !== '0' && wawParam !== 'false');
+        } else {
+          setIncludeWawInAllLayers(true);
+        }
+
+        setShowMultiSystemScanner(scannerParam === '1' || scannerParam === 'true');
+
+        if (viewParam) {
+          if (viewParam === 'd' || viewParam === 'decrypt') {
+            setViewMode('decrypt');
+          } else if (viewParam === 'e' || viewParam === 'encrypt') {
+            setViewMode('encrypt');
+          } else {
+            setViewMode('both');
+          }
+        } else {
+          setViewMode('both');
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Construct ultra-short, highly readable share URL and sync with browser address bar/history
+  const buildShortShareUrl = (pushHistory = false): string => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    const text = inputText.trim() || submittedText.trim();
+    if (text) {
+      url.searchParams.set('q', text);
+    }
+
+    // Sky preset parameter
+    let skyVal = '';
+    const isStandardSky = currentNooraniItem && Object.values(NOORANI_PRESETS).some((p) => p.id === currentNooraniItem.id || p.name === currentNooraniItem.name);
+    if (isStandardSky && currentNooraniItem) {
+      skyVal = getShortPresetId(currentNooraniItem.id);
+    } else {
+      skyVal = [7, 6, 5, 4, 3, 2, 1]
+        .map((num) => {
+          const l = layers.find((x) => x.layer === num);
+          return (l?.cipherLetters || []).filter(Boolean).join('');
+        })
+        .join('-');
+    }
+
+    if (skyVal) {
+      if (isNooraniReversed) {
+        skyVal += 'r';
+      }
+      url.searchParams.set('s', skyVal);
+    }
+
+    // Earth preset parameter
+    let earthVal = '';
+    const isStandardEarth = currentArabicItem && Object.values(ARABIC_PRESETS).some((p) => p.id === currentArabicItem.id || p.name === currentArabicItem.name);
+    if (isStandardEarth && currentArabicItem) {
+      earthVal = getShortPresetId(currentArabicItem.id);
+    } else {
+      earthVal = [7, 6, 5, 4, 3, 2, 1]
+        .map((num) => {
+          const l = layers.find((x) => x.layer === num);
+          return (l?.arabicLetters || []).filter(Boolean).join('');
+        })
+        .join('-');
+    }
+
+    if (earthVal) {
+      if (isArabicReversed) {
+        earthVal += 'r';
+      }
+      url.searchParams.set('e', earthVal);
+    }
+
+    // Omit default flags (waw=1, view=b, sr=0, er=0) to keep URL ultra minimal
+    if (!includeWawInAllLayers) {
+      url.searchParams.set('w', '0');
+    }
+    if (showMultiSystemScanner) {
+      url.searchParams.set('scan', '1');
+    }
+    if (viewMode === 'decrypt') {
+      url.searchParams.set('v', 'd');
+    } else if (viewMode === 'encrypt') {
+      url.searchParams.set('v', 'e');
+    }
+
+    const fullUrlString = decodeURIComponent(url.toString());
+
+    // Update browser address bar & push to history stack if search performed
+    try {
+      if (fullUrlString !== decodeURIComponent(window.location.href)) {
+        if (pushHistory) {
+          window.history.pushState({ q: text }, '', fullUrlString);
+        } else {
+          window.history.replaceState({ q: text }, '', fullUrlString);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return fullUrlString;
+  };
+
   // Copy concise configuration URL to share with friends
   const handleCopyShareLink = () => {
     try {
-      const url = new URL(window.location.origin + window.location.pathname);
-      const text = inputText.trim() || submittedText.trim();
-      if (text) {
-        url.searchParams.set('q', text);
-      }
-
-      // Sky (سماء) parameter: preset ID or custom layer sequence
-      if (currentNooraniItem && currentNooraniItem.id) {
-        url.searchParams.set('s', currentNooraniItem.id);
-      } else if (selectedNooraniId) {
-        url.searchParams.set('s', selectedNooraniId);
-      } else {
-        const customCipherSeq = layers.map((l) => (l.cipherLetters || []).filter(Boolean).join('')).join('-');
-        if (customCipherSeq) {
-          url.searchParams.set('s', customCipherSeq);
-        }
-      }
-
-      // Earth (أرض) parameter: preset ID or custom layer sequence
-      if (currentArabicItem && currentArabicItem.id) {
-        url.searchParams.set('e', currentArabicItem.id);
-      } else if (selectedArabicId) {
-        url.searchParams.set('e', selectedArabicId);
-      } else {
-        const customArabicSeq = layers.map((l) => (l.arabicLetters || []).filter(Boolean).join('')).join('-');
-        if (customArabicSeq) {
-          url.searchParams.set('e', customArabicSeq);
-        }
-      }
-
-      // Explicit flags for reversals
-      url.searchParams.set('sr', isNooraniReversed ? '1' : '0');
-      url.searchParams.set('er', isArabicReversed ? '1' : '0');
-
-      if (showMultiSystemScanner) {
-        url.searchParams.set('scan', '1');
-      }
-      url.searchParams.set('w', includeWawInAllLayers ? '1' : '0');
-      if (viewMode === 'decrypt') {
-        url.searchParams.set('v', 'd');
-      } else if (viewMode === 'encrypt') {
-        url.searchParams.set('v', 'e');
-      } else {
-        url.searchParams.set('v', 'b');
-      }
-
-      // Update current URL quietly without reloads
-      window.history.replaceState({}, '', url.toString());
-
-      navigator.clipboard.writeText(url.toString());
+      const shortUrl = buildShortShareUrl();
+      navigator.clipboard.writeText(shortUrl);
       setCopiedShareLink(true);
       setTimeout(() => setCopiedShareLink(false), 2500);
     } catch (err) {
       console.warn('Share link copy error:', err);
+    }
+  };
+
+  // Generate a rich, compact result summary string optimized for WhatsApp / Telegram
+  const generateShareSummaryText = (): string => {
+    const shortUrl = buildShortShareUrl();
+    const word = inputText.trim() || submittedText.trim();
+    if (!word) {
+      return `🔐 التشفير العربي | نظام الطبقات السبع المتناظرة\n🔗 ${shortUrl}`;
+    }
+
+    const cipher = assembledSentence || '';
+    const qCount = quranicMatches.length;
+    const dictCount = arabicDictionaryMatches.length;
+
+    let text = `🔐 التشفير العربي | النص: (${word})\n`;
+    if (cipher) {
+      text += `✨ الشفرة الناتجة: ${cipher}\n`;
+    }
+    if (qCount > 0 || dictCount > 0) {
+      text += `📖 المطابقات: ${qCount} قرآنية | ${dictCount} معجمية\n`;
+    }
+    text += `🔗 ${shortUrl}`;
+    return text;
+  };
+
+  // Native share or copy formatted summary text
+  const handleShareWithSummary = async () => {
+    try {
+      const summaryText = generateShareSummaryText();
+      if (navigator.share) {
+        await navigator.share({
+          title: 'التشفير العربي',
+          text: summaryText,
+        });
+      } else {
+        await navigator.clipboard.writeText(summaryText);
+        setCopiedSummaryLink(true);
+        setTimeout(() => setCopiedSummaryLink(false), 2500);
+      }
+    } catch {
+      try {
+        const summaryText = generateShareSummaryText();
+        await navigator.clipboard.writeText(summaryText);
+        setCopiedSummaryLink(true);
+        setTimeout(() => setCopiedSummaryLink(false), 2500);
+      } catch (err) {
+        console.warn('Share summary error:', err);
+      }
     }
   };
 
@@ -797,6 +985,33 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     return Array.from(set);
   }, [decodedItems, encryptionDetails]);
 
+  // Dynamic page title and OpenGraph metadata synchronization + Browser URL Address Bar Sync
+  useEffect(() => {
+    if (submittedText) {
+      const pageTitle = `التشفير العربي – (${submittedText}) ${assembledSentence ? '← ' + assembledSentence : ''}`;
+      document.title = pageTitle;
+
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) {
+        ogTitle.setAttribute('content', pageTitle);
+      }
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) {
+        const qCount = quranicMatches.length;
+        const dictCount = arabicDictionaryMatches.length;
+        ogDesc.setAttribute(
+          'content',
+          `نتائج تشفير الكلمة (${submittedText}): الشفرة [${assembledSentence || ''}] | ${qCount} مطابقة قرآنية | ${dictCount} كلمة معجمية.`
+        );
+      }
+
+      // Sync browser address bar with pushState for native sharing & Back/Forward navigation
+      buildShortShareUrl(true);
+    } else {
+      document.title = 'التشفير العربي – نظام الطبقات السبع المتناظرة';
+    }
+  }, [submittedText, assembledSentence, quranicMatches.length, arabicDictionaryMatches.length, activeNooraniPresetName, activeArabicPresetName, isNooraniReversed, isArabicReversed, includeWawInAllLayers, viewMode, showMultiSystemScanner]);
+
   // Extract all Sky and Earth items with serial numbers
   const allNooraniItems = useMemo(() => {
     return getAllNooraniItems(savedNooraniPresets, savedTables);
@@ -921,23 +1136,54 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 shrink-0 flex-wrap">
             <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers.length > 0 ? activeLayersNumbers : [1, 2, 3, 4, 5, 6, 7]} />
 
-            {/* Share Configuration Link Button */}
-            <button
-              type="button"
-              onClick={handleCopyShareLink}
-              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
-                copiedShareLink
-                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                  : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border-indigo-200 dark:border-indigo-800'
-              }`}
-              title={copiedShareLink ? 'تم نسخ الرابط! ✓' : 'نسخ رابط مباشر ينقل جميع إعدادات الشاشة الحالية لأصدقائك'}
-            >
-              {copiedShareLink ? (
-                <Check className="w-4 h-4 text-white" />
-              ) : (
-                <Share2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              )}
-            </button>
+            {/* Share Buttons: Copy Short Link & Share Formatted Summary */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCopyShareLink}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
+                  copiedShareLink
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border-stone-300 dark:border-stone-700'
+                }`}
+                title={copiedShareLink ? 'تم نسخ الرابط المصغر! ✓' : 'نسخ رابط مباشر مصغر لنقل الشاشة والحالة إلى أصدقائك'}
+              >
+                {copiedShareLink ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span className="hidden sm:inline">تم النسخ</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
+                    <span className="hidden sm:inline">رابط مصغر</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShareWithSummary}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
+                  copiedSummaryLink
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                    : 'bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white border-indigo-700/40 shadow-xs active:scale-95'
+                }`}
+                title="مشاركة النتيجة والملخص مباشرة مع أصدقائك في الواتساب والتلغرام"
+              >
+                {copiedSummaryLink ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>تم نسخ الملخص</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3.5 h-3.5 text-indigo-200" />
+                    <span>مشاركة الملخص</span>
+                  </>
+                )}
+              </button>
+            </div>
 
             {/* Save Current System to Notebook */}
             <button

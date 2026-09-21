@@ -6,25 +6,43 @@ interface HeaderProps {
   activeTab: 'encrypt' | 'table' | 'decrypt' | 'dual' | 'settings';
   setActiveTab: (tab: 'encrypt' | 'table' | 'decrypt' | 'dual' | 'settings') => void;
   onOpenInstructions?: () => void;
+  onGoHome?: () => void;
 }
 
-export function Header({ activeTab, setActiveTab, onOpenInstructions }: HeaderProps) {
+export function Header({ activeTab, setActiveTab, onOpenInstructions, onGoHome }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const { entries, toggleDrawer } = useNotebook();
+
+  const handleLogoClick = () => {
+    if (onGoHome) {
+      onGoHome();
+    } else {
+      setActiveTab('dual');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="border-b border-stone-200 dark:border-stone-800 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md sticky top-0 z-30 shadow-xs transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 dark:bg-stone-800 text-amber-400 flex items-center justify-center font-bold text-lg border border-stone-800 dark:border-stone-700 shadow-xs shrink-0">
-              <span className="font-['Amiri',serif]">ع</span>
-            </div>
-            <div>
-              <h1 id="app-title" className="text-xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
-                التشفير العربي
-              </h1>
-            </div>
+            <button
+              type="button"
+              id="header-title-home-btn"
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 sm:gap-2.5 group cursor-pointer text-right hover:opacity-90 transition-all active:scale-98 border-0 bg-transparent p-0 m-0 focus:outline-none"
+              title="العودة إلى الصفحة الرئيسية"
+            >
+              <div className="w-9 h-9 rounded-xl bg-stone-900 dark:bg-stone-800 text-amber-400 flex items-center justify-center font-bold text-lg border border-stone-800 dark:border-stone-700 shadow-xs shrink-0 group-hover:scale-105 group-hover:border-amber-500/50 group-hover:bg-stone-950 dark:group-hover:bg-stone-700 transition-all">
+                <span className="font-['Amiri',serif]">ع</span>
+              </div>
+              <div>
+                <h1 id="app-title" className="text-xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  التشفير العربي
+                </h1>
+              </div>
+            </button>
 
             {/* Platform Cross-Links: Google & Github */}
             <div className="flex items-center gap-1.5 ms-1 sm:ms-2.5">
