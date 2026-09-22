@@ -12,12 +12,13 @@ import { Footer, PolicyModalType } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
 import { PWAPrompt } from './components/PWAPrompt';
 import { analyzeWord, NOORANI_LETTERS_SET } from './cipherData';
+import { GematriaView } from './components/GematriaView';
 import { useCipherLayers } from './context/CipherLayersContext';
 import { Eraser, Search, Sparkles, Loader2, Settings2, Lock, Unlock } from 'lucide-react';
 
 export function App() {
   const { analyzeText, isCustomized } = useCipherLayers();
-  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings'>('dual');
+  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings' | 'gematria'>('dual');
   const [inputText, setInputText] = useState('');
   const [decryptCipherInput, setDecryptCipherInput] = useState('');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
@@ -294,6 +295,17 @@ export function App() {
           />
         </div>
 
+        {/* Tab Gematria: 3-Variable Gematria Engine */}
+        <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
+          <GematriaView
+            initialText={inputText}
+            onNavigateToDual={(text) => {
+              setInputText(text);
+              setActiveTab('dual');
+            }}
+          />
+        </div>
+
         {/* Tab 3: Decryption (Preserved across tab switches) */}
         <div className={activeTab === 'decrypt' ? 'block' : 'hidden'}>
           <DecryptView
@@ -312,6 +324,10 @@ export function App() {
             onNavigateToDecrypt={(text) => {
               setDecryptCipherInput(text);
               setActiveTab('decrypt');
+            }}
+            onNavigateToGematria={(text) => {
+              setInputText(text);
+              setActiveTab('gematria');
             }}
           />
         </div>

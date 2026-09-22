@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 
 export interface SavedCipherSystem {
   id: string;
@@ -12,6 +12,13 @@ export interface SavedCipherSystem {
   updatedAt?: number;
   tags?: string[];
 }
+
+import {
+  groupNotebookEntriesByOriginalWord,
+  generateAIPromptForSentenceMaking,
+  AIPromptOptions,
+  WordGroup,
+} from '../utils/aiPromptGenerator';
 
 export interface NotebookEntry {
   id: string;
@@ -57,10 +64,12 @@ interface NotebookContextType {
   clearNotebook: () => void;
   isSaved: (word: string, cipher: string, isReversed?: boolean) => boolean;
   toggleDrawer: () => void;
-  openDrawer: (tab?: 'systems' | 'entries' | 'pages') => void;
+  openDrawer: (tab?: 'systems' | 'entries' | 'quiz' | 'pages') => void;
   closeDrawer: () => void;
   exportAsText: (entriesToExport?: NotebookEntry[], pageTitle?: string) => string;
   exportAsCSV: (entriesToExport?: NotebookEntry[]) => string;
+  generateAIPrompt: (entriesToExport?: NotebookEntry[], options?: AIPromptOptions) => string;
+  groupedEntries: WordGroup[];
 
   // Saved Cipher Systems (مفكرة الشيفرات والمنظومات المفضلة)
   savedSystems: SavedCipherSystem[];
@@ -69,8 +78,8 @@ interface NotebookContextType {
   removeSavedSystem: (id: string) => void;
   clearSavedSystems: () => void;
   isSystemSaved: (nameOrLabel: string) => boolean;
-  drawerTab: 'systems' | 'entries' | 'pages';
-  setDrawerTab: (tab: 'systems' | 'entries' | 'pages') => void;
+  drawerTab: 'systems' | 'entries' | 'quiz' | 'pages';
+  setDrawerTab: (tab: 'systems' | 'entries' | 'quiz' | 'pages') => void;
   exportSavedSystemsAsText: () => string;
 
   // Pages / Groups management
@@ -134,10 +143,15 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     return [];
   });
 
-  const [drawerTab, setDrawerTab] = useState<'systems' | 'entries' | 'pages'>('systems');
+  const [drawerTab, setDrawerTab] = useState<'systems' | 'entries' | 'quiz' | 'pages'>('systems');
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeToast, setActiveToast] = useState<string | null>(null);
+
+  // Grouped entries memo
+  const groupedEntries = useMemo(() => {
+    return groupNotebookEntriesByOriginalWord(entries);
+  }, [entries]);
 
   // Sync entries to localStorage
   useEffect(() => {
@@ -252,7 +266,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
   }, [showToast]);
 
   const toggleDrawer = useCallback(() => setIsDrawerOpen((prev) => !prev), []);
-  const openDrawer = useCallback((tab?: 'systems' | 'entries' | 'pages') => {
+  const openDrawer = useCallback((tab?: 'systems' | 'entries' | 'quiz' | 'pages') => {
     if (tab) {
       setDrawerTab(tab);
     }
@@ -483,6 +497,13 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     [entries]
   );
 
+  const generateAIPrompt = useCallback(
+    (entriesToExport?: NotebookEntry[], options?: AIPromptOptions) => {
+      return generateAIPromptForSentenceMaking(entriesToExport || entries, options);
+    },
+    [entries]
+  );
+
   const exportPageAsText = useCallback(
     (pageId: string) => {
       const page = pages.find((p) => p.id === pageId);
@@ -517,6 +538,8 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
         closeDrawer,
         exportAsText,
         exportAsCSV,
+        generateAIPrompt,
+        groupedEntries,
         savedSystems,
         addSavedSystem,
         updateSavedSystem,

@@ -5,14 +5,17 @@ import './index.css';
 import { CipherLayersProvider } from './context/CipherLayersContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotebookProvider } from './context/NotebookContext';
+import { GematriaProvider } from './context/GematriaContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <CipherLayersProvider>
-        <NotebookProvider>
-          <App />
-        </NotebookProvider>
+        <GematriaProvider>
+          <NotebookProvider>
+            <App />
+          </NotebookProvider>
+        </GematriaProvider>
       </CipherLayersProvider>
     </ThemeProvider>
   </StrictMode>,

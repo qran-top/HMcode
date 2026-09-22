@@ -289,39 +289,60 @@ class QuranicDictionaryService {
     this.loading = true;
 
     try {
-      const candidateUrls: string[] = [];
       const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || './';
       const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
-      candidateUrls.push(`${cleanBase}quranic_words_info.json`);
 
-      if (typeof window !== 'undefined' && window.location) {
-        try {
-          candidateUrls.push(new URL('quranic_words_info.json', window.location.href).href);
-        } catch {}
-        if (window.location.origin && window.location.origin !== 'null') {
-          candidateUrls.push(`${window.location.origin}/quranic_words_info.json`);
-        }
-      }
-      candidateUrls.push('/quranic_words_info.json');
-      candidateUrls.push('./quranic_words_info.json');
-
-      const uniqueUrls = Array.from(new Set(candidateUrls));
-      let response: Response | null = null;
-
-      for (const u of uniqueUrls) {
-        try {
-          const res = await fetch(u);
-          if (res.ok) {
-            response = res;
-            break;
+      const fetchFile = async (filename: string): Promise<any | null> => {
+        const candidateUrls: string[] = [
+          `${cleanBase}${filename}`,
+          `/${filename}`,
+          `./${filename}`,
+        ];
+        if (typeof window !== 'undefined' && window.location) {
+          try {
+            candidateUrls.push(new URL(filename, window.location.href).href);
+          } catch {}
+          if (window.location.origin && window.location.origin !== 'null') {
+            candidateUrls.push(`${window.location.origin}/${filename}`);
           }
-        } catch {}
+        }
+        const uniqueUrls = Array.from(new Set(candidateUrls));
+        for (const u of uniqueUrls) {
+          try {
+            const res = await fetch(u);
+            if (res.ok) {
+              return await res.json();
+            }
+          } catch {}
+        }
+        return null;
+      };
+
+      // Load both datasets in parallel for maximum Quranic vocabulary coverage
+      const [wordsInfoJson, lexiconJson] = await Promise.all([
+        fetchFile('quranic_words_info.json'),
+        fetchFile('quranic_lexicon.json'),
+      ]);
+
+      if (wordsInfoJson) {
+        this.ingestRecord(wordsInfoJson as Record<string, [string, number, number, string]>);
       }
 
-      if (!response) throw new Error('Failed to load Quranic lexicon from candidate URLs');
-
-      const json = (await response.json()) as Record<string, [string, number, number, string]>;
-      this.ingestRecord(json);
+      if (lexiconJson) {
+        // lexiconJson format: {"word": {"c": count, "s": surahName, "sn": surahNumber, "a": ayahNum, "sample": "..."}}
+        const convertedRecord: Record<string, [string, number, number, string]> = {};
+        for (const [w, entry] of Object.entries(lexiconJson as Record<string, any>)) {
+          if (entry && entry.s) {
+            convertedRecord[w] = [entry.s, entry.a || 1, entry.c || 1, w];
+            // Also ingest normalized and stripped variations if not present
+            const strippedAl = w.replace(/^(وال|فال|بال|كال|لل|ال)/, '');
+            if (strippedAl && strippedAl.length >= 2 && !convertedRecord[strippedAl]) {
+              convertedRecord[strippedAl] = [entry.s, entry.a || 1, entry.c || 1, w];
+            }
+          }
+        }
+        this.ingestRecord(convertedRecord);
+      }
 
       this.loaded = true;
       this.loading = false;
@@ -506,6 +527,27 @@ class QuranicDictionaryService {
 
   getWordCount(): number {
     return this.dataMap.size;
+  }
+
+  getAllKeys(): string[] {
+    return Array.from(this.dataMap.keys());
+  }
+
+  getAllWords(): QuranicWordMeta[] {
+    const list: QuranicWordMeta[] = [];
+    for (const [w, entry] of this.dataMap.entries()) {
+      const [surahName, ayahNum, occurrences, originalQuranicWord] = entry;
+      list.push({
+        word: w,
+        originalQuranicWord: originalQuranicWord || w,
+        surahName,
+        surahNumber: getSurahNumber(surahName),
+        ayahNum,
+        occurrences,
+        isExact: true,
+      });
+    }
+    return list;
   }
 
   isLoaded(): boolean {

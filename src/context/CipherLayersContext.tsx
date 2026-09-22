@@ -403,10 +403,18 @@ export function serializeLayersToText(tableName: string, layers: LayerInfo[]): s
   return lines.join('\n').trim();
 }
 
+export interface ParsedTextLayersResult {
+  name: string;
+  type: 'full' | 'noorani_only' | 'arabic_only';
+  layers: LayerInfo[];
+  totalCipherCount: number;
+  totalArabicCount: number;
+}
+
 /**
- * Resilient parser for the pure Arabic line-by-line format
+ * Resilient parser for text format (supports full systems, sky-only, earth-only, and raw sequences)
  */
-export function parseLayersFromText(text: string): { name: string; layers: LayerInfo[] } | null {
+export function parseLayersFromText(text: string): ParsedTextLayersResult | null {
   if (!text || typeof text !== 'string') return null;
   const rawLines = text.split(/\r?\n/);
 
@@ -415,12 +423,28 @@ export function parseLayersFromText(text: string): { name: string; layers: Layer
   let currentLayerNum: number | null = null;
   let expectingType: 'cipher' | 'arabic' | null = null;
   let hasValidLayers = false;
+  let detectedExplicitSkyName = false;
+  let detectedExplicitEarthName = false;
 
   for (let rawLine of rawLines) {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // Check table name
+    // Check table/sky/earth name
+    const skyNameMatch = line.match(/^(?:سماء|جدول السماء|ترتيب السماء|noorani)\s*[:=]\s*(.*)$/i);
+    if (skyNameMatch && skyNameMatch[1].trim()) {
+      tableName = skyNameMatch[1].trim();
+      detectedExplicitSkyName = true;
+      continue;
+    }
+
+    const earthNameMatch = line.match(/^(?:أرض|ارض|جدول الأرض|ترتيب الأرض|arabic)\s*[:=]\s*(.*)$/i);
+    if (earthNameMatch && earthNameMatch[1].trim()) {
+      tableName = earthNameMatch[1].trim();
+      detectedExplicitEarthName = true;
+      continue;
+    }
+
     const nameMatch = line.match(/^(?:المنظومة|منظومة|الاسم|اسم|name)\s*[:=]\s*(.*)$/i);
     if (nameMatch && nameMatch[1].trim()) {
       tableName = nameMatch[1].trim();
@@ -440,7 +464,7 @@ export function parseLayersFromText(text: string): { name: string; layers: Layer
     }
 
     // Check explicit cipher line: الشيفرة: ...
-    const cipherMatch = line.match(/^(?:الشيفرة|الشفره|شيفرة|شفرة|تشفير|cipher|نورانية)\s*[:=]\s*(.*)$/i);
+    const cipherMatch = line.match(/^(?:الشيفرة|الشفره|شيفرة|شفرة|تشفير|cipher|نورانية|حروف نورانية)\s*[:=]\s*(.*)$/i);
     if (cipherMatch) {
       hasValidLayers = true;
       const content = cipherMatch[1].trim();
@@ -454,7 +478,7 @@ export function parseLayersFromText(text: string): { name: string; layers: Layer
     }
 
     // Check explicit arabic line: العربي: ...
-    const arabicMatch = line.match(/^(?:العربي|عربي|الأحرف|الاحرف|حروف|arabic|letters)\s*[:=]\s*(.*)$/i);
+    const arabicMatch = line.match(/^(?:العربي|عربي|الأحرف|الاحرف|حروف|arabic|letters|حروف عربية)\s*[:=]\s*(.*)$/i);
     if (arabicMatch) {
       hasValidLayers = true;
       const content = arabicMatch[1].trim();
@@ -481,14 +505,129 @@ export function parseLayersFromText(text: string): { name: string; layers: Layer
     }
   }
 
-  if (!hasValidLayers && layerMap.size === 0) return null;
+  // Fallback check: Raw sequence of letters without section headers
+  if (!hasValidLayers && layerMap.size === 0) {
+    const rawClean = text.replace(/[\r\n\t]/g, ' ').trim();
+    
+    // Check if hyphenated or spaced chunks
+    if (rawClean.includes('-') || rawClean.includes(' ') || rawClean.includes(',')) {
+      const parts = rawClean.split(/[-,\n]+/).map((p) => p.replace(/[^ء-ي]/g, '').trim()).filter(Boolean);
+      if (parts.length === 7) {
+        // If 7 parts of 2 letters -> Sky only
+        const is2LetterChunks = parts.every((p) => p.length === 2);
+        if (is2LetterChunks) {
+          const resultLayers: LayerInfo[] = [];
+          for (let i = 0; i < 7; i++) {
+            const layerNum = 7 - i;
+            const letters = parts[i].split('');
+            const cipherSlots = Array.from({ length: 9 }, (_, idx) => letters[idx] || '');
+            const arabicSlots = Array(4).fill('');
+            resultLayers.push({
+              layer: layerNum,
+              cipherLetters: cipherSlots,
+              arabicLetters: arabicSlots,
+              description: `الطبقة ${layerNum}`,
+            });
+          }
+          return {
+            name: tableName === 'منظومة مستوردة' ? 'سماء مخصصة' : tableName,
+            type: 'noorani_only',
+            layers: normalizeLayers(resultLayers),
+            totalCipherCount: 14,
+            totalArabicCount: 0,
+          };
+        }
+
+        // If 7 parts of 4 letters -> Earth only
+        const is4LetterChunks = parts.every((p) => p.length === 4);
+        if (is4LetterChunks) {
+          const resultLayers: LayerInfo[] = [];
+          for (let i = 0; i < 7; i++) {
+            const layerNum = 7 - i;
+            const letters = parts[i].split('');
+            const cipherSlots = Array(9).fill('');
+            const arabicSlots = Array.from({ length: 4 }, (_, idx) => letters[idx] || '');
+            resultLayers.push({
+              layer: layerNum,
+              cipherLetters: cipherSlots,
+              arabicLetters: arabicSlots,
+              description: `الطبقة ${layerNum}`,
+            });
+          }
+          return {
+            name: tableName === 'منظومة مستوردة' ? 'أرض مخصصة' : tableName,
+            type: 'arabic_only',
+            layers: normalizeLayers(resultLayers),
+            totalCipherCount: 0,
+            totalArabicCount: 28,
+          };
+        }
+      }
+    }
+
+    // Check pure continuous Arabic string
+    const pureArabicChars = rawClean.replace(/[^ء-ي]/g, '').split('');
+    if (pureArabicChars.length === 14) {
+      const resultLayers: LayerInfo[] = [];
+      for (let i = 0; i < 7; i++) {
+        const layerNum = 7 - i;
+        const letters = pureArabicChars.slice(i * 2, (i + 1) * 2);
+        const cipherSlots = Array.from({ length: 9 }, (_, idx) => letters[idx] || '');
+        const arabicSlots = Array(4).fill('');
+        resultLayers.push({
+          layer: layerNum,
+          cipherLetters: cipherSlots,
+          arabicLetters: arabicSlots,
+          description: `الطبقة ${layerNum}`,
+        });
+      }
+      return {
+        name: tableName === 'منظومة مستوردة' ? 'سماء مخصصة' : tableName,
+        type: 'noorani_only',
+        layers: normalizeLayers(resultLayers),
+        totalCipherCount: 14,
+        totalArabicCount: 0,
+      };
+    } else if (pureArabicChars.length === 28) {
+      const resultLayers: LayerInfo[] = [];
+      for (let i = 0; i < 7; i++) {
+        const layerNum = 7 - i;
+        const letters = pureArabicChars.slice(i * 4, (i + 1) * 4);
+        const cipherSlots = Array(9).fill('');
+        const arabicSlots = Array.from({ length: 4 }, (_, idx) => letters[idx] || '');
+        resultLayers.push({
+          layer: layerNum,
+          cipherLetters: cipherSlots,
+          arabicLetters: arabicSlots,
+          description: `الطبقة ${layerNum}`,
+        });
+      }
+      return {
+        name: tableName === 'منظومة مستوردة' ? 'أرض مخصصة' : tableName,
+        type: 'arabic_only',
+        layers: normalizeLayers(resultLayers),
+        totalCipherCount: 0,
+        totalArabicCount: 28,
+      };
+    }
+
+    return null;
+  }
 
   // Build standard 7 layers
   const allLayerNums = [7, 6, 5, 4, 3, 2, 1];
   const resultLayers: LayerInfo[] = [];
+  let totalCipherCount = 0;
+  let totalArabicCount = 0;
 
   for (const num of allLayerNums) {
     const data = layerMap.get(num) || { cipher: [], arabic: [] };
+    const cleanCipher = (data.cipher || []).map((c) => (c || '').trim()).filter(Boolean);
+    const cleanArabic = (data.arabic || []).map((a) => (a || '').trim()).filter(Boolean);
+    
+    totalCipherCount += cleanCipher.length;
+    totalArabicCount += cleanArabic.length;
+
     const cipherSlots = Array.from(
       { length: Math.max(9, data.cipher.length) },
       (_, i) => (data.cipher[i] || '').trim()
@@ -505,9 +644,26 @@ export function parseLayersFromText(text: string): { name: string; layers: Layer
     });
   }
 
+  // Determine import type
+  let importType: 'full' | 'noorani_only' | 'arabic_only' = 'full';
+  if (totalCipherCount > 0 && totalArabicCount === 0) {
+    importType = 'noorani_only';
+    if (tableName === 'منظومة مستوردة') tableName = 'سماء مخصصة';
+  } else if (totalArabicCount > 0 && totalCipherCount === 0) {
+    importType = 'arabic_only';
+    if (tableName === 'منظومة مستوردة') tableName = 'أرض مخصصة';
+  } else if (detectedExplicitSkyName && !detectedExplicitEarthName && totalArabicCount === 0) {
+    importType = 'noorani_only';
+  } else if (detectedExplicitEarthName && !detectedExplicitSkyName && totalCipherCount === 0) {
+    importType = 'arabic_only';
+  }
+
   return {
     name: tableName,
+    type: importType,
     layers: normalizeLayers(resultLayers),
+    totalCipherCount,
+    totalArabicCount,
   };
 }
 
@@ -1970,35 +2126,198 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  // Import file with resilient parser (supports pure Arabic .txt line-by-line, minimal JSON, legacy formats, backups)
+  // Import file with resilient parser (supports pure Arabic .txt line-by-line, sky-only, earth-only, minimal JSON, legacy formats, backups)
   const importTablesFromJson = useCallback((jsonOrTextStr: string): ImportResult => {
-    // 1. Try parsing as pure Arabic line-by-line text first
+    // 1. Try parsing as text format first (full system, sky-only, earth-only, or raw sequences)
     const textParsed = parseLayersFromText(jsonOrTextStr);
     if (textParsed && textParsed.layers.length > 0) {
-      setLayers(textParsed.layers);
-      setActiveTableName(textParsed.name);
-      setSelectedSlot(null);
+      if (textParsed.type === 'noorani_only') {
+        const skyName = textParsed.name || 'سماء مخصصة';
+        const newPreset: SavedNooraniPreset = {
+          id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: skyName,
+          description: 'جدول سماء مستورد من ملف نصي',
+          createdAt: Date.now(),
+          nooraniLayers: textParsed.layers.map((l) => ({
+            layer: l.layer,
+            cipherLetters: [...l.cipherLetters],
+            description: l.description,
+          })),
+        };
+        setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
 
-      const newSaved: SavedCustomTable = {
-        id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        name: textParsed.name,
-        description: 'منظومة مستوردة من ملف نصي',
-        createdAt: Date.now(),
-        layers: textParsed.layers,
-      };
-      setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== textParsed.name)]);
+        // Apply only cipher letters to current layers, preserving existing arabicLetters
+        setLayers((prev) =>
+          prev.map((l) => {
+            const match = textParsed.layers.find((tl) => tl.layer === l.layer);
+            return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
+          })
+        );
+        setActiveNooraniPresetName(skyName);
+        setSelectedSlot(null);
 
-      return {
-        success: true,
-        message: `تم استيراد المنظومة النصية [${textParsed.name}] بنجاح وحفظها في مكتبتك.`,
-        importedCount: 1,
-        appliedDirectly: true,
-      };
+        return {
+          success: true,
+          message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
+          importedCount: 1,
+          appliedDirectly: true,
+        };
+      } else if (textParsed.type === 'arabic_only') {
+        const earthName = textParsed.name || 'أرض مخصصة';
+        const newPreset: SavedArabicPreset = {
+          id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: earthName,
+          description: 'جدول أرض مستورد من ملف نصي',
+          createdAt: Date.now(),
+          arabicLayers: textParsed.layers.map((l) => ({
+            layer: l.layer,
+            letters: [
+              l.arabicLetters[0] || '',
+              l.arabicLetters[1] || '',
+              l.arabicLetters[2] || '',
+              l.arabicLetters[3] || '',
+            ] as [string, string, string, string],
+          })),
+        };
+        setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
+
+        // Apply only arabic letters to current layers, preserving existing cipherLetters
+        setLayers((prev) =>
+          prev.map((l) => {
+            const match = textParsed.layers.find((tl) => tl.layer === l.layer);
+            return match ? { ...l, arabicLetters: [...match.arabicLetters] } : l;
+          })
+        );
+        setActiveArabicPresetName(earthName);
+        setSelectedSlot(null);
+
+        return {
+          success: true,
+          message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
+          importedCount: 1,
+          appliedDirectly: true,
+        };
+      } else {
+        // Full System
+        setLayers(textParsed.layers);
+        setActiveTableName(textParsed.name);
+        setSelectedSlot(null);
+
+        const newSaved: SavedCustomTable = {
+          id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: textParsed.name,
+          description: 'منظومة مستوردة من ملف نصي',
+          createdAt: Date.now(),
+          layers: textParsed.layers,
+        };
+        setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== textParsed.name)]);
+
+        return {
+          success: true,
+          message: `تم استيراد المنظومة النصية [${textParsed.name}] بنجاح وحفظها في مكتبتك.`,
+          importedCount: 1,
+          appliedDirectly: true,
+        };
+      }
     }
 
     // 2. Fall back to JSON parsing
     try {
       const parsed = JSON.parse(jsonOrTextStr);
+
+      // JSON Case A: Sky Distribution preset ({ nooraniLayers: [...] } or type === 'noorani')
+      if (
+        (Array.isArray(parsed?.nooraniLayers) && parsed.nooraniLayers.length > 0) ||
+        parsed?.type === 'noorani' ||
+        parsed?.type === 'sky'
+      ) {
+        const rawNoorLayers = Array.isArray(parsed?.nooraniLayers) ? parsed.nooraniLayers : parsed?.layers || [];
+        const skyName = (parsed?.name || parsed?.nooraniName || 'سماء مخصصة').trim();
+        const newPreset: SavedNooraniPreset = {
+          id: parsed?.id || `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: skyName,
+          description: parsed?.description || 'جدول سماء مستورد من ملف JSON',
+          createdAt: parsed?.createdAt || Date.now(),
+          nooraniLayers: rawNoorLayers.map((nl: any, idx: number) => {
+            const lNum = typeof nl?.layer === 'number' ? nl.layer : 7 - idx;
+            let cLetters: string[] = [];
+            if (Array.isArray(nl?.cipherLetters)) cLetters = nl.cipherLetters;
+            else if (typeof nl?.cipher === 'string') cLetters = nl.cipher.split(/[\s,]+/).filter(Boolean);
+            else if (Array.isArray(nl?.letters)) cLetters = nl.letters;
+            return {
+              layer: lNum,
+              cipherLetters: Array.from({ length: 9 }, (_, i) => cLetters[i] || ''),
+              description: nl?.description || `الطبقة ${lNum}`,
+            };
+          }),
+        };
+
+        setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
+        setLayers((prev) =>
+          prev.map((l) => {
+            const match = newPreset.nooraniLayers.find((nl) => nl.layer === l.layer);
+            return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
+          })
+        );
+        setActiveNooraniPresetName(skyName);
+        setSelectedSlot(null);
+
+        return {
+          success: true,
+          message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
+          importedCount: 1,
+          appliedDirectly: true,
+        };
+      }
+
+      // JSON Case B: Earth Distribution preset ({ arabicLayers: [...] } or type === 'arabic')
+      if (
+        (Array.isArray(parsed?.arabicLayers) && parsed.arabicLayers.length > 0) ||
+        parsed?.type === 'arabic' ||
+        parsed?.type === 'earth'
+      ) {
+        const rawArLayers = Array.isArray(parsed?.arabicLayers) ? parsed.arabicLayers : parsed?.layers || [];
+        const earthName = (parsed?.name || parsed?.arabicName || 'أرض مخصصة').trim();
+        const newPreset: SavedArabicPreset = {
+          id: parsed?.id || `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: earthName,
+          description: parsed?.description || 'جدول أرض مستورد من ملف JSON',
+          createdAt: parsed?.createdAt || Date.now(),
+          arabicLayers: rawArLayers.map((al: any, idx: number) => {
+            const lNum = typeof al?.layer === 'number' ? al.layer : 7 - idx;
+            let aLetters: string[] = [];
+            if (Array.isArray(al?.letters)) aLetters = al.letters;
+            else if (Array.isArray(al?.arabicLetters)) aLetters = al.arabicLetters;
+            else if (typeof al?.arabic === 'string') aLetters = al.arabic.split(/[\s,]+/).filter(Boolean);
+            return {
+              layer: lNum,
+              letters: [
+                aLetters[0] || '',
+                aLetters[1] || '',
+                aLetters[2] || '',
+                aLetters[3] || '',
+              ] as [string, string, string, string],
+            };
+          }),
+        };
+
+        setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
+        setLayers((prev) =>
+          prev.map((l) => {
+            const match = newPreset.arabicLayers.find((al) => al.layer === l.layer);
+            return match ? { ...l, arabicLetters: [...match.letters] } : l;
+          })
+        );
+        setActiveArabicPresetName(earthName);
+        setSelectedSlot(null);
+
+        return {
+          success: true,
+          message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
+          importedCount: 1,
+          appliedDirectly: true,
+        };
+      }
 
       const parseLayerItem = (item: any, defaultLayer: number): LayerInfo => {
         const layerNum = typeof item?.layer === 'number' ? item.layer : defaultLayer;
@@ -2064,30 +2383,110 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           rawLayers.map((l: any, idx: number) => parseLayerItem(l, 7 - idx))
         );
 
-        const extractedNoorani = (parsed?.nooraniOrderName || parsed?.nooraniName || '').trim();
-        const extractedArabic = (parsed?.arabicOrderName || parsed?.arabicName || '').trim();
+        // Check if only cipher letters are present (sky only)
+        const hasCipher = parsedLayers.some((l) => (l.cipherLetters || []).some((c) => Boolean((c || '').trim())));
+        const hasArabic = parsedLayers.some((l) => (l.arabicLetters || []).some((a) => Boolean((a || '').trim())));
 
-        if (!extractedNoorani || !extractedArabic) {
+        if (hasCipher && !hasArabic) {
+          const skyName = (parsed?.name || parsed?.nooraniOrderName || parsed?.nooraniName || 'سماء مخصصة').trim();
+          const newPreset: SavedNooraniPreset = {
+            id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: skyName,
+            description: 'جدول سماء مستورد من ملف JSON',
+            createdAt: Date.now(),
+            nooraniLayers: parsedLayers.map((l) => ({
+              layer: l.layer,
+              cipherLetters: [...l.cipherLetters],
+              description: l.description,
+            })),
+          };
+          setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
+          setLayers((prev) =>
+            prev.map((l) => {
+              const match = parsedLayers.find((pl) => pl.layer === l.layer);
+              return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
+            })
+          );
+          setActiveNooraniPresetName(skyName);
+          setSelectedSlot(null);
+
           return {
             success: true,
-            needsNaming: true,
-            pendingLayers: parsedLayers,
-            suggestedNooraniName: extractedNoorani,
-            suggestedArabicName: extractedArabic,
-            message: 'تتطلب المنظومة المستوردة إدخال اسم جدول السماء واسم جدول الأرض.',
+            message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح.`,
             importedCount: 1,
-            appliedDirectly: false,
+            appliedDirectly: true,
           };
         }
 
-        saveCustomLayersTable(extractedNoorani, extractedArabic, parsedLayers, parsed?.description);
+        if (hasArabic && !hasCipher) {
+          const earthName = (parsed?.name || parsed?.arabicOrderName || parsed?.arabicName || 'أرض مخصصة').trim();
+          const newPreset: SavedArabicPreset = {
+            id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: earthName,
+            description: 'جدول أرض مستورد من ملف JSON',
+            createdAt: Date.now(),
+            arabicLayers: parsedLayers.map((l) => ({
+              layer: l.layer,
+              letters: [
+                l.arabicLetters[0] || '',
+                l.arabicLetters[1] || '',
+                l.arabicLetters[2] || '',
+                l.arabicLetters[3] || '',
+              ] as [string, string, string, string],
+            })),
+          };
+          setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
+          setLayers((prev) =>
+            prev.map((l) => {
+              const match = parsedLayers.find((pl) => pl.layer === l.layer);
+              return match ? { ...l, arabicLetters: [...match.arabicLetters] } : l;
+            })
+          );
+          setActiveArabicPresetName(earthName);
+          setSelectedSlot(null);
 
-        return {
-          success: true,
-          message: `تم استيراد المنظومة المتقاطعة [سماء: ${extractedNoorani} × أرض: ${extractedArabic}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
+          return {
+            success: true,
+            message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح.`,
+            importedCount: 1,
+            appliedDirectly: true,
+          };
+        }
+
+        const extractedNoorani = (parsed?.nooraniOrderName || parsed?.nooraniName || '').trim();
+        const extractedArabic = (parsed?.arabicOrderName || parsed?.arabicName || '').trim();
+        const extractedFullName = (parsed?.name || '').trim();
+
+        if (extractedNoorani && extractedArabic) {
+          saveCustomLayersTable(extractedNoorani, extractedArabic, parsedLayers, parsed?.description);
+          return {
+            success: true,
+            message: `تم استيراد المنظومة المتقاطعة [سماء: ${extractedNoorani} × أرض: ${extractedArabic}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+            importedCount: 1,
+            appliedDirectly: true,
+          };
+        } else {
+          const finalName = extractedFullName || 'منظومة مخصصة مستوردة';
+          setLayers(parsedLayers);
+          setActiveTableName(finalName);
+          setSelectedSlot(null);
+
+          const newSaved: SavedCustomTable = {
+            id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: finalName,
+            description: parsed?.description || 'منظومة مستوردة من ملف JSON',
+            createdAt: Date.now(),
+            layers: parsedLayers,
+          };
+          setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== finalName)]);
+
+          return {
+            success: true,
+            message: `تم استيراد المنظومة [${finalName}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+            importedCount: 1,
+            appliedDirectly: true,
+          };
+        }
       }
 
       // Case 2: Multi-table backup format { tables: [...] }

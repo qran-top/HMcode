@@ -87,8 +87,8 @@ export function LayersTable({
     columnDuplicatesSummary,
   } = useCipherLayers();
 
-  // Primary Table Tab: Sky (نورانية) vs Earth (عربية)
-  const [activeTableTab, setActiveTableTab] = useState<'sky' | 'earth'>('sky');
+  // Primary Table Tab: Dual (سماء وأرض معاً) vs Sky (نورانية) vs Earth (عربية)
+  const [activeTableTab, setActiveTableTab] = useState<'dual' | 'sky' | 'earth'>('dual');
 
   // Sub-view: Grid, Text Editor, Bulk Paste, Duplicates
   type TableSubView = 'grid' | 'text-editor' | 'bulk-paste' | 'duplicates';
@@ -349,11 +349,18 @@ export function LayersTable({
         type: 'success',
         message: `تم حفظ جدول السماء [سماء: ${finalName}] برقم تسلسل جديد بنجاح.`,
       });
-    } else {
+    } else if (activeTableTab === 'earth') {
       saveCurrentArabicPreset(finalName, saveDescInput.trim() || undefined);
       setNotification({
         type: 'success',
         message: `تم حفظ جدول الأرض [أرض: ${finalName}] برقم تسلسل جديد بنجاح.`,
+      });
+    } else {
+      saveCurrentNooraniPreset(finalName + ' (سماء)', saveDescInput.trim() || undefined);
+      saveCurrentArabicPreset(finalName + ' (أرض)', saveDescInput.trim() || undefined);
+      setNotification({
+        type: 'success',
+        message: `تم حفظ منظومتي السماء والأرض [${finalName}] برقم تسلسل جديد بنجاح.`,
       });
     }
     setShowSaveModal(false);
@@ -404,9 +411,36 @@ export function LayersTable({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. PRIMARY DUAL TABS: SKY TABLE (سماء) VS EARTH TABLE (أرض) */}
+      {/* 1. PRIMARY TABS: DUAL (عرض متزامن) VS SKY TABLE (سماء) VS EARTH TABLE (أرض) */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 gap-2 p-1.5 bg-stone-100 dark:bg-stone-850 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-inner">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-stone-100 dark:bg-stone-850 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-inner">
+        {/* Dual Tab (سماء وأرض معاً) */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTableTab('dual');
+            setActiveCell(null);
+          }}
+          className={`py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTableTab === 'dual'
+              ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md ring-2 ring-amber-500/30'
+              : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-stone-800'
+          }`}
+        >
+          <Columns className="w-4 h-4" />
+          <div className="flex items-center gap-1">
+            <span>عرض متزامن</span>
+            <span className="text-2xs opacity-90">(سماء وأرض)</span>
+          </div>
+          <span
+            className={`text-3xs px-1.5 py-0.5 rounded-full font-bold ${
+              activeTableTab === 'dual' ? 'bg-amber-800 text-amber-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            ملخص
+          </span>
+        </button>
+
         {/* Sky Tab */}
         <button
           type="button"
@@ -414,23 +448,23 @@ export function LayersTable({
             setActiveTableTab('sky');
             setActiveCell(null);
           }}
-          className={`py-3 px-3 sm:px-5 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTableTab === 'sky'
               ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md ring-2 ring-indigo-500/30'
               : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-stone-800'
           }`}
         >
-          <span className="text-base">🌌</span>
-          <div className="flex items-center gap-1.5">
+          <span className="text-sm">🌌</span>
+          <div className="flex items-center gap-1">
             <span>جدول السماء</span>
-            <span className="hidden sm:inline text-2xs opacity-90">(الأحرف النورانية)</span>
+            <span className="hidden sm:inline text-2xs opacity-90">(النورانية)</span>
           </div>
           <span
-            className={`text-3xs px-2 py-0.5 rounded-full font-mono font-bold ${
+            className={`text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
               activeTableTab === 'sky' ? 'bg-indigo-800 text-indigo-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
             }`}
           >
-            #{activeSkyItem?.index || 1}: {activeSkyItem?.name}
+            #{activeSkyItem?.index || 1}
           </span>
         </button>
 
@@ -441,23 +475,23 @@ export function LayersTable({
             setActiveTableTab('earth');
             setActiveCell(null);
           }}
-          className={`py-3 px-3 sm:px-5 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTableTab === 'earth'
-              ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md ring-2 ring-amber-500/30'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-500/30'
               : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-stone-800'
           }`}
         >
-          <span className="text-base">🌍</span>
-          <div className="flex items-center gap-1.5">
+          <span className="text-sm">🌍</span>
+          <div className="flex items-center gap-1">
             <span>جدول الأرض</span>
-            <span className="hidden sm:inline text-2xs opacity-90">(الأحرف العربية)</span>
+            <span className="hidden sm:inline text-2xs opacity-90">(العربية)</span>
           </div>
           <span
-            className={`text-3xs px-2 py-0.5 rounded-full font-mono font-bold ${
-              activeTableTab === 'earth' ? 'bg-amber-800 text-amber-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+            className={`text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+              activeTableTab === 'earth' ? 'bg-emerald-800 text-emerald-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
             }`}
           >
-            #{activeEarthItem?.index || 1}: {activeEarthItem?.name}
+            #{activeEarthItem?.index || 1}
           </span>
         </button>
       </div>
@@ -688,7 +722,113 @@ export function LayersTable({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
               {/* Active Table Selector */}
               <div className="flex items-center gap-2 flex-wrap">
-                {activeTableTab === 'sky' ? (
+                {activeTableTab === 'dual' ? (
+                  <>
+                    {/* Sky Selector in Dual Mode */}
+                    <div className="relative" ref={skyMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowSkyMenu(!showSkyMenu)}
+                        className="h-10 px-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 hover:bg-indigo-100/60 border border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <span>🌌</span>
+                        <span className="text-stone-500 dark:text-stone-400 font-normal">سماء:</span>
+                        <span className="text-indigo-900 dark:text-indigo-200 font-extrabold max-w-[140px] truncate">
+                          #{activeSkyItem?.index || 1}: {activeSkyItem?.name}
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-stone-400 mr-1" />
+                      </button>
+
+                      {showSkyMenu && (
+                        <div className="absolute top-full right-0 mt-1.5 w-80 bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 max-h-[70vh] overflow-y-auto">
+                          <div className="px-3 py-1.5 text-3xs font-extrabold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                            قائمة جداول السماء المرقمة
+                          </div>
+                          {allNooraniItems.map((item) => {
+                            const isActive = activeSkyItem?.id === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  applyNooraniDistribution(item.id.replace('saved_noorani_', ''));
+                                  setShowSkyMenu(false);
+                                  setNotification({
+                                    type: 'success',
+                                    message: `تم تفعيل جدول السماء [سماء #${item.index}: ${item.name}].`,
+                                  });
+                                }}
+                                className={`w-full px-3 py-2 text-right text-xs flex items-center justify-between gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-pointer transition-colors ${
+                                  isActive ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-200 font-bold' : 'text-stone-700 dark:text-stone-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-mono text-3xs px-1.5 py-0.5 rounded bg-indigo-200/60 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 font-bold">
+                                    #{item.index}
+                                  </span>
+                                  <span className="truncate">{item.name}</span>
+                                </div>
+                                {isActive && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Earth Selector in Dual Mode */}
+                    <div className="relative" ref={earthMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowEarthMenu(!showEarthMenu)}
+                        className="h-10 px-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/60 border border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <span>🌍</span>
+                        <span className="text-stone-500 dark:text-stone-400 font-normal">أرض:</span>
+                        <span className="text-emerald-900 dark:text-emerald-200 font-extrabold max-w-[140px] truncate">
+                          #{activeEarthItem?.index || 1}: {activeEarthItem?.name}
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-stone-400 mr-1" />
+                      </button>
+
+                      {showEarthMenu && (
+                        <div className="absolute top-full right-0 mt-1.5 w-80 bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 max-h-[70vh] overflow-y-auto">
+                          <div className="px-3 py-1.5 text-3xs font-extrabold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                            قائمة جداول الأرض المرقمة
+                          </div>
+                          {allArabicItems.map((item) => {
+                            const isActive = activeEarthItem?.id === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  applyArabicDistribution(item.id.replace('saved_arabic_', ''));
+                                  setShowEarthMenu(false);
+                                  setNotification({
+                                    type: 'success',
+                                    message: `تم تفعيل جدول الأرض [أرض #${item.index}: ${item.name}].`,
+                                  });
+                                }}
+                                className={`w-full px-3 py-2 text-right text-xs flex items-center justify-between gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 cursor-pointer transition-colors ${
+                                  isActive ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-bold' : 'text-stone-700 dark:text-stone-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-mono text-3xs px-1.5 py-0.5 rounded bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 font-bold">
+                                    #{item.index}
+                                  </span>
+                                  <span className="truncate">{item.name}</span>
+                                </div>
+                                {isActive && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : activeTableTab === 'sky' ? (
                   <div className="relative" ref={skyMenuRef}>
                     <button
                       type="button"
@@ -800,13 +940,15 @@ export function LayersTable({
                   onClick={handleOpenSaveDialog}
                   className={`h-10 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
                     activeTableTab === 'sky'
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      : activeTableTab === 'earth'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
                   }`}
-                  title={activeTableTab === 'sky' ? 'حفظ جدول السماء الحالي في قائمة الجداول المرقمة' : 'حفظ جدول الأرض الحالي في قائمة الجداول المرقمة'}
+                  title={activeTableTab === 'dual' ? 'حفظ المنظومة المشتركة (سماء وأرض)' : activeTableTab === 'sky' ? 'حفظ جدول السماء الحالي في قائمة الجداول المرقمة' : 'حفظ جدول الأرض الحالي في قائمة الجداول المرقمة'}
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>{activeTableTab === 'sky' ? 'حفظ جدول سماء' : 'حفظ جدول أرض'}</span>
+                  <span>{activeTableTab === 'dual' ? 'حفظ المنظومة' : activeTableTab === 'sky' ? 'حفظ جدول سماء' : 'حفظ جدول أرض'}</span>
                 </button>
               </div>
 
@@ -915,39 +1057,219 @@ export function LayersTable({
               return (
                 <div
                   key={layerInfo.layer}
-                  className={`rounded-2xl border p-3 sm:p-4 transition-all duration-200 ${
+                  className={`rounded-xl border p-2 sm:p-2.5 transition-all duration-200 ${
                     isHighlighted
                       ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20 shadow-md'
                       : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-stone-900'
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {activeTableTab === 'dual' ? (
+                    /* DUAL SIDE-BY-SIDE VIEW FOR THIS LAYER */
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-stone-100 dark:border-stone-800">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded-lg flex items-center justify-center font-mono font-black text-xs shadow-xs shrink-0"
+                            style={{ backgroundColor: theme.accentHex, color: '#fff' }}
+                          >
+                            {layerInfo.layer}
+                          </div>
+                          <h4 className="text-xs font-extrabold text-stone-900 dark:text-white">
+                            الطبقة {layerInfo.layer} (سماء وأرض)
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-2 text-3xs text-stone-400 font-mono">
+                          <span>سماء: {(layerInfo.cipherLetters || []).filter(Boolean).length}</span>
+                          <span>•</span>
+                          <span>أرض: {(layerInfo.arabicLetters || []).filter(Boolean).length}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {/* Sky Side */}
+                        <div className="p-2 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-850 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-xs">🌌</span>
+                            <span className="text-2xs font-bold text-indigo-950 dark:text-indigo-200">سماء {layerInfo.layer}:</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {(layerInfo.cipherLetters || []).map((char, slotIdx) => {
+                              const isSelected =
+                                activeCell?.type === 'cipher' &&
+                                activeCell.layerNum === layerInfo.layer &&
+                                activeCell.slotIndex === slotIdx;
+
+                              return (
+                                <div key={slotIdx} className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCellClick('cipher', layerInfo.layer, slotIdx)}
+                                    className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center transition-all cursor-pointer border ${
+                                      isSelected
+                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/40'
+                                        : char
+                                        ? 'border-indigo-300 dark:border-indigo-700 bg-white dark:bg-stone-850 text-indigo-950 dark:text-indigo-200 shadow-2xs hover:bg-indigo-50'
+                                        : 'border-dashed border-stone-300 dark:border-stone-700 text-stone-300 hover:border-indigo-400'
+                                    }`}
+                                    title={`خانة سماء ${slotIdx + 1} بالطبقة ${layerInfo.layer}`}
+                                  >
+                                    {isSelected ? (
+                                      <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={char}
+                                        onChange={(e) =>
+                                          handleCellChange(e.target.value, 'cipher', layerInfo.layer, slotIdx)
+                                        }
+                                        onKeyDown={(e) =>
+                                          handleCellKeyDown(e, 'cipher', layerInfo.layer, slotIdx)
+                                        }
+                                        className="w-full h-full text-center bg-transparent text-white font-black text-xs focus:outline-none"
+                                      />
+                                    ) : (
+                                      char || '·'
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+
+                            <div className="flex items-center gap-0.5 ms-1">
+                              <button
+                                type="button"
+                                onClick={() => addCipherSlotToLayer(layerInfo.layer)}
+                                className="w-5 h-5 rounded border border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 text-indigo-500 flex items-center justify-center text-3xs cursor-pointer"
+                                title="إضافة خانة سماء"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                              {(layerInfo.cipherLetters || []).length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeCipherSlotFromLayer(
+                                      layerInfo.layer,
+                                      (layerInfo.cipherLetters || []).length - 1
+                                    )
+                                  }
+                                  className="w-5 h-5 rounded border border-stone-200 dark:border-stone-700 hover:border-rose-400 text-stone-400 hover:text-rose-500 flex items-center justify-center text-3xs cursor-pointer"
+                                  title="إزالة خانة سماء"
+                                >
+                                  -
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Earth Side */}
+                        <div className="p-2 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-850 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-xs">🌍</span>
+                            <span className="text-2xs font-bold text-emerald-950 dark:text-emerald-200">أرض {layerInfo.layer}:</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {(layerInfo.arabicLetters || []).map((char, slotIdx) => {
+                              const isSelected =
+                                activeCell?.type === 'arabic' &&
+                                activeCell.layerNum === layerInfo.layer &&
+                                activeCell.slotIndex === slotIdx;
+
+                              return (
+                                <div key={slotIdx} className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCellClick('arabic', layerInfo.layer, slotIdx)}
+                                    className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center transition-all cursor-pointer border ${
+                                      isSelected
+                                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/40'
+                                        : char
+                                        ? 'border-emerald-300 dark:border-emerald-700 bg-white dark:bg-stone-850 text-emerald-950 dark:text-emerald-200 shadow-2xs hover:bg-emerald-50'
+                                        : 'border-dashed border-stone-300 dark:border-stone-700 text-stone-300 hover:border-emerald-400'
+                                    }`}
+                                    title={`خانة أرض ${slotIdx + 1} بالطبقة ${layerInfo.layer}`}
+                                  >
+                                    {isSelected ? (
+                                      <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={char}
+                                        onChange={(e) =>
+                                          handleCellChange(e.target.value, 'arabic', layerInfo.layer, slotIdx)
+                                        }
+                                        onKeyDown={(e) =>
+                                          handleCellKeyDown(e, 'arabic', layerInfo.layer, slotIdx)
+                                        }
+                                        className="w-full h-full text-center bg-transparent text-white font-black text-xs focus:outline-none"
+                                      />
+                                    ) : (
+                                      char || '·'
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+
+                            <div className="flex items-center gap-0.5 ms-1">
+                              <button
+                                type="button"
+                                onClick={() => addArabicSlotToLayer(layerInfo.layer)}
+                                className="w-5 h-5 rounded border border-dashed border-emerald-300 dark:border-emerald-700 hover:border-emerald-500 text-emerald-500 flex items-center justify-center text-3xs cursor-pointer"
+                                title="إضافة خانة أرض"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                              {(layerInfo.arabicLetters || []).length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeArabicSlotFromLayer(
+                                      layerInfo.layer,
+                                      (layerInfo.arabicLetters || []).length - 1
+                                    )
+                                  }
+                                  className="w-5 h-5 rounded border border-stone-200 dark:border-stone-700 hover:border-rose-400 text-stone-400 hover:text-rose-500 flex items-center justify-center text-3xs cursor-pointer"
+                                  title="إزالة خانة أرض"
+                                >
+                                  -
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* SINGLE TABLE VIEW (SKY OR EARTH) */
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     {/* Layer Header Badge */}
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center font-mono font-black text-sm shadow-xs shrink-0"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center font-mono font-black text-xs shadow-xs shrink-0"
                         style={{ backgroundColor: theme.accentHex, color: '#fff' }}
                       >
                         {layerInfo.layer}
                       </div>
 
                       <div>
-                        <h4 className="text-xs sm:text-sm font-extrabold text-stone-900 dark:text-white flex items-center gap-1.5">
+                        <h4 className="text-xs font-extrabold text-stone-900 dark:text-white flex items-center gap-1">
                           <span>{activeTableTab === 'sky' ? `السماء ${layerInfo.layer}` : `الأرض ${layerInfo.layer}`}</span>
                         </h4>
                         <span className="text-3xs text-stone-400 dark:text-stone-500">
                           {activeTableTab === 'sky'
-                            ? `خانات التشفير: ${(layerInfo.cipherLetters || []).filter(Boolean).length}`
-                            : `الأحرف العربية: ${(layerInfo.arabicLetters || []).filter(Boolean).length}`}
+                            ? `الخانات: ${(layerInfo.cipherLetters || []).filter(Boolean).length}`
+                            : `الأحرف: ${(layerInfo.arabicLetters || []).filter(Boolean).length}`}
                         </span>
                       </div>
                     </div>
 
                     {/* Slots Row */}
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {activeTableTab === 'sky' ? (
                         /* SKY SLOTS */
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {(layerInfo.cipherLetters || []).map((char, slotIdx) => {
                             const isSelected =
                               activeCell?.type === 'cipher' &&
@@ -959,7 +1281,7 @@ export function LayersTable({
                                 <button
                                   type="button"
                                   onClick={() => handleCellClick('cipher', layerInfo.layer, slotIdx)}
-                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm sm:text-base font-black flex items-center justify-center transition-all cursor-pointer border ${
+                                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs sm:text-sm font-black flex items-center justify-center transition-all cursor-pointer border ${
                                     isSelected
                                       ? 'border-amber-500 bg-amber-500 text-white shadow-md ring-2 ring-amber-400/40'
                                       : char
@@ -979,7 +1301,7 @@ export function LayersTable({
                                       onKeyDown={(e) =>
                                         handleCellKeyDown(e, 'cipher', layerInfo.layer, slotIdx)
                                       }
-                                      className="w-full h-full text-center bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                                      className="w-full h-full text-center bg-transparent text-white font-black text-xs sm:text-sm focus:outline-none"
                                     />
                                   ) : (
                                     char || '·'
@@ -994,10 +1316,10 @@ export function LayersTable({
                             <button
                               type="button"
                               onClick={() => addCipherSlotToLayer(layerInfo.layer)}
-                              className="w-7 h-7 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 hover:border-amber-500 text-stone-500 hover:text-amber-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                              className="w-6 h-6 rounded-md border border-dashed border-stone-300 dark:border-stone-700 hover:border-amber-500 text-stone-500 hover:text-amber-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
                               title="إضافة خانة سماء جديدة لهذه الطبقة"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                             {(layerInfo.cipherLetters || []).length > 1 && (
                               <button
@@ -1008,7 +1330,7 @@ export function LayersTable({
                                     (layerInfo.cipherLetters || []).length - 1
                                   )
                                 }
-                                className="w-7 h-7 rounded-lg border border-stone-200 dark:border-stone-750 hover:border-rose-400 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                                className="w-6 h-6 rounded-md border border-stone-200 dark:border-stone-750 hover:border-rose-400 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
                                 title="إزالة آخر خانة سماء من هذه الطبقة"
                               >
                                 -
@@ -1018,7 +1340,7 @@ export function LayersTable({
                         </div>
                       ) : (
                         /* EARTH SLOTS */
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {(layerInfo.arabicLetters || []).map((char, slotIdx) => {
                             const isSelected =
                               activeCell?.type === 'arabic' &&
@@ -1030,7 +1352,7 @@ export function LayersTable({
                                 <button
                                   type="button"
                                   onClick={() => handleCellClick('arabic', layerInfo.layer, slotIdx)}
-                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm sm:text-base font-black flex items-center justify-center transition-all cursor-pointer border ${
+                                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs sm:text-sm font-black flex items-center justify-center transition-all cursor-pointer border ${
                                     isSelected
                                       ? 'border-emerald-600 bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/40'
                                       : char
@@ -1050,7 +1372,7 @@ export function LayersTable({
                                       onKeyDown={(e) =>
                                         handleCellKeyDown(e, 'arabic', layerInfo.layer, slotIdx)
                                       }
-                                      className="w-full h-full text-center bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                                      className="w-full h-full text-center bg-transparent text-white font-black text-xs sm:text-sm focus:outline-none"
                                     />
                                   ) : (
                                     char || '·'
@@ -1060,15 +1382,15 @@ export function LayersTable({
                             );
                           })}
 
-                          {/* Add / Remove Earth Slot Buttons */}
+                          {/* Add / Remove Arabic Slot Buttons */}
                           <div className="flex items-center gap-1 ms-1">
                             <button
                               type="button"
                               onClick={() => addArabicSlotToLayer(layerInfo.layer)}
-                              className="w-7 h-7 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 hover:border-emerald-500 text-stone-500 hover:text-emerald-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                              className="w-6 h-6 rounded-md border border-dashed border-stone-300 dark:border-stone-700 hover:border-emerald-500 text-stone-500 hover:text-emerald-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
                               title="إضافة خانة أرض جديدة لهذه الطبقة"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                             {(layerInfo.arabicLetters || []).length > 1 && (
                               <button
@@ -1079,7 +1401,7 @@ export function LayersTable({
                                     (layerInfo.arabicLetters || []).length - 1
                                   )
                                 }
-                                className="w-7 h-7 rounded-lg border border-stone-200 dark:border-stone-750 hover:border-rose-400 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                                className="w-6 h-6 rounded-md border border-stone-200 dark:border-stone-750 hover:border-rose-400 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs cursor-pointer transition-colors"
                                 title="إزالة آخر خانة أرض من هذه الطبقة"
                               >
                                 -
@@ -1090,6 +1412,7 @@ export function LayersTable({
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
               );
             })}

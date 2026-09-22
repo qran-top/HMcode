@@ -21,6 +21,7 @@ import {
   Copy, 
   Check, 
   Download, 
+  Upload,
   Save, 
   ExternalLink, 
   BookOpen, 
@@ -40,22 +41,30 @@ import {
   Share2,
   ClipboardPaste,
   ArrowDownUp,
-  Loader2
+  Loader2,
+  Star,
+  Settings2,
+  Calculator
 } from 'lucide-react';
 import { MultiSystemScanner } from './MultiSystemScanner';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import { SaveSystemModal } from './SaveSystemModal';
+import { SearchHistoryDrawer, SearchHistoryItem } from './SearchHistoryDrawer';
 import { getAllNooraniItems, getAllArabicItems, applyWawToCelestialLayers, buildCrossLayersFromPair } from '../utils/multiSystemSearch';
+import { getWordGematriaValue } from '../utils/gematriaEngine';
+import { useGematria } from '../context/GematriaContext';
+import { GematriaResultsCard } from './GematriaResultsCard';
 
 interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
   onNavigateToDecrypt?: (text: string) => void;
+  onNavigateToGematria?: (text: string) => void;
 }
 
 const DEFAULT_RECENT_SEARCHES = ['طسم', 'كهيعص', 'بقرة', 'يس', 'سلام'];
 const STORAGE_KEY_HISTORY = 'cipher_recent_searches';
 
-export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: DualTranslatorProps) {
+export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNavigateToGematria }: DualTranslatorProps) {
   const { addEntry, openDrawer, isSystemSaved, savedSystems } = useNotebook();
   const {
     layers,
@@ -72,15 +81,24 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     savedArabicPresets,
     exportCurrentTableAsFile,
     exportCurrentTableAsTextFile,
+    importTablesFromJson,
     analyzeText,
     validCipherLetters
   } = useCipherLayers();
 
+  const importFileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [importStatusMessage, setImportStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const { activeTable, activeTableId, tables, setActiveTableId, calculateWordGematria } = useGematria();
+
   const [inputText, setInputText] = useState('');
   const [submittedText, setSubmittedText] = useState('');
-  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt'>('both');
+  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt' | 'gematria'>('both');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showMultiSystemScanner, setShowMultiSystemScanner] = useState(false);
+
+  // Collapsible Tools & System drawer toggle state ("سحاب الأدوات والمنظومة")
+  const [showToolsDrawer, setShowToolsDrawer] = useState(false);
 
   // Feature Options: Consider 'و' (Waw) in all cipher layers (افتراضياً مفعل)
   const [includeWawInAllLayers, setIncludeWawInAllLayers] = useState(true);
@@ -88,10 +106,6 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   // Reverse / Inversion toggles for Sky and Earth selectors
   const [isNooraniReversed, setIsNooraniReversed] = useState(false);
   const [isArabicReversed, setIsArabicReversed] = useState(false);
-
-  // Fast Sentence Translation Mode state
-  const [fastTranslationMode, setFastTranslationMode] = useState(false);
-  const [selectedWordCandidates, setSelectedWordCandidates] = useState<Record<number, string>>({});
 
   // Dictionary loaded counts & background loading state for reactive re-evaluations
   const [dictCount, setDictCount] = useState<number>(arabicDictionary.getWordCount());
@@ -133,18 +147,102 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     return applyWawToCelestialLayers(currentLayers);
   }, [layers, isNooraniReversed, isArabicReversed, includeWawInAllLayers]);
   
-  // Persistent Search History
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+  // Combine Presets + Saved Custom Tables for Sky & Earth
+  const allNooraniItems = useMemo(() => {
+    return getAllNooraniItems(savedNooraniPresets, savedTables);
+  }, [savedNooraniPresets, savedTables]);
+
+  const allArabicItems = useMemo(() => {
+    return getAllArabicItems(savedArabicPresets, savedTables);
+  }, [savedArabicPresets, savedTables]);
+
+  // Selected Noorani ID
+  const selectedNooraniId = useMemo(() => {
+    if (activeNooraniPresetName) {
+      const match = allNooraniItems.find((n) => n.name === activeNooraniPresetName);
+      if (match) return match.id;
+    }
+    return allNooraniItems[0]?.id || '';
+  }, [activeNooraniPresetName, allNooraniItems]);
+
+  // Selected Arabic ID
+  const selectedArabicId = useMemo(() => {
+    if (activeArabicPresetName) {
+      const match = allArabicItems.find((a) => a.name === activeArabicPresetName);
+      if (match) return match.id;
+    }
+    return allArabicItems[0]?.id || '';
+  }, [activeArabicPresetName, allArabicItems]);
+
+  const currentNooraniItem = useMemo(() => {
+    return allNooraniItems.find((n) => n.id === selectedNooraniId) || null;
+  }, [allNooraniItems, selectedNooraniId]);
+
+  const currentArabicItem = useMemo(() => {
+    return allArabicItems.find((a) => a.id === selectedArabicId) || null;
+  }, [allArabicItems, selectedArabicId]);
+
+  // Persistent Search and Cipher History
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [searchHistoryItems, setSearchHistoryItems] = useState<SearchHistoryItem[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
+      const saved = localStorage.getItem('cipher_search_history_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
+      // Migrate from old simple search history if present
+      const oldSaved = localStorage.getItem(STORAGE_KEY_HISTORY);
+      if (oldSaved) {
+        const oldParsed = JSON.parse(oldSaved);
+        if (Array.isArray(oldParsed) && oldParsed.length > 0) {
+          return oldParsed.map((term: string, idx: number) => ({
+            id: `legacy-${idx}-${Date.now()}`,
+            word: typeof term === 'string' ? term : String(term),
+            timestamp: Date.now() - idx * 60000,
+            nooraniId: '1',
+            nooraniName: 'منظومة 1',
+            arabicId: '1',
+            arabicName: 'منظومة 1',
+            isFavorite: false,
+          }));
+        }
+      }
     } catch {
       // ignore
     }
-    return DEFAULT_RECENT_SEARCHES;
+    return [
+      {
+        id: 'hist-init-1',
+        word: 'طسم',
+        timestamp: Date.now() - 3600000,
+        nooraniId: '1',
+        nooraniName: 'منظومة 1',
+        arabicId: '1',
+        arabicName: 'منظومة 1',
+        isFavorite: true,
+      },
+      {
+        id: 'hist-init-2',
+        word: 'كهيعص',
+        timestamp: Date.now() - 7200000,
+        nooraniId: '1',
+        nooraniName: 'منظومة 1',
+        arabicId: '1',
+        arabicName: 'منظومة 1',
+        isFavorite: false,
+      },
+      {
+        id: 'hist-init-3',
+        word: 'سلام',
+        timestamp: Date.now() - 10800000,
+        nooraniId: '1',
+        nooraniName: 'منظومة 1',
+        arabicId: '1',
+        arabicName: 'منظومة 1',
+        isFavorite: false,
+      },
+    ];
   });
 
   // Save profile modal state
@@ -170,11 +268,29 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   const addToHistory = (word: string) => {
     const trimmed = word.trim();
     if (!trimmed) return;
-    setSearchHistory((prev) => {
-      const filtered = prev.filter((item) => item !== trimmed);
-      const updated = [trimmed, ...filtered].slice(0, 15);
+    setSearchHistoryItems((prev) => {
+      const existing = prev.find((item) => item.word === trimmed);
+      const isFav = existing?.isFavorite || false;
+      const filtered = prev.filter((item) => item.word !== trimmed);
+
+      const newItem: SearchHistoryItem = {
+        id: existing?.id || `hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        word: trimmed,
+        timestamp: Date.now(),
+        nooraniId: selectedNooraniId || '1',
+        nooraniName: currentNooraniItem?.name || activeNooraniPresetName || 'منظومة 1',
+        arabicId: selectedArabicId || '1',
+        arabicName: currentArabicItem?.name || activeArabicPresetName || 'منظومة 1',
+        isNooraniReversed: isNooraniReversed,
+        isArabicReversed: isArabicReversed,
+        includeWaw: includeWawInAllLayers,
+        isFavorite: isFav,
+      };
+
+      const updated = [newItem, ...filtered].slice(0, 50);
       try {
-        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
+        localStorage.setItem('cipher_search_history_v2', JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated.map((u) => u.word)));
       } catch {
         // ignore
       }
@@ -183,12 +299,63 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   };
 
   const handleClearHistory = () => {
-    setSearchHistory([]);
+    setSearchHistoryItems([]);
     try {
+      localStorage.removeItem('cipher_search_history_v2');
       localStorage.removeItem(STORAGE_KEY_HISTORY);
     } catch {
       // ignore
     }
+  };
+
+  const handleSelectHistoryItem = (item: SearchHistoryItem) => {
+    setInputText(item.word);
+    setSubmittedText(item.word);
+    if (item.nooraniId) {
+      applyNooraniDistribution(item.nooraniId);
+    }
+    if (item.arabicId) {
+      applyArabicDistribution(item.arabicId);
+    }
+    if (typeof item.isNooraniReversed === 'boolean') {
+      setIsNooraniReversed(item.isNooraniReversed);
+    }
+    if (typeof item.isArabicReversed === 'boolean') {
+      setIsArabicReversed(item.isArabicReversed);
+    }
+    if (typeof item.includeWaw === 'boolean') {
+      setIncludeWawInAllLayers(item.includeWaw);
+    }
+    setShowMultiSystemScanner(false);
+    setIsHistoryDrawerOpen(false);
+    buildShortShareUrl(true);
+  };
+
+  const handleToggleFavoriteHistoryItem = (id: string) => {
+    setSearchHistoryItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+      );
+      try {
+        localStorage.setItem('cipher_search_history_v2', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteHistoryItem = (id: string) => {
+    setSearchHistoryItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem('cipher_search_history_v2', JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated.map((u) => u.word)));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
   };
 
   const [copiedShareLink, setCopiedShareLink] = useState(false);
@@ -473,14 +640,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       return `🔐 التشفير العربي | نظام الطبقات السبع المتناظرة\n🔗 ${shortUrl}`;
     }
 
-    const cipher = assembledSentence || '';
     const qCount = quranicMatches.length;
     const dictCount = arabicDictionaryMatches.length;
 
     let text = `🔐 التشفير العربي | النص: (${word})\n`;
-    if (cipher) {
-      text += `✨ الشفرة الناتجة: ${cipher}\n`;
-    }
     if (qCount > 0 || dictCount > 0) {
       text += `📖 المطابقات: ${qCount} قرآنية | ${dictCount} معجمية\n`;
     }
@@ -492,26 +655,44 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   const handleShareWithSummary = async () => {
     try {
       const summaryText = generateShareSummaryText();
-      if (navigator.share) {
+      // Always write to clipboard first so user can paste immediately
+      await navigator.clipboard.writeText(summaryText);
+      setCopiedSummaryLink(true);
+      setTimeout(() => setCopiedSummaryLink(false), 2500);
+
+      // On mobile devices where native share is natural (WhatsApp, Telegram, etc.), invoke navigator.share
+      const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile && navigator.share) {
         await navigator.share({
           title: 'التشفير العربي',
           text: summaryText,
         });
-      } else {
-        await navigator.clipboard.writeText(summaryText);
-        setCopiedSummaryLink(true);
-        setTimeout(() => setCopiedSummaryLink(false), 2500);
       }
-    } catch {
-      try {
-        const summaryText = generateShareSummaryText();
-        await navigator.clipboard.writeText(summaryText);
-        setCopiedSummaryLink(true);
-        setTimeout(() => setCopiedSummaryLink(false), 2500);
-      } catch (err) {
-        console.warn('Share summary error:', err);
-      }
+    } catch (err) {
+      console.warn('Share summary handled:', err);
     }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        const result = importTablesFromJson(content);
+        if (result.success) {
+          setImportStatusMessage({ type: 'success', text: result.message });
+          setTimeout(() => setImportStatusMessage(null), 5000);
+        } else {
+          setImportStatusMessage({ type: 'error', text: result.message });
+          setTimeout(() => setImportStatusMessage(null), 6000);
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const [showSaveCurrentSystemModal, setShowSaveCurrentSystemModal] = useState(false);
@@ -523,7 +704,9 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     const targetText = inputText.trim() || submittedText.trim();
     if (targetText) {
       setSubmittedText(targetText);
+      setInputText(targetText);
       addToHistory(targetText);
+      buildShortShareUrl(true);
     }
   };
 
@@ -533,6 +716,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
       setSubmittedText(targetText);
       setInputText(targetText);
       addToHistory(targetText);
+      buildShortShareUrl(true);
     }
     setMultiScannerTrigger(Date.now());
     setShowMultiSystemScanner(true);
@@ -546,16 +730,50 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     setShowMultiSystemScanner(false);
     setSubmittedText(trimmed);
     addToHistory(trimmed);
+    buildShortShareUrl(true);
   };
 
   const handleGenerate = handleNormalSearchClick;
 
   const handleSelectHistory = (term: string) => {
-    setInputText(term);
-    setSubmittedText(term);
-    addToHistory(term);
-    setShowMultiSystemScanner(false);
+    const matched = searchHistoryItems.find((i) => i.word === term);
+    if (matched) {
+      handleSelectHistoryItem(matched);
+    } else {
+      setInputText(term);
+      setSubmittedText(term);
+      addToHistory(term);
+      setShowMultiSystemScanner(false);
+      buildShortShareUrl(true);
+    }
   };
+
+  // Global Ctrl+Enter shortcut for comprehensive search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleComprehensiveSearchClick();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [inputText, submittedText]);
+
+  // Listener to reset to clean home state when user clicks title/logo
+  useEffect(() => {
+    const handleResetHome = () => {
+      setInputText('');
+      setSubmittedText('');
+      setShowMultiSystemScanner(false);
+      if (window.location.search) {
+        window.history.pushState({}, '', window.location.pathname);
+      }
+      document.title = 'التشفير العربي – نظام الطبقات السبع المتناظرة';
+    };
+    window.addEventListener('app-reset-home', handleResetHome);
+    return () => window.removeEventListener('app-reset-home', handleResetHome);
+  }, []);
 
   const handleStartSave = () => {
     setSaveNooraniName(activeNooraniPresetName || 'ترتيب ك ن');
@@ -722,176 +940,6 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     });
   }, [cleanChars, effectiveLayers]);
 
-  // Fast Sentence / Word-by-Word Translation Analysis
-  const sentenceWords = useMemo(() => {
-    const raw = (submittedText || inputText).trim();
-    if (!raw) return [];
-    return raw.split(/\s+/).filter(Boolean);
-  }, [submittedText, inputText]);
-
-  // Compute Quranic word candidates for each word in sentence
-  const sentenceWordCandidates = useMemo(() => {
-    if (!fastTranslationMode || sentenceWords.length === 0) return [];
-
-    return sentenceWords.map((word) => {
-      const candidatesList: {
-        word: string;
-        meta?: QuranicWordMeta;
-        type: 'exact' | 'quranic' | 'dictionary';
-        operation: 'decryption' | 'encryption' | 'plain';
-        isShaddah: boolean;
-      }[] = [];
-
-      const seen = new Set<string>();
-
-      // 1. Direct Quranic lookup for word (plain text)
-      const directMeta = quranicDictionary.getWordDetails(word);
-      if (directMeta) {
-        seen.add(directMeta.word);
-        candidatesList.push({
-          word: directMeta.word,
-          meta: directMeta,
-          type: 'exact',
-          operation: 'plain',
-          isShaddah: Boolean(
-            directMeta.isShaddahVariant ||
-            directMeta.word.includes('\u0651') ||
-            (directMeta.originalQuranicWord && directMeta.originalQuranicWord.includes('\u0651'))
-          ),
-        });
-      }
-
-      // 2. Decryption permutations for word (فك التشفير: تحويل الرموز السماوية لأحرف أرضية)
-      const cleanWChars = Array.from(cleanText(word));
-      const wDecoded = cleanWChars.map((char) => {
-        const m = effectiveLayers.filter(
-          (l) => Array.isArray(l.cipherLetters) && l.cipherLetters.filter(Boolean).includes(char)
-        );
-        return Array.from(new Set(m.flatMap((l) => l.arabicLetters).filter(Boolean)));
-      });
-
-      if (wDecoded.length > 0 && wDecoded.every((c) => c.length > 0)) {
-        const combos: string[] = [];
-        function build(idx: number, cur: string) {
-          if (combos.length >= 150) return;
-          if (idx === wDecoded.length) {
-            combos.push(cur);
-            return;
-          }
-          for (const ch of wDecoded[idx]) {
-            build(idx + 1, cur + ch);
-            if (combos.length >= 150) return;
-          }
-        }
-        build(0, '');
-
-        for (const cb of combos) {
-          const meta = quranicDictionary.getWordDetails(cb);
-          if (meta && !seen.has(cb)) {
-            seen.add(cb);
-            candidatesList.push({
-              word: cb,
-              meta,
-              type: 'quranic',
-              operation: 'decryption',
-              isShaddah: Boolean(
-                meta.isShaddahVariant ||
-                cb.includes('\u0651') ||
-                (meta.originalQuranicWord && meta.originalQuranicWord.includes('\u0651'))
-              ),
-            });
-          }
-          const rev = cb.split('').reverse().join('');
-          if (rev !== cb) {
-            const metaRev = quranicDictionary.getWordDetails(rev);
-            if (metaRev && !seen.has(rev)) {
-              seen.add(rev);
-              candidatesList.push({
-                word: rev,
-                meta: metaRev,
-                type: 'quranic',
-                operation: 'decryption',
-                isShaddah: Boolean(
-                  metaRev.isShaddahVariant ||
-                  rev.includes('\u0651') ||
-                  (metaRev.originalQuranicWord && metaRev.originalQuranicWord.includes('\u0651'))
-                ),
-              });
-            }
-          }
-        }
-      }
-
-      // 3. Encryption permutations for word (التشفير: تحويل الأحرف الأرضية لأحرف سماوية)
-      const wEncDetails = analyzeWord(word, effectiveLayers);
-      if (wEncDetails.length > 0 && !wEncDetails.some((d) => d.layer === null && !d.isSpecialOrSpace)) {
-        const encCombos = getAllCombinations(wEncDetails, 150, true);
-        for (const ec of encCombos) {
-          const meta = quranicDictionary.getWordDetails(ec);
-          if (meta && !seen.has(ec)) {
-            seen.add(ec);
-            candidatesList.push({
-              word: ec,
-              meta,
-              type: 'quranic',
-              operation: 'encryption',
-              isShaddah: Boolean(
-                meta.isShaddahVariant ||
-                ec.includes('\u0651') ||
-                (meta.originalQuranicWord && meta.originalQuranicWord.includes('\u0651'))
-              ),
-            });
-          }
-        }
-      }
-
-      // If no candidates found, fallback to closest Quranic word or the word itself
-      if (candidatesList.length === 0) {
-        const nearest = quranicDictionary.findClosestQuranicWord(word);
-        if (nearest) {
-          const nMeta = quranicDictionary.getWordDetails(nearest.word);
-          if (nMeta) {
-            candidatesList.push({
-              word: nearest.word,
-              meta: nMeta,
-              type: 'dictionary',
-              operation: 'plain',
-              isShaddah: Boolean(nMeta.isShaddahVariant || nearest.word.includes('\u0651')),
-            });
-          }
-        }
-        if (candidatesList.length === 0) {
-          candidatesList.push({
-            word,
-            type: 'exact',
-            operation: 'plain',
-            isShaddah: word.includes('\u0651'),
-          });
-        }
-      }
-
-      return {
-        originalWord: word,
-        candidates: candidatesList,
-      };
-    });
-  }, [fastTranslationMode, sentenceWords, effectiveLayers, quranicCount]);
-
-  // Assembled full sentence
-  const assembledSentence = useMemo(() => {
-    if (sentenceWords.length === 0) return '';
-    return sentenceWords
-      .map((orig, i) => {
-        if (selectedWordCandidates[i]) return selectedWordCandidates[i];
-        const item = sentenceWordCandidates[i];
-        if (item && item.candidates.length > 0) {
-          return item.candidates[0].word;
-        }
-        return orig;
-      })
-      .join(' ');
-  }, [sentenceWords, selectedWordCandidates, sentenceWordCandidates]);
-
   const meaningfulItems = decodedItems.filter(d => !d.isSpace && d.matchingLayers.length > 0);
   const totalCombinationsCount = meaningfulItems.length > 0
     ? meaningfulItems.reduce((acc, item) => acc * Math.max(1, item.candidates.length), 1)
@@ -973,22 +1021,29 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
     return rawCombinations.filter(w => w.includes(search));
   }, [rawCombinations, permutationSearch]);
 
-  // Active layers in current input
+  // Active layers in current input (reactive to both inputText typing and submittedText)
   const activeLayersNumbers = useMemo(() => {
+    const textToAnalyze = (inputText || submittedText || '').trim();
+    if (!textToAnalyze) return [];
+    const clean = Array.from(cleanText(textToAnalyze));
     const set = new Set<number>();
-    decodedItems.forEach(d => {
-      d.matchingLayers.forEach(l => set.add(l.layer));
-    });
-    encryptionDetails.forEach(d => {
-      if (d.layer) set.add(d.layer.layer);
+    clean.forEach((char) => {
+      effectiveLayers.forEach((l) => {
+        if (Array.isArray(l.cipherLetters) && l.cipherLetters.filter(Boolean).includes(char)) {
+          set.add(l.layer);
+        }
+        if (Array.isArray(l.arabicLetters) && l.arabicLetters.filter(Boolean).includes(char)) {
+          set.add(l.layer);
+        }
+      });
     });
     return Array.from(set);
-  }, [decodedItems, encryptionDetails]);
+  }, [inputText, submittedText, effectiveLayers]);
 
   // Dynamic page title and OpenGraph metadata synchronization + Browser URL Address Bar Sync
   useEffect(() => {
     if (submittedText) {
-      const pageTitle = `التشفير العربي – (${submittedText}) ${assembledSentence ? '← ' + assembledSentence : ''}`;
+      const pageTitle = `التشفير العربي – (${submittedText})`;
       document.title = pageTitle;
 
       const ogTitle = document.querySelector('meta[property="og:title"]');
@@ -1001,51 +1056,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
         const dictCount = arabicDictionaryMatches.length;
         ogDesc.setAttribute(
           'content',
-          `نتائج تشفير الكلمة (${submittedText}): الشفرة [${assembledSentence || ''}] | ${qCount} مطابقة قرآنية | ${dictCount} كلمة معجمية.`
+          `نتائج تشفير وتحليل الكلمة (${submittedText}) في المنظومة: ${qCount} مطابقة قرآنية | ${dictCount} كلمة معجمية.`
         );
       }
 
-      // Sync browser address bar with pushState for native sharing & Back/Forward navigation
-      buildShortShareUrl(true);
+      // Sync browser address bar with replaceState for passive updates (native sharing & no history depth recursion)
+      buildShortShareUrl(false);
     } else {
       document.title = 'التشفير العربي – نظام الطبقات السبع المتناظرة';
     }
-  }, [submittedText, assembledSentence, quranicMatches.length, arabicDictionaryMatches.length, activeNooraniPresetName, activeArabicPresetName, isNooraniReversed, isArabicReversed, includeWawInAllLayers, viewMode, showMultiSystemScanner]);
+  }, [submittedText, quranicMatches.length, arabicDictionaryMatches.length, activeNooraniPresetName, activeArabicPresetName, isNooraniReversed, isArabicReversed, includeWawInAllLayers, viewMode, showMultiSystemScanner]);
 
-  // Extract all Sky and Earth items with serial numbers
-  const allNooraniItems = useMemo(() => {
-    return getAllNooraniItems(savedNooraniPresets, savedTables);
-  }, [savedNooraniPresets, savedTables]);
-
-  const allArabicItems = useMemo(() => {
-    return getAllArabicItems(savedArabicPresets, savedTables);
-  }, [savedArabicPresets, savedTables]);
-
-  // Selected Noorani ID
-  const selectedNooraniId = useMemo(() => {
-    if (activeNooraniPresetName) {
-      const match = allNooraniItems.find((n) => n.name === activeNooraniPresetName);
-      if (match) return match.id;
-    }
-    return allNooraniItems[0]?.id || '';
-  }, [activeNooraniPresetName, allNooraniItems]);
-
-  // Selected Arabic ID
-  const selectedArabicId = useMemo(() => {
-    if (activeArabicPresetName) {
-      const match = allArabicItems.find((a) => a.name === activeArabicPresetName);
-      if (match) return match.id;
-    }
-    return allArabicItems[0]?.id || '';
-  }, [activeArabicPresetName, allArabicItems]);
-
-  const currentNooraniItem = useMemo(() => {
-    return allNooraniItems.find((n) => n.id === selectedNooraniId) || null;
-  }, [allNooraniItems, selectedNooraniId]);
-
-  const currentArabicItem = useMemo(() => {
-    return allArabicItems.find((a) => a.id === selectedArabicId) || null;
-  }, [allArabicItems, selectedArabicId]);
 
   const currentSystemSuggestedName = useMemo(() => {
     if (activeTableName) return activeTableName;
@@ -1059,15 +1080,15 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
   return (
     <div className="space-y-3 sm:space-y-3.5 max-w-6xl mx-auto">
       
-      {/* 1. Dual Profile Bar (قائمة السماء وقائمة الأرض مع الأرقام التسلسلية) */}
-      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 px-3 py-2 sm:py-2.5 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      {/* 1. Direct Dual Profile Bar & Collapsible Quick Tools (اختيار السماء والأرض مباشرة مع زر المنظومات وزر الأدوات) */}
+      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-2 sm:p-2.5 shadow-2xs space-y-2 transition-all">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2">
           
-          {/* Two Independent Selectors: Sky & Earth */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 min-w-0">
-            {/* Sky Table Selector (سماء - اللون النيلي / السماوي الموحد لفك التشفير والسماء) */}
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-2xs sm:text-xs font-black text-indigo-700 dark:text-indigo-400 shrink-0 flex items-center gap-1">
+          {/* Two Selectors: Sky (سماء) & Earth (أرض) directly visible */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 flex-1 min-w-0">
+            {/* Sky Selector */}
+            <div className="flex items-center gap-1.5 min-w-0 bg-indigo-50/40 dark:bg-stone-850 p-1 rounded-lg border border-indigo-100 dark:border-indigo-950/80">
+              <span className="text-2xs sm:text-xs font-black text-indigo-700 dark:text-indigo-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
                 <span>🌌</span>
                 <span>سماء:</span>
               </span>
@@ -1076,7 +1097,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                 onChange={(e) => {
                   applyNooraniDistribution(e.target.value);
                 }}
-                className="flex-1 min-w-0 text-xs font-bold py-1.5 px-2 rounded-lg bg-indigo-50/70 dark:bg-stone-800 border border-indigo-300/80 dark:border-indigo-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                className="flex-1 min-w-0 text-xs font-bold py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-indigo-200 dark:border-indigo-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-sans"
+                title="اختيار منظومة السماء (الأحرف النورانية)"
               >
                 {allNooraniItems.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -1087,20 +1109,20 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               <button
                 type="button"
                 onClick={() => setIsNooraniReversed(!isNooraniReversed)}
-                className={`p-1.5 rounded-lg border text-2xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                className={`p-1.5 rounded-md border text-2xs font-bold transition-all shrink-0 cursor-pointer ${
                   isNooraniReversed
                     ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
                     : 'bg-white dark:bg-stone-800 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
                 }`}
-                title={isNooraniReversed ? 'عكس طبقات السماء مفعل (من الطبقة 1 إلى 7)' : 'انقر لعكس طبقات السماء (من الطبقة 1 إلى 7)'}
+                title={isNooraniReversed ? 'عكس طبقات السماء مفعل (7 إلى 1)' : 'انقر لعكس طبقات السماء'}
               >
                 <ArrowDownUp className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Earth Table Selector (أرض - اللون الكهرماني / البرتقالي الموحد للتشفير والأرض) */}
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-2xs sm:text-xs font-black text-amber-700 dark:text-amber-400 shrink-0 flex items-center gap-1">
+            {/* Earth Selector */}
+            <div className="flex items-center gap-1.5 min-w-0 bg-amber-50/40 dark:bg-stone-850 p-1 rounded-lg border border-amber-100 dark:border-amber-950/80">
+              <span className="text-2xs sm:text-xs font-black text-amber-700 dark:text-amber-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
                 <span>🌍</span>
                 <span>أرض:</span>
               </span>
@@ -1109,7 +1131,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                 onChange={(e) => {
                   applyArabicDistribution(e.target.value);
                 }}
-                className="flex-1 min-w-0 text-xs font-bold py-1.5 px-2 rounded-lg bg-amber-50/70 dark:bg-stone-800 border border-amber-300/80 dark:border-amber-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                className="flex-1 min-w-0 text-xs font-bold py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-amber-200 dark:border-amber-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer font-sans"
+                title="اختيار منظومة الأرض (الأحرف الهجائية)"
               >
                 {allArabicItems.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -1120,163 +1143,206 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               <button
                 type="button"
                 onClick={() => setIsArabicReversed(!isArabicReversed)}
-                className={`p-1.5 rounded-lg border text-2xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                className={`p-1.5 rounded-md border text-2xs font-bold transition-all shrink-0 cursor-pointer ${
                   isArabicReversed
                     ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
                     : 'bg-white dark:bg-stone-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                 }`}
-                title={isArabicReversed ? 'عكس طبقات الأرض مفعل (من الطبقة 1 إلى 7)' : 'انقر لعكس طبقات الأرض (من الطبقة 1 إلى 7)'}
+                title={isArabicReversed ? 'عكس طبقات الأرض مفعل (7 إلى 1)' : 'انقر لعكس طبقات الأرض'}
               >
                 <ArrowDownUp className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Quick Actions & Rainbow Indicators */}
-          <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 shrink-0 flex-wrap">
-            <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers.length > 0 ? activeLayersNumbers : [1, 2, 3, 4, 5, 6, 7]} />
+          {/* Action buttons on same row: [ المنظومات ] and [ الأدوات ] */}
+          <div className="flex items-center gap-1.5 justify-end shrink-0">
+            {/* Multi-System Scanner Button */}
+            <button
+              type="button"
+              onClick={() => setShowMultiSystemScanner((prev) => !prev)}
+              className={`px-2.5 py-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 font-sans ${
+                showMultiSystemScanner
+                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+              }`}
+              title="فحص ومقارنة المنظومات"
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>المنظومات</span>
+            </button>
 
-            {/* Share Buttons: Copy Short Link & Share Formatted Summary */}
-            <div className="flex items-center gap-1.5">
+            {/* Collapsible Tools Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowToolsDrawer((prev) => !prev)}
+              className={`p-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                showToolsDrawer
+                  ? 'bg-stone-800 text-white border-stone-900 dark:bg-stone-700 dark:border-stone-600'
+                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+              }`}
+              title="أدوات المنظومة والتصدير والمفكرة"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              {showToolsDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Tools Bar (Icon-only buttons with tooltips) */}
+        {showToolsDrawer && (
+          <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-2 flex-wrap animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Copy Share Link */}
               <button
                 type="button"
                 onClick={handleCopyShareLink}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer border ${
                   copiedShareLink
                     ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border-stone-300 dark:border-stone-700'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border-stone-200 dark:border-stone-700'
                 }`}
-                title={copiedShareLink ? 'تم نسخ الرابط المصغر! ✓' : 'نسخ رابط مباشر مصغر لنقل الشاشة والحالة إلى أصدقائك'}
+                title={copiedShareLink ? 'تم نسخ الرابط! ✓' : 'نسخ رابط مباشر للمنظومة والكلمة'}
               >
-                {copiedShareLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span className="hidden sm:inline">تم النسخ</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
-                    <span className="hidden sm:inline">رابط مصغر</span>
-                  </>
-                )}
+                {copiedShareLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
 
+              {/* Share Summary */}
               <button
                 type="button"
                 onClick={handleShareWithSummary}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer border ${
                   copiedSummaryLink
                     ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                    : 'bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white border-indigo-700/40 shadow-xs active:scale-95'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 shadow-2xs'
                 }`}
-                title="مشاركة النتيجة والملخص مباشرة مع أصدقائك في الواتساب والتلغرام"
+                title={copiedSummaryLink ? 'تم نسخ الملخص! ✓' : 'مشاركة ملخص الشيفرة والنتائج'}
               >
-                {copiedSummaryLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>تم نسخ الملخص</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-3.5 h-3.5 text-indigo-200" />
-                    <span>مشاركة الملخص</span>
-                  </>
+                {copiedSummaryLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              </button>
+
+              {/* Save System */}
+              <button
+                type="button"
+                onClick={() => setShowSaveCurrentSystemModal(true)}
+                className={`p-1.5 rounded-lg transition-all cursor-pointer border ${
+                  isCurrentSystemSaved
+                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-800 border-stone-200 dark:border-stone-700'
+                }`}
+                title={isCurrentSystemSaved ? 'محفوظة بالمفكرة ✓' : 'حفظ هذه المنظومة في المفكرة'}
+              >
+                <BookmarkPlus className={`w-3.5 h-3.5 ${isCurrentSystemSaved ? 'text-amber-600 dark:text-amber-400' : 'text-stone-500'}`} />
+              </button>
+
+              {/* Open Notebook */}
+              <button
+                type="button"
+                onClick={() => openDrawer('systems')}
+                className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 transition-colors cursor-pointer relative"
+                title="فتح مفكرة المنظومات والشيفرات"
+              >
+                <BookMarked className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                {savedSystems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 font-mono text-3xs px-1 py-0.1 rounded-full bg-amber-500 text-white font-black leading-none min-w-[14px] text-center">
+                    {savedSystems.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Open History Drawer */}
+              <button
+                type="button"
+                onClick={() => setIsHistoryDrawerOpen((prev) => !prev)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer border relative ${
+                  isHistoryDrawerOpen
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                    : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+                }`}
+                title="سجل الكلمات والمنظومات المستخدمة"
+              >
+                <History className={`w-3.5 h-3.5 ${isHistoryDrawerOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
+                {searchHistoryItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 font-mono text-3xs px-1 py-0.2 rounded-full bg-indigo-600 text-white font-black leading-none min-w-[14px] text-center">
+                    {searchHistoryItems.length}
+                  </span>
                 )}
               </button>
             </div>
 
-            {/* Save Current System to Notebook */}
-            <button
-              type="button"
-              onClick={() => setShowSaveCurrentSystemModal(true)}
-              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer text-2xs font-bold border ${
-                isCurrentSystemSaved
-                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-2xs'
-                  : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-800 dark:hover:text-amber-200 border-stone-300 dark:border-stone-700'
-              }`}
-              title={isCurrentSystemSaved ? 'محفوظة بالمفكرة ✓' : 'حفظ هذه المنظومة وملاحظاتك عنها في مفكرة الشيفرات'}
-            >
-              <BookmarkPlus className={`w-4 h-4 ${isCurrentSystemSaved ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400 dark:text-stone-500'}`} />
-            </button>
+            {/* Export & Import Icon Buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => exportCurrentTableAsTextFile()}
+                className="p-1.5 rounded-lg text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 transition-colors cursor-pointer"
+                title="تصدير المنظومة كملف نصي (.txt)"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
 
-            {/* Open Systems Notebook Button */}
-            <button
-              type="button"
-              onClick={() => openDrawer('systems')}
-              className="p-1.5 sm:p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 transition-colors cursor-pointer text-2xs font-bold relative"
-              title="فتح مفكرة الشيفرات والمنظومات المحفوظة"
-            >
-              <BookMarked className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              {savedSystems.length > 0 && (
-                <span className="absolute -top-1 -right-1 font-mono text-3xs px-1 py-0.1 rounded-full bg-amber-500 text-white font-black leading-none min-w-[14px] text-center">
-                  {savedSystems.length}
-                </span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => exportCurrentTableAsFile()}
+                className="p-1.5 rounded-lg text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-300 dark:border-stone-700 transition-colors cursor-pointer"
+                title="تصدير المنظومة كملف JSON"
+              >
+                <Download className="w-3.5 h-3.5 text-stone-500" />
+              </button>
 
-            <button
-              onClick={() => exportCurrentTableAsTextFile()}
-              className="px-2 py-1.5 rounded-lg text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 transition-colors cursor-pointer text-2xs font-bold"
-              title="تصدير المنظومة كملف نصي مبسط (.txt) سطر بسطر"
-            >
-              TXT
-            </button>
-
-            <button
-              onClick={() => exportCurrentTableAsFile()}
-              className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
-              title="تصدير المنظومة كملف JSON"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
+              <input
+                type="file"
+                ref={importFileInputRef}
+                onChange={handleImportFile}
+                accept=".txt,.json"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => importFileInputRef.current?.click()}
+                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
+                title="استيراد منظومة (.txt أو .json)"
+              >
+                <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* 2. Compact Smart Input Card */}
-      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-3 sm:p-4 shadow-2xs space-y-2.5">
-        <div className="flex items-center justify-end gap-2">
-          {/* Compact View Mode Selector */}
-          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-2xs font-bold">
-            <button
-              type="button"
-              onClick={() => setViewMode('both')}
-              className={`px-2 py-1 rounded-md transition-all cursor-pointer ${
-                viewMode === 'both'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              عرض متزامن
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('decrypt')}
-              className={`px-2 py-1 rounded-md transition-all cursor-pointer ${
-                viewMode === 'decrypt'
-                  ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              فك التشفير
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('encrypt')}
-              className={`px-2 py-1 rounded-md transition-all cursor-pointer ${
-                viewMode === 'encrypt'
-                  ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              التشفير
-            </button>
+      {/* Import Notification Banner */}
+      {importStatusMessage && (
+        <div
+          className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 shadow-2xs animate-in fade-in slide-in-from-top-2 ${
+            importStatusMessage.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+              : 'bg-rose-50 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {importStatusMessage.type === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <Eraser className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <span>{importStatusMessage.text}</span>
           </div>
+          <button
+            type="button"
+            onClick={() => setImportStatusMessage(null)}
+            className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 text-xs px-1 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
+      )}
 
-        {/* Input and Generate Button */}
-        <div className="flex items-stretch gap-2">
-          <div className="relative flex-1 flex items-center">
+      {/* 2. Simplified Clean Search Card (مستطيل البحث المتكامل والأزرار المدمجة) */}
+      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-2.5 sm:p-3.5 shadow-2xs space-y-2.5">
+        
+        {/* Step A: Search Input Box with Inline Compact Search Buttons */}
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-1 flex items-center min-w-0">
             <input
               type="text"
               value={inputText}
@@ -1292,7 +1358,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                 }
               }}
               placeholder="اكتب كلمة عربية أو شفرة (طسم، كهيعص، بقرة)..."
-              className={`w-full text-sm sm:text-base font-bold py-2 px-3 pe-8 ps-14 rounded-lg border focus:outline-none focus:ring-2 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner ${
+              className={`w-full text-sm sm:text-base font-bold py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border focus:outline-none focus:ring-2 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner ${
                 nooraniAnalysis?.isPureNoorani
                   ? 'border-amber-400/90 dark:border-amber-600/80 focus:ring-amber-500 bg-amber-50/20'
                   : 'border-stone-300 dark:border-stone-700 focus:ring-amber-500'
@@ -1300,8 +1366,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
             />
             
             {/* Quick Action Controls Inside Input (Left Side in RTL) */}
-            <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {/* Paste Button: Clears and Pastes directly */}
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              {/* Paste Button */}
               <button
                 type="button"
                 onClick={async () => {
@@ -1340,62 +1406,48 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
             </div>
           </div>
 
+          {/* Normal Search Button (Icon Only - Saves space) */}
           <button
             type="button"
             onClick={handleGenerate}
             disabled={!showMultiSystemScanner && !inputText.trim() && !submittedText.trim()}
-            className="p-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white transition-all shadow-2xs flex items-center justify-center cursor-pointer shrink-0"
-            title="بحث وفحص النص في المنظومة الحالية"
+            className="p-2 sm:p-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white transition-all shadow-xs flex items-center justify-center cursor-pointer shrink-0"
+            title="بحث وفحص النص في المنظومة الحالية (Enter)"
           >
             <Search className="w-4 h-4" />
           </button>
 
+          {/* Comprehensive Search Button (Icon + 'شامل' Only) */}
           <button
             type="button"
             onClick={handleComprehensiveSearchClick}
             disabled={!inputText.trim() && !submittedText.trim()}
-            className={`px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               showMultiSystemScanner
                 ? 'bg-emerald-700 dark:bg-emerald-600 text-white ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
                 : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
             }`}
-            title="بحث وفحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية (Ctrl + Enter)"
+            title="فحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية (Ctrl + Enter)"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>البحث الشامل</span>
+            <span>شامل</span>
           </button>
         </div>
 
-        {/* Dynamic Operational Hint & Unified Waw Option (شريط التوجيه الذكي وخيار حرف الواو الموحد) */}
-        {nooraniAnalysis ? (
-          <div
-            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-2xs px-3 py-1.5 rounded-lg border transition-all ${
-              nooraniAnalysis.isPureNoorani
-                ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/80 text-indigo-900 dark:text-indigo-200'
-                : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200'
-            }`}
-          >
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <div
-                className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${
-                  nooraniAnalysis.isPureNoorani
-                    ? 'bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200'
-                    : 'bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200'
-                }`}
-              >
-                {nooraniAnalysis.isPureNoorani ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
-              </div>
+        {/* Step B: Sky Layers Bar (طبقات السماوات السبع المعكوسة ومسار التشفير) */}
+        <div className="flex items-center justify-between gap-1.5 text-2xs px-2 py-1 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 shadow-2xs transition-all flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+            {/* The 7 Sky Layers buttons in reversed order (7 to 1) */}
+            <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers} />
 
-              <span className="font-extrabold">
-                {nooraniAnalysis.isPureNoorani
-                  ? `أحرف نورانية خالصة (${nooraniAnalysis.nooraniCount} من 14)`
-                  : `أحرف عامة (${nooraniAnalysis.nonNooraniCount} غير نوراني من 28)`}
-              </span>
-              <span className="opacity-40">•</span>
-              <span className="font-bold inline-flex items-center gap-1">
-                <span>المسار الأنسب:</span>
+            <div className="h-3.5 w-px bg-stone-300 dark:bg-stone-700 hidden sm:block shrink-0" />
+
+            {/* Short and Small Path Message (تلميح المسار بخط صغير) */}
+            {nooraniAnalysis ? (
+              <div className="flex items-center gap-1 font-bold text-3xs text-stone-600 dark:text-stone-400 flex-wrap font-sans">
+                <span className="text-3xs text-stone-500">المسار:</span>
                 <span
-                  className={`px-1.5 py-0.5 rounded font-black inline-flex items-center gap-1 ${
+                  className={`px-1 py-0.2 rounded font-bold text-3xs inline-flex items-center gap-0.5 ${
                     nooraniAnalysis.isPureNoorani
                       ? 'bg-indigo-600 text-white dark:bg-indigo-500'
                       : 'bg-amber-600 text-white dark:bg-amber-500'
@@ -1413,75 +1465,82 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                     </>
                   )}
                 </span>
-              </span>
-              {dictLoading && (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-100/90 dark:bg-indigo-950/90 border border-indigo-300/80 dark:border-indigo-700/80 text-indigo-900 dark:text-indigo-200 text-3xs font-extrabold animate-pulse"
-                  title="جاري معالجة وتدقيق المعجم العربي الشامل خلف الكواليس"
-                >
-                  <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <span>تحميل المعجم... ({dictProgress}%)</span>
+                <span className="text-3xs text-stone-500">
+                  {nooraniAnalysis.isPureNoorani
+                    ? `(${nooraniAnalysis.nooraniCount}ن)`
+                    : `(${nooraniAnalysis.nonNooraniCount}أ)`}
                 </span>
-              )}
-            </div>
 
-            {/* Unified Waw Option & Quick Filter */}
-            <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto shrink-0">
-              <label
-                className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-                title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
-              >
-                <input
-                  type="checkbox"
-                  checked={includeWawInAllLayers}
-                  onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
-                  className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
-                />
-                <span className={`font-bold transition-colors text-2xs ${includeWawInAllLayers ? 'text-indigo-800 dark:text-indigo-300' : 'text-stone-600 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-stone-200'}`}>
-                  اعتبار (و) سماوياً
-                </span>
-                {includeWawInAllLayers && (
-                  <span className="px-1.5 py-0.2 rounded-full text-3xs font-extrabold bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300/60">
-                    سماوي ✨
+                {dictLoading && (
+                  <span className="inline-flex items-center gap-0.5 text-3xs text-indigo-600 dark:text-indigo-400 font-bold animate-pulse ms-0.5 font-sans">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>({dictProgress}%)</span>
                   </span>
                 )}
-              </label>
-
-              {/* Quick Filter Switch if in single tab view */}
-              {viewMode !== 'both' && (
-                <button
-                  type="button"
-                  onClick={() => setViewMode(nooraniAnalysis.recommendedMode)}
-                  className="text-3xs font-bold px-2 py-0.5 rounded bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-600 hover:scale-105 transition-all cursor-pointer shrink-0 shadow-2xs"
-                >
-                  تطبيق المسار
-                </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <span className="text-3xs text-stone-400 truncate font-sans">
+                المسار: اكتب كلمة للتحليل
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center justify-between text-2xs px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 text-stone-600 dark:text-stone-400">
-            <span className="text-3xs text-stone-400 dark:text-stone-500">
-              اكتب كلمة في مربع البحث لعرض التوجيه الذكي ومسار التشفير
-            </span>
+
+          {/* Gematria & Waw Controls */}
+          <div className="flex items-center gap-1.5 shrink-0 ms-auto sm:ms-0 font-sans">
+            {/* Gematria Model Selector Pill */}
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-800/80 rounded-lg px-1.5 py-0.5 text-3xs font-bold text-amber-900 dark:text-amber-200">
+              <span className="text-stone-500 dark:text-stone-400">نظام الجُمَّل:</span>
+              <select
+                value={activeTableId}
+                onChange={(e) => setActiveTableId(e.target.value)}
+                className="bg-transparent font-bold text-amber-900 dark:text-amber-300 focus:outline-none cursor-pointer"
+                title="تحديد نظام حساب الجُمَّل (الشرقي المعتمد أو الغربي أو المخصص)"
+              >
+                {tables.map((tbl) => (
+                  <option key={tbl.id} value={tbl.id} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-bold">
+                    {tbl.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Live Gematria Value Badge */}
+            {(inputText.trim() || submittedText.trim()) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigateToGematria) {
+                    onNavigateToGematria(inputText.trim() || submittedText.trim());
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-3xs font-black bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer shadow-2xs"
+                title="انقر لفتح حساب الجُمَّل والتحليل الرقمي المفصل"
+              >
+                <Calculator className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
+                <span>جُمَّل ({activeTable.name.replace(/\(.*\)/, '').trim()}):</span>
+                <span className="font-mono font-black">{calculateWordGematria(inputText.trim() || submittedText.trim())}</span>
+              </button>
+            )}
+
+            {/* Unified Waw Option */}
             <label
-              className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+              className="inline-flex items-center gap-1 cursor-pointer select-none group"
               title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
             >
               <input
                 type="checkbox"
                 checked={includeWawInAllLayers}
                 onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
-                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3 h-3 cursor-pointer"
               />
-              <span className={`font-bold transition-colors text-2xs ${includeWawInAllLayers ? 'text-indigo-800 dark:text-indigo-300' : 'text-stone-600 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-stone-200'}`}>
-                اعتبار (و) سماوياً
+              <span className={`font-bold transition-colors text-3xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-500 dark:text-stone-400'}`}>
+                + (و) سماوي
               </span>
             </label>
           </div>
-        )}
+        </div>
 
-        {/* Multi-System Full Scanner */}
+        {/* Multi-System Full Scanner UI (When triggered) */}
         {showMultiSystemScanner && (
           <div className="pt-2">
             <MultiSystemScanner
@@ -1500,28 +1559,91 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           </div>
         )}
 
-        {/* 3. Interactive Recent Search History (سجل البحث السابق) */}
-        <div className="flex items-center gap-1.5 pt-0.5 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1 text-2xs font-extrabold text-stone-500 dark:text-stone-400 shrink-0">
-            <History className="w-3 h-3 text-stone-500 dark:text-stone-400" />
-            <span>السجل:</span>
+        {/* Step C: View Modes & Compact 2-Line Recent Search History Pills */}
+        <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          {/* View Mode Toggle (شامل / فك / تشفير / جُمَّل) */}
+          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-2xs font-bold self-start shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('both')}
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+                viewMode === 'both'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+              title="عرض متزامن لنتائج فك التشفير والتشفير وحساب الجُمَّل"
+            >
+              شامل (تشفير وفك وجُمَّل)
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('decrypt')}
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+                viewMode === 'decrypt'
+                  ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              فك
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('encrypt')}
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+                viewMode === 'encrypt'
+                  ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              تشفير
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('gematria')}
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+                viewMode === 'gematria'
+                  ? 'bg-white dark:bg-stone-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              حساب الجُمَّل
+            </button>
           </div>
 
-          {searchHistory.length === 0 ? (
-            <span className="text-2xs text-stone-400 italic">لا يوجد بحث سابق</span>
-          ) : (
-            <div className="flex items-center gap-1.5 flex-nowrap sm:flex-wrap">
-              {searchHistory.map((item) => {
-                const itemChars = item.replace(/[^ء-ي]/g, '').split('');
+          {/* Interactive Compact 2-Row Recent Search History Container */}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-start md:justify-end">
+            {/* History Drawer Toggle Button (Icon only with badge - NO text caption) */}
+            <button
+              type="button"
+              onClick={() => setIsHistoryDrawerOpen((prev) => !prev)}
+              className={`p-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer shrink-0 relative ${
+                isHistoryDrawerOpen
+                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+              }`}
+              title="فتح سجل الكلمات الكامل"
+            >
+              <History className={`w-3.5 h-3.5 ${isHistoryDrawerOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
+              {searchHistoryItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 font-mono text-3xs px-1 py-0.1 rounded-full bg-indigo-600 text-white font-black leading-none min-w-[12px] text-center">
+                  {searchHistoryItems.length}
+                </span>
+              )}
+            </button>
+
+            {/* Compact 2-Line Pills for Mobile & Desktop (خط عادي صغير ومريح) */}
+            <div className="flex flex-wrap items-center gap-1 max-h-[52px] overflow-hidden min-w-0">
+              {searchHistoryItems.slice(0, 12).map((item) => {
+                const itemChars = item.word.replace(/[^ء-ي]/g, '').split('');
                 const isItemPureNoorani = itemChars.length > 0 && itemChars.every((c) => NOORANI_LETTERS_SET.has(c));
 
                 return (
                   <button
-                    key={`hist_${item}`}
+                    key={`hist_pill_${item.id}`}
                     type="button"
-                    onClick={() => handleSelectHistory(item)}
-                    className={`text-2xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0 inline-flex items-center font-['Amiri',serif] border ${
-                      submittedText === item
+                    onClick={() => handleSelectHistoryItem(item)}
+                    className={`text-3xs font-medium px-1.5 py-0.5 rounded-md transition-all cursor-pointer shrink-0 inline-flex items-center gap-0.5 font-sans border ${
+                      submittedText === item.word
                         ? isItemPureNoorani
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                           : 'bg-amber-600 text-white border-amber-600 shadow-2xs'
@@ -1529,195 +1651,19 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                         ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400'
                         : 'bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border-amber-200 dark:border-amber-800 hover:border-amber-400'
                     }`}
-                    title={`البحث عن: ${item} (${isItemPureNoorani ? 'أحرف نورانية / فك تشفير' : 'أبجدية عامة / تشفير'})`}
+                    title={`استرجاع: ${item.word}`}
                   >
-                    <span>{item}</span>
+                    {item.isFavorite && (
+                      <Star className="w-2 h-2 fill-amber-500 text-amber-500 shrink-0" />
+                    )}
+                    <span>{item.word}</span>
                   </button>
                 );
               })}
-
-              {searchHistory.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearHistory}
-                  className="p-1 text-stone-400 hover:text-rose-500 rounded transition-colors shrink-0"
-                  title="مسح سجل البحث"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
             </div>
-          )}
-        </div>
-
-        {/* Feature Options: Fast Translation toggle */}
-        <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Fast Translation option */}
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
-              <input
-                type="checkbox"
-                checked={fastTranslationMode}
-                onChange={(e) => setFastTranslationMode(e.target.checked)}
-                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
-              />
-              <span className={`font-bold transition-colors text-2xs sm:text-xs ${fastTranslationMode ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-600 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-stone-200'}`}>
-                الترجمة السريعة للجمل (كلمة بكلمة)
-              </span>
-              {fastTranslationMode && (
-                <span className="px-1.5 py-0.2 rounded-full text-3xs font-extrabold bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300/60">
-                  جمل متتابعة ⚡
-                </span>
-              )}
-            </label>
           </div>
         </div>
       </div>
-
-      {/* 3. Fast Sentence Translation Panel (الترجمة السريعة للجمل) */}
-      {fastTranslationMode && !showMultiSystemScanner && (
-        <div className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 shadow-sm space-y-3.5 transition-colors">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                  <span>الترجمة السريعة للجمل (كلمة بكلمة)</span>
-                  <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    {sentenceWords.length} كلمة
-                  </span>
-                </h3>
-                <p className="text-3xs text-stone-500 dark:text-stone-400">
-                  انقر على خيار الترجمة لكل كلمة لتكوين الجملة المترجمة الصريحة
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {assembledSentence && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    addEntry(
-                      assembledSentence,
-                      (submittedText || inputText).trim(),
-                      { type: 'quranic', note: 'ترجمة سريعة للجملة كلمة بكلمة' }
-                    );
-                    handleCopy(assembledSentence, 'fast-sentence-saved');
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-2xs font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>{copiedText === 'fast-sentence-saved' ? 'تم الحفظ بالدفتر! ✓' : 'حفظ بالدفتر 📓'}</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Legend for Fast Translation (المفتاح) */}
-          <div className="flex items-center gap-1.5 flex-wrap text-3xs p-1.5 px-2 rounded-lg bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400">
-            <span className="font-extrabold text-stone-700 dark:text-stone-300 shrink-0 text-3xs me-0.5">المفتاح:</span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-3xs">
-              <span>فك تشفير</span>
-            </span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-3xs">
-              <span>تشفير</span>
-            </span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-3xs">
-              <span>أصلية</span>
-            </span>
-          </div>
-
-          {/* Words breakdown list */}
-          {sentenceWords.length === 0 ? (
-            <div className="text-center py-5 text-stone-400 dark:text-stone-500 text-xs">
-              ادخل كلمة أو سطر كامل في صندوق البحث أعلاه لعرض الترجمة كلمة بكلمة
-            </div>
-          ) : (
-            <div className="space-y-2.5 max-h-[340px] overflow-y-auto pe-1 custom-scrollbar">
-              {sentenceWordCandidates.map((item, idx) => {
-                const selectedWord = selectedWordCandidates[idx] || (item.candidates[0]?.word || item.originalWord);
-
-                return (
-                  <div
-                    key={idx}
-                    className="bg-stone-50 dark:bg-stone-950/70 rounded-xl p-3 border border-stone-200 dark:border-stone-800 space-y-2 hover:border-stone-300 dark:hover:border-stone-700 transition-all"
-                  >
-                    <div className="flex items-center justify-between text-2xs">
-                      <span className="font-extrabold text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-amber-400 flex items-center justify-center font-mono font-bold text-3xs">
-                          {idx + 1}
-                        </span>
-                        <span>الكلمة:</span>
-                        <span className="text-amber-700 dark:text-amber-300 font-black text-sm font-['Amiri',serif]">{item.originalWord}</span>
-                      </span>
-
-                      <span className="text-stone-500 dark:text-stone-400 text-3xs">
-                        المختار: <strong className="text-emerald-700 dark:text-emerald-400 font-['Amiri',serif] text-xs font-black">{selectedWord}</strong>
-                      </span>
-                    </div>
-
-                    {/* Candidate pills */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {item.candidates.map((cand, cIdx) => {
-                        const isSelected = selectedWord === cand.word;
-
-                        return (
-                          <button
-                            key={cIdx}
-                            type="button"
-                            onClick={() => setSelectedWordCandidates((prev) => ({ ...prev, [idx]: cand.word }))}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 font-['Amiri',serif] border ${
-                              isSelected
-                                ? cand.operation === 'decryption'
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-500/40'
-                                  : cand.operation === 'encryption'
-                                  ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/40'
-                                  : 'bg-stone-700 text-white border-stone-700 shadow-sm ring-2 ring-stone-500/40'
-                                : cand.operation === 'decryption'
-                                ? 'bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400'
-                                : cand.operation === 'encryption'
-                                ? 'bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border-amber-200 dark:border-amber-800 hover:border-amber-400'
-                                : 'bg-stone-100 dark:bg-stone-850 text-stone-800 dark:text-stone-200 border-stone-200 dark:border-stone-750 hover:border-stone-400'
-                            }`}
-                          >
-                            <span className="text-sm font-bold">{cand.word}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Assembled Result Sentence Banner */}
-          {assembledSentence && (
-            <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between text-3xs text-amber-800 dark:text-amber-300 font-bold">
-                <span className="flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>الجملة المترجمة الصريحة:</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedWordCandidates({})}
-                  className="text-3xs text-stone-500 hover:text-amber-700 dark:text-stone-400 dark:hover:text-amber-300 underline cursor-pointer"
-                >
-                  إعادة ضبط
-                </button>
-              </div>
-
-              <div className="text-base sm:text-lg font-bold text-amber-950 dark:text-amber-100 font-['Amiri',serif] leading-relaxed tracking-wide bg-white dark:bg-stone-900 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800/40 text-center select-all shadow-2xs">
-                {assembledSentence}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 4. Dense Output Results Layout (عرض متزامن يمين ويسار بدون سكرول طويل) */}
       {submittedText && !showMultiSystemScanner && (
@@ -1737,13 +1683,13 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   <div className="w-5 h-5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
                     <Unlock className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100">
+                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 font-sans">
                     نتائج فك التشفير
                   </h3>
                   {nooraniAnalysis?.isPureNoorani && (
-                    <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-indigo-600 text-white flex items-center gap-0.5 shadow-2xs">
+                    <span className="px-1.5 py-0.2 rounded-md text-3xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-0.5 font-sans">
                       <Unlock className="w-2.5 h-2.5" />
-                      <span>المسار المقترح</span>
+                      <span>مسار مقترح</span>
                     </span>
                   )}
                 </div>
@@ -1833,7 +1779,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
               </div>
 
               {/* Priority 2: Confirmed Arabic Lexicon Matches (خلفية نيلية فك تشفير وإطار رمادي معجمي) */}
-              {arabicDictionaryMatches.length > 0 && (
+              {(arabicDictionaryMatches.length > 0 || dictLoading) && (
                 <div className="space-y-1.5 pt-1 border-t border-stone-100 dark:border-stone-800">
                   <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1">
@@ -1847,44 +1793,57 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                       </span>
                     )}
                   </h4>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
-                    {arabicDictionaryMatches.slice(0, 60).map((item, idx) => (
-                      <div
-                        key={`dict_${item.word}_${idx}`}
-                        className="px-2 py-0.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-stone-300 dark:border-stone-700 text-2xs font-bold hover:scale-105 transition-all inline-flex items-center gap-1"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(item.word, `d_${idx}`)}
-                          className="inline-flex items-center gap-1 cursor-pointer"
-                          title="انقر لنسخ الكلمة"
-                        >
-                          <span>{item.word}</span>
-                          {item.isReversed && (
-                            <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
-                          )}
-                          {copiedText === `d_${idx}` ? <Check className="w-2.5 h-2.5 text-indigo-600" /> : null}
-                        </button>
-                        <a
-                          href={getArabicDictSearchUrl(item.word)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-indigo-100 p-0.5"
-                          title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
-                        >
-                          <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
-                        </a>
-                        <AddToNotebookButton
-                          word={submittedText}
-                          cipher={item.word}
-                          systemName={activeTableName}
-                          isReversed={item.isReversed}
-                          type="dictionary"
-                          variant="icon-only"
-                        />
+
+                  {arabicDictionaryMatches.length === 0 && dictLoading ? (
+                    <div className="py-2.5 px-3 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-2xs text-indigo-900 dark:text-indigo-200 font-bold animate-pulse">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="truncate">جاري معالجة وفحص المعجم العربي الشامل... ستظهر الكلمات فور اكتمال معالجتها</span>
                       </div>
-                    ))}
-                  </div>
+                      <span className="text-3xs font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full font-black shrink-0">
+                        {dictProgress}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
+                      {arabicDictionaryMatches.slice(0, 60).map((item, idx) => (
+                        <div
+                          key={`dict_${item.word}_${idx}`}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-stone-300 dark:border-stone-700 text-2xs font-bold hover:scale-105 transition-all inline-flex items-center gap-1"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(item.word, `d_${idx}`)}
+                            className="inline-flex items-center gap-1 cursor-pointer"
+                            title="انقر لنسخ الكلمة"
+                          >
+                            <span>{item.word}</span>
+                            {item.isReversed && (
+                              <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
+                            )}
+                            {copiedText === `d_${idx}` ? <Check className="w-2.5 h-2.5 text-indigo-600" /> : null}
+                          </button>
+                          <a
+                            href={getArabicDictSearchUrl(item.word)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-indigo-100 p-0.5"
+                            title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
+                          >
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
+                          </a>
+                          <AddToNotebookButton
+                            word={submittedText}
+                            cipher={item.word}
+                            systemName={activeTableName}
+                            isReversed={item.isReversed}
+                            type="dictionary"
+                            variant="icon-only"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1974,13 +1933,13 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
                   <div className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
                     <Lock className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100">
+                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 font-sans">
                     نتائج التشفير
                   </h3>
                   {!nooraniAnalysis?.isPureNoorani && (
-                    <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-600 text-white flex items-center gap-0.5 shadow-2xs">
+                    <span className="px-1.5 py-0.2 rounded-md text-3xs font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 font-sans">
                       <Lock className="w-2.5 h-2.5" />
-                      <span>المسار المقترح</span>
+                      <span>مسار مقترح</span>
                     </span>
                   )}
                 </div>
@@ -2325,6 +2284,16 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
             </div>
           )}
 
+          {/* Section C: Gematria Calculation & Quranic Matches Results */}
+          {(viewMode === 'both' || viewMode === 'gematria') && (
+            <div className={viewMode === 'both' ? 'col-span-1 lg:col-span-2' : ''}>
+              <GematriaResultsCard
+                query={submittedText}
+                onNavigateToGematria={onNavigateToGematria}
+              />
+            </div>
+          )}
+
         </div>
       )}
 
@@ -2340,6 +2309,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt }: Dua
           layers={effectiveLayers}
         />
       )}
+
+      {/* Search and Cipher History Side Drawer */}
+      <SearchHistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        items={searchHistoryItems}
+        onSelectItem={handleSelectHistoryItem}
+        onToggleFavorite={handleToggleFavoriteHistoryItem}
+        onDeleteItem={handleDeleteHistoryItem}
+        onClearHistory={handleClearHistory}
+      />
 
     </div>
   );

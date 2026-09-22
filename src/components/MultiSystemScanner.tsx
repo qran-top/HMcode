@@ -66,8 +66,10 @@ export function MultiSystemScanner({
   
   // Keep local includeWaw state in sync if parent prop changes
   useEffect(() => {
-    setIncludeWaw(includeWawInCelestial);
-  }, [includeWawInCelestial]);
+    if (typeof includeWawInCelestial === 'boolean' && includeWawInCelestial !== includeWaw) {
+      setIncludeWaw(includeWawInCelestial);
+    }
+  }, [includeWawInCelestial, includeWaw]);
 
   // Sort and Filter States
   const [sortOption, setSortOption] = useState<'quranic' | 'score' | 'alpha'>('quranic');
@@ -217,19 +219,13 @@ export function MultiSystemScanner({
     setCurrentScanningName('');
   }, [savedNooraniPresets, savedArabicPresets, savedTables, includeWaw]);
 
-  useEffect(() => {
-    if (typeof includeWawInCelestial === 'boolean' && includeWawInCelestial !== includeWaw) {
-      setIncludeWaw(includeWawInCelestial);
-    }
-  }, [includeWawInCelestial]);
-
   const lastScannedKeyRef = useRef<string>('');
 
   useEffect(() => {
     const target = (initialQuery || queryText).trim();
     const effectiveWaw = typeof includeWawInCelestial === 'boolean' ? includeWawInCelestial : includeWaw;
     const scanKey = `${target}::${effectiveWaw}::${scanTrigger || ''}`;
-    if (target && (scanKey !== lastScannedKeyRef.current || scanTrigger)) {
+    if (target && scanKey !== lastScannedKeyRef.current) {
       lastScannedKeyRef.current = scanKey;
       setQueryText(target);
       runScan(target, effectiveWaw);
