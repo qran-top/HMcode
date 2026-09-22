@@ -333,7 +333,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                     }
                   }}
                   placeholder="اكتب كلمة، اسم، آية، أو رقماً مستهدفاً (بالعربية أو الإنجليزية ٧٨٦ أو 786) ثم اضغط بحث..."
-                  className="w-full text-base sm:text-lg font-black py-2 sm:py-2.5 px-3.5 pe-10 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50/70 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 text-right tracking-wide font-['Amiri',serif]"
+                  className="w-full text-base sm:text-lg font-bold py-2 sm:py-2.5 px-3.5 pe-10 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50/70 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 text-right tracking-wide font-sans"
                 />
 
                 {searchInput && (
@@ -685,7 +685,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                           title={item.isNoorani ? `حرف نوراني (${item.char} = ${item.value})` : `حرف عادي (${item.char} = ${item.value})`}
                         >
                           <span
-                            className={`text-sm sm:text-base font-black font-['Amiri',serif] leading-none ${
+                            className={`text-sm sm:text-base font-black font-quran leading-none ${
                               item.isNoorani ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-800 dark:text-stone-200'
                             }`}
                           >
@@ -935,7 +935,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                         <button
                           type="button"
                           onClick={() => handleWordClick(item.text)}
-                          className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100 font-['Amiri',serif] hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer text-right leading-tight"
+                          className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100 font-quran hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer text-right leading-tight"
                           title="انقر لحساب هذه المفردة"
                         >
                           {item.text}
@@ -1195,7 +1195,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                         {isNoorani && <Sparkles className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />}
                       </div>
 
-                      <span className="text-2xl font-black font-['Amiri',serif] text-stone-900 dark:text-stone-100 my-0.5">
+                      <span className="text-2xl font-black font-quran text-stone-900 dark:text-stone-100 my-0.5">
                         {char}
                       </span>
 

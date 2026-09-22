@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useNotebook } from '../context/NotebookContext';
-import { PRESET_TABLES, cleanText, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS, getShortPresetId, getExpandedPresetId } from '../cipherData';
+import { PRESET_TABLES, cleanText, normalizeArabicChar, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS, getShortPresetId, getExpandedPresetId } from '../cipherData';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
 import { 
@@ -1021,24 +1021,43 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
     return rawCombinations.filter(w => w.includes(search));
   }, [rawCombinations, permutationSearch]);
 
-  // Active layers in current input (reactive to both inputText typing and submittedText)
+  // Active layers in current input (strictly reactive to inputText so clearing text immediately turns all layers off)
   const activeLayersNumbers = useMemo(() => {
-    const textToAnalyze = (inputText || submittedText || '').trim();
+    const textToAnalyze = inputText.trim();
     if (!textToAnalyze) return [];
-    const clean = Array.from(cleanText(textToAnalyze));
+
+    const chars = Array.from(cleanText(textToAnalyze)).filter((c) => c && c.trim() !== '');
+    if (chars.length === 0) return [];
+
     const set = new Set<number>();
-    clean.forEach((char) => {
+    const isNooraniInput = chars.every((c) => NOORANI_LETTERS_SET.has(c));
+
+    chars.forEach((rawChar) => {
+      const normChar = normalizeArabicChar(rawChar);
       effectiveLayers.forEach((l) => {
-        if (Array.isArray(l.cipherLetters) && l.cipherLetters.filter(Boolean).includes(char)) {
-          set.add(l.layer);
-        }
-        if (Array.isArray(l.arabicLetters) && l.arabicLetters.filter(Boolean).includes(char)) {
-          set.add(l.layer);
+        if (isNooraniInput) {
+          // Decryption: Match against sky / cipher letters
+          const cSlots = (l.cipherLetters || []).filter(Boolean);
+          if (cSlots.includes(rawChar) || cSlots.includes(normChar)) {
+            set.add(l.layer);
+          }
+        } else {
+          // Encryption: Match against earth / arabic letters
+          const aSlots = (l.arabicLetters || []).filter(Boolean);
+          if (
+            aSlots.includes(rawChar) ||
+            aSlots.includes(normChar) ||
+            (rawChar === 'ا' && aSlots.includes('أ')) ||
+            (normChar === 'أ' && aSlots.includes('ا'))
+          ) {
+            set.add(l.layer);
+          }
         }
       });
     });
+
     return Array.from(set);
-  }, [inputText, submittedText, effectiveLayers]);
+  }, [inputText, effectiveLayers]);
 
   // Dynamic page title and OpenGraph metadata synchronization + Browser URL Address Bar Sync
   useEffect(() => {
@@ -1088,8 +1107,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 flex-1 min-w-0">
             {/* Sky Selector */}
             <div className="flex items-center gap-1.5 min-w-0 bg-indigo-50/40 dark:bg-stone-850 p-1 rounded-lg border border-indigo-100 dark:border-indigo-950/80">
-              <span className="text-2xs sm:text-xs font-black text-indigo-700 dark:text-indigo-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
-                <span>🌌</span>
+              <span className="text-2xs sm:text-xs font-semibold text-indigo-700 dark:text-indigo-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>سماء:</span>
               </span>
               <select
@@ -1097,7 +1116,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 onChange={(e) => {
                   applyNooraniDistribution(e.target.value);
                 }}
-                className="flex-1 min-w-0 text-xs font-bold py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-indigo-200 dark:border-indigo-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-sans"
+                className="flex-1 min-w-0 text-xs font-medium py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-indigo-200 dark:border-indigo-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-sans"
                 title="اختيار منظومة السماء (الأحرف النورانية)"
               >
                 {allNooraniItems.map((item) => (
@@ -1109,7 +1128,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
               <button
                 type="button"
                 onClick={() => setIsNooraniReversed(!isNooraniReversed)}
-                className={`p-1.5 rounded-md border text-2xs font-bold transition-all shrink-0 cursor-pointer ${
+                className={`p-1.5 rounded-md border text-2xs font-medium transition-all shrink-0 cursor-pointer ${
                   isNooraniReversed
                     ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
                     : 'bg-white dark:bg-stone-800 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
@@ -1122,8 +1141,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
 
             {/* Earth Selector */}
             <div className="flex items-center gap-1.5 min-w-0 bg-amber-50/40 dark:bg-stone-850 p-1 rounded-lg border border-amber-100 dark:border-amber-950/80">
-              <span className="text-2xs sm:text-xs font-black text-amber-700 dark:text-amber-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
-                <span>🌍</span>
+              <span className="text-2xs sm:text-xs font-semibold text-amber-700 dark:text-amber-400 shrink-0 flex items-center gap-1 ps-1 font-sans">
+                <Globe className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>أرض:</span>
               </span>
               <select
@@ -1131,7 +1150,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 onChange={(e) => {
                   applyArabicDistribution(e.target.value);
                 }}
-                className="flex-1 min-w-0 text-xs font-bold py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-amber-200 dark:border-amber-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer font-sans"
+                className="flex-1 min-w-0 text-xs font-medium py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-amber-200 dark:border-amber-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer font-sans"
                 title="اختيار منظومة الأرض (الأحرف الهجائية)"
               >
                 {allArabicItems.map((item) => (
@@ -1143,7 +1162,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
               <button
                 type="button"
                 onClick={() => setIsArabicReversed(!isArabicReversed)}
-                className={`p-1.5 rounded-md border text-2xs font-bold transition-all shrink-0 cursor-pointer ${
+                className={`p-1.5 rounded-md border text-2xs font-medium transition-all shrink-0 cursor-pointer ${
                   isArabicReversed
                     ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
                     : 'bg-white dark:bg-stone-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/40'
@@ -1161,7 +1180,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             <button
               type="button"
               onClick={() => setShowMultiSystemScanner((prev) => !prev)}
-              className={`px-2.5 py-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 font-sans ${
+              className={`px-2.5 py-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 font-sans ${
                 showMultiSystemScanner
                   ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
                   : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
@@ -1176,7 +1195,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             <button
               type="button"
               onClick={() => setShowToolsDrawer((prev) => !prev)}
-              className={`p-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+              className={`p-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                 showToolsDrawer
                   ? 'bg-stone-800 text-white border-stone-900 dark:bg-stone-700 dark:border-stone-600'
                   : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
@@ -1358,7 +1377,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 }
               }}
               placeholder="اكتب كلمة عربية أو شفرة (طسم، كهيعص، بقرة)..."
-              className={`w-full text-sm sm:text-base font-bold py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border focus:outline-none focus:ring-2 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner ${
+              className={`w-full text-sm sm:text-base font-medium py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border focus:outline-none focus:ring-2 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner ${
                 nooraniAnalysis?.isPureNoorani
                   ? 'border-amber-400/90 dark:border-amber-600/80 focus:ring-amber-500 bg-amber-50/20'
                   : 'border-stone-300 dark:border-stone-700 focus:ring-amber-500'
@@ -1422,7 +1441,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             type="button"
             onClick={handleComprehensiveSearchClick}
             disabled={!inputText.trim() && !submittedText.trim()}
-            className={`py-2 px-2.5 sm:px-3 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl font-medium text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               showMultiSystemScanner
                 ? 'bg-emerald-700 dark:bg-emerald-600 text-white ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
                 : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
@@ -1434,20 +1453,20 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
           </button>
         </div>
 
-        {/* Step B: Sky Layers Bar (طبقات السماوات السبع المعكوسة ومسار التشفير) */}
-        <div className="flex items-center justify-between gap-1.5 text-2xs px-2 py-1 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 shadow-2xs transition-all flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-            {/* The 7 Sky Layers buttons in reversed order (7 to 1) */}
-            <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers} />
+        {/* Step B: Sky Layers Bar (أزرار السماوات السبع ومسار التشفير) */}
+        <div className="flex items-center justify-between gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 shadow-2xs transition-all flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            {/* The 7 Sky Layers buttons in order 1 to 7 */}
+            <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers} customLayers={effectiveLayers} />
 
-            <div className="h-3.5 w-px bg-stone-300 dark:bg-stone-700 hidden sm:block shrink-0" />
+            <div className="h-4 w-px bg-stone-300 dark:bg-stone-700 hidden sm:block shrink-0" />
 
-            {/* Short and Small Path Message (تلميح المسار بخط صغير) */}
+            {/* Short Path Message */}
             {nooraniAnalysis ? (
-              <div className="flex items-center gap-1 font-bold text-3xs text-stone-600 dark:text-stone-400 flex-wrap font-sans">
-                <span className="text-3xs text-stone-500">المسار:</span>
+              <div className="flex items-center gap-1.5 font-medium text-xs text-stone-600 dark:text-stone-400 flex-wrap font-sans">
+                <span className="text-stone-500">المسار:</span>
                 <span
-                  className={`px-1 py-0.2 rounded font-bold text-3xs inline-flex items-center gap-0.5 ${
+                  className={`px-2 py-0.5 rounded font-medium text-xs inline-flex items-center gap-1 ${
                     nooraniAnalysis.isPureNoorani
                       ? 'bg-indigo-600 text-white dark:bg-indigo-500'
                       : 'bg-amber-600 text-white dark:bg-amber-500'
@@ -1455,85 +1474,49 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 >
                   {nooraniAnalysis.isPureNoorani ? (
                     <>
-                      <Unlock className="w-2.5 h-2.5" />
+                      <Unlock className="w-3 h-3" />
                       <span>فك تشفير</span>
                     </>
                   ) : (
                     <>
-                      <Lock className="w-2.5 h-2.5" />
+                      <Lock className="w-3 h-3" />
                       <span>تشفير</span>
                     </>
                   )}
                 </span>
-                <span className="text-3xs text-stone-500">
+                <span className="text-stone-500 text-xs">
                   {nooraniAnalysis.isPureNoorani
-                    ? `(${nooraniAnalysis.nooraniCount}ن)`
-                    : `(${nooraniAnalysis.nonNooraniCount}أ)`}
+                    ? `(${nooraniAnalysis.nooraniCount} نورانية)`
+                    : `(${nooraniAnalysis.nonNooraniCount} هجائية)`}
                 </span>
 
                 {dictLoading && (
-                  <span className="inline-flex items-center gap-0.5 text-3xs text-indigo-600 dark:text-indigo-400 font-bold animate-pulse ms-0.5 font-sans">
-                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse ms-0.5 font-sans">
+                    <Loader2 className="w-3 h-3 animate-spin" />
                     <span>({dictProgress}%)</span>
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-3xs text-stone-400 truncate font-sans">
+              <span className="text-xs text-stone-400 truncate font-sans">
                 المسار: اكتب كلمة للتحليل
               </span>
             )}
           </div>
 
-          {/* Gematria & Waw Controls */}
+          {/* Unified Waw Option */}
           <div className="flex items-center gap-1.5 shrink-0 ms-auto sm:ms-0 font-sans">
-            {/* Gematria Model Selector Pill */}
-            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-800/80 rounded-lg px-1.5 py-0.5 text-3xs font-bold text-amber-900 dark:text-amber-200">
-              <span className="text-stone-500 dark:text-stone-400">نظام الجُمَّل:</span>
-              <select
-                value={activeTableId}
-                onChange={(e) => setActiveTableId(e.target.value)}
-                className="bg-transparent font-bold text-amber-900 dark:text-amber-300 focus:outline-none cursor-pointer"
-                title="تحديد نظام حساب الجُمَّل (الشرقي المعتمد أو الغربي أو المخصص)"
-              >
-                {tables.map((tbl) => (
-                  <option key={tbl.id} value={tbl.id} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-bold">
-                    {tbl.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Live Gematria Value Badge */}
-            {(inputText.trim() || submittedText.trim()) && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (onNavigateToGematria) {
-                    onNavigateToGematria(inputText.trim() || submittedText.trim());
-                  }
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-3xs font-black bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer shadow-2xs"
-                title="انقر لفتح حساب الجُمَّل والتحليل الرقمي المفصل"
-              >
-                <Calculator className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
-                <span>جُمَّل ({activeTable.name.replace(/\(.*\)/, '').trim()}):</span>
-                <span className="font-mono font-black">{calculateWordGematria(inputText.trim() || submittedText.trim())}</span>
-              </button>
-            )}
-
-            {/* Unified Waw Option */}
             <label
-              className="inline-flex items-center gap-1 cursor-pointer select-none group"
+              className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-750 transition-colors"
               title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
             >
               <input
                 type="checkbox"
                 checked={includeWawInAllLayers}
                 onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
-                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3 h-3 cursor-pointer"
+                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
               />
-              <span className={`font-bold transition-colors text-3xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-500 dark:text-stone-400'}`}>
+              <span className={`transition-colors text-xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-stone-500 dark:text-stone-400 font-medium'}`}>
                 + (و) سماوي
               </span>
             </label>
@@ -1562,25 +1545,25 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
         {/* Step C: View Modes & Compact 2-Line Recent Search History Pills */}
         <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-col md:flex-row md:items-center justify-between gap-2">
           {/* View Mode Toggle (شامل / فك / تشفير / جُمَّل) */}
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-2xs font-bold self-start shrink-0">
+          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-xs font-medium self-start shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('both')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 viewMode === 'both'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
               title="عرض متزامن لنتائج فك التشفير والتشفير وحساب الجُمَّل"
             >
-              شامل (تشفير وفك وجُمَّل)
+              شامل
             </button>
             <button
               type="button"
               onClick={() => setViewMode('decrypt')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 viewMode === 'decrypt'
-                  ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs'
+                  ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
@@ -1589,9 +1572,9 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             <button
               type="button"
               onClick={() => setViewMode('encrypt')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 viewMode === 'encrypt'
-                  ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs'
+                  ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
@@ -1600,23 +1583,23 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             <button
               type="button"
               onClick={() => setViewMode('gematria')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 viewMode === 'gematria'
-                  ? 'bg-white dark:bg-stone-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
+                  ? 'bg-white dark:bg-stone-700 text-emerald-700 dark:text-emerald-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
-              حساب الجُمَّل
+              الجُمَّل
             </button>
           </div>
 
-          {/* Interactive Compact 2-Row Recent Search History Container */}
+          {/* Interactive Compact History Container */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-start md:justify-end">
-            {/* History Drawer Toggle Button (Icon only with badge - NO text caption) */}
+            {/* History Drawer Toggle Button */}
             <button
               type="button"
               onClick={() => setIsHistoryDrawerOpen((prev) => !prev)}
-              className={`p-1.5 rounded-lg border text-2xs font-bold transition-all cursor-pointer shrink-0 relative ${
+              className={`p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer shrink-0 relative ${
                 isHistoryDrawerOpen
                   ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
                   : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
@@ -1625,15 +1608,15 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             >
               <History className={`w-3.5 h-3.5 ${isHistoryDrawerOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
               {searchHistoryItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 font-mono text-3xs px-1 py-0.1 rounded-full bg-indigo-600 text-white font-black leading-none min-w-[12px] text-center">
+                <span className="absolute -top-1 -right-1 font-mono text-2xs px-1 py-0.1 rounded-full bg-indigo-600 text-white font-semibold leading-none min-w-[12px] text-center">
                   {searchHistoryItems.length}
                 </span>
               )}
             </button>
 
-            {/* Compact 2-Line Pills for Mobile & Desktop (خط عادي صغير ومريح) */}
-            <div className="flex flex-wrap items-center gap-1 max-h-[52px] overflow-hidden min-w-0">
-              {searchHistoryItems.slice(0, 12).map((item) => {
+            {/* Compact Single-Line Pills */}
+            <div className="flex flex-nowrap items-center gap-1 overflow-hidden min-w-0 h-6">
+              {searchHistoryItems.slice(0, 10).map((item) => {
                 const itemChars = item.word.replace(/[^ء-ي]/g, '').split('');
                 const isItemPureNoorani = itemChars.length > 0 && itemChars.every((c) => NOORANI_LETTERS_SET.has(c));
 
@@ -1642,11 +1625,11 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     key={`hist_pill_${item.id}`}
                     type="button"
                     onClick={() => handleSelectHistoryItem(item)}
-                    className={`text-3xs font-medium px-1.5 py-0.5 rounded-md transition-all cursor-pointer shrink-0 inline-flex items-center gap-0.5 font-sans border ${
+                    className={`text-xs font-medium px-2 py-0.5 rounded-md transition-all cursor-pointer shrink-0 inline-flex items-center gap-1 font-sans border whitespace-nowrap ${
                       submittedText === item.word
                         ? isItemPureNoorani
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                          : 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-semibold'
+                          : 'bg-amber-600 text-white border-amber-600 shadow-2xs font-semibold'
                         : isItemPureNoorani
                         ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400'
                         : 'bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border-amber-200 dark:border-amber-800 hover:border-amber-400'
@@ -1654,7 +1637,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     title={`استرجاع: ${item.word}`}
                   >
                     {item.isFavorite && (
-                      <Star className="w-2 h-2 fill-amber-500 text-amber-500 shrink-0" />
+                      <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500 shrink-0" />
                     )}
                     <span>{item.word}</span>
                   </button>
@@ -1667,7 +1650,22 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
 
       {/* 4. Dense Output Results Layout (عرض متزامن يمين ويسار بدون سكرول طويل) */}
       {submittedText && !showMultiSystemScanner && (
-        <div className={viewMode === 'both' ? "grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start" : "space-y-3"}>
+        <div className={viewMode === 'both' ? "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start" : "space-y-3"}>
+
+          {/* Top Priority: Gematria Calculation & Quranic Matches Results (تُعرض أولاً بتصميم فائق الإيجاز) */}
+          {(viewMode === 'both' || viewMode === 'gematria') && (
+            <div className={viewMode === 'both' ? 'col-span-1 lg:col-span-2' : ''}>
+              <GematriaResultsCard
+                query={submittedText}
+                onNavigateToGematria={onNavigateToGematria}
+                onSelectWord={(w) => {
+                  setInputText(w);
+                  setSubmittedText(w);
+                  addToHistory(w);
+                }}
+              />
+            </div>
+          )}
 
           {/* Section A: Decryption Results (فك التشفير - Indigo Theme) */}
           {(viewMode === 'both' || viewMode === 'decrypt') && (
@@ -1680,46 +1678,40 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             >
               <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-5 h-5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-semibold text-xs">
                     <Unlock className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 font-sans">
-                    نتائج فك التشفير
+                  <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 font-sans">
+                    فك التشفير
                   </h3>
-                  {nooraniAnalysis?.isPureNoorani && (
-                    <span className="px-1.5 py-0.2 rounded-md text-3xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-0.5 font-sans">
-                      <Unlock className="w-2.5 h-2.5" />
-                      <span>مسار مقترح</span>
-                    </span>
-                  )}
                 </div>
 
                 {onNavigateToDecrypt && (
                   <button
                     onClick={() => onNavigateToDecrypt(submittedText)}
-                    className="text-2xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    className="text-2xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <span>التفاصيل الكاملة</span>
+                    <span>التفاصيل</span>
                     <ExternalLink className="w-3 h-3" />
                   </button>
                 )}
               </div>
 
-              {/* Priority 1: Exact Quranic Matches (المطابقات القرآنية المؤكدة - خلفية نيلية فك تشفير وإطار زمردي قرآني) */}
-              <div className="space-y-1.5">
+              {/* Priority 1: Exact Quranic Matches */}
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                     <span>المطابقات القرآنية المؤكدة ({quranicMatches.length})</span>
                   </h4>
                 </div>
 
                 {quranicMatches.length === 0 ? (
-                  <div className="py-2 px-3 bg-stone-50/60 dark:bg-stone-950/40 rounded-lg border border-stone-200 dark:border-stone-800 text-2xs text-stone-500 text-center">
+                  <div className="py-2.5 px-3 bg-stone-50/60 dark:bg-stone-950/40 rounded-lg border border-stone-200 dark:border-stone-800 text-xs text-stone-500 text-center">
                     لا توجد ألفاظ قرآنية مباشرة في هذا الاحتمال
                   </div>
                 ) : (
-                  /* High Density Quranic Chips Grid - Indigo Decryption with Emerald Quranic Border */
+                  /* Standardized Quranic Chips Grid - Matches Gematria & Encrypt */
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                     {quranicMatches.map((item, idx) => {
                       const url = getQuranTopWordUrl(item.word, item.meta.surahNumber, item.meta.ayahNum, item.meta.occurrences);
@@ -1728,15 +1720,15 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                         <div
                           key={`quran_${item.word}_${idx}`}
                           onClick={() => handleCopy(item.word, `q_${idx}`)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/70 border-2 border-emerald-500 dark:border-emerald-400 flex items-center justify-between gap-1.5 shadow-2xs hover:border-emerald-600 dark:hover:border-emerald-300 transition-all cursor-pointer select-none group"
+                          className="px-2.5 py-1.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/70 border-2 border-emerald-500 dark:border-emerald-400 flex items-center justify-between gap-1.5 shadow-2xs hover:border-emerald-600 dark:hover:border-emerald-300 transition-all cursor-pointer select-none group"
                           title={`انقر لنسخ [${item.word}]`}
                         >
                           <div className="flex items-baseline gap-1.5 min-w-0">
-                            <span className="text-base sm:text-lg font-black font-['Amiri',serif] text-indigo-950 dark:text-indigo-100 leading-tight">
+                            <span className="text-sm sm:text-base font-semibold font-quran text-indigo-950 dark:text-indigo-100 leading-tight">
                               {item.word}
                             </span>
                             {isCopied ? (
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                                 تم النسخ
                               </span>
                             ) : (
@@ -1745,7 +1737,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-[10.5px] text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-white font-sans truncate hover:underline"
+                                className="text-xs text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-white font-sans truncate hover:underline"
                                 title="عرض السورة والآيات"
                               >
                                 {item.meta.surahName} {item.meta.occurrences > 1 ? `(${item.meta.occurrences}×)` : ''}
@@ -1756,7 +1748,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                           <div className="flex items-center gap-1 shrink-0">
                             {item.isReversed && (
                               <RotateCcw
-                                className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0"
+                                className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0"
                                 title="معكوس الكلمة"
                               />
                             )}
@@ -1778,38 +1770,38 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 )}
               </div>
 
-              {/* Priority 2: Confirmed Arabic Lexicon Matches (خلفية نيلية فك تشفير وإطار رمادي معجمي) */}
+              {/* Priority 2: Confirmed Arabic Lexicon Matches */}
               {(arabicDictionaryMatches.length > 0 || dictLoading) && (
-                <div className="space-y-1.5 pt-1 border-t border-stone-100 dark:border-stone-800">
-                  <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1">
+                <div className="space-y-2 pt-1 border-t border-stone-100 dark:border-stone-800">
+                  <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>الكلمات المعجمية ({arabicDictionaryMatches.length})</span>
                     </div>
                     {dictLoading && (
-                      <span className="inline-flex items-center gap-1 text-3xs font-semibold text-indigo-600 dark:text-indigo-400 animate-pulse me-1">
-                        <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
-                        <span>جاري فحص باقي المعجم ({dictProgress}%)...</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 animate-pulse me-1">
+                        <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                        <span>جاري فحص المعجم ({dictProgress}%)...</span>
                       </span>
                     )}
                   </h4>
 
                   {arabicDictionaryMatches.length === 0 && dictLoading ? (
-                    <div className="py-2.5 px-3 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-2xs text-indigo-900 dark:text-indigo-200 font-bold animate-pulse">
+                    <div className="py-2.5 px-3 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-xs text-indigo-900 dark:text-indigo-200 font-medium animate-pulse">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
-                        <span className="truncate">جاري معالجة وفحص المعجم العربي الشامل... ستظهر الكلمات فور اكتمال معالجتها</span>
+                        <span className="truncate">جاري معالجة وفحص المعجم العربي الشامل...</span>
                       </div>
-                      <span className="text-3xs font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full font-black shrink-0">
+                      <span className="text-xs font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full font-medium shrink-0">
                         {dictProgress}%
                       </span>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
                       {arabicDictionaryMatches.slice(0, 60).map((item, idx) => (
                         <div
                           key={`dict_${item.word}_${idx}`}
-                          className="px-2 py-0.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-stone-300 dark:border-stone-700 text-2xs font-bold hover:scale-105 transition-all inline-flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-stone-300 dark:border-stone-700 text-xs font-medium hover:scale-102 transition-all inline-flex items-center gap-1.5"
                         >
                           <button
                             type="button"
@@ -1819,9 +1811,9 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                           >
                             <span>{item.word}</span>
                             {item.isReversed && (
-                              <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
+                              <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
                             )}
-                            {copiedText === `d_${idx}` ? <Check className="w-2.5 h-2.5 text-indigo-600" /> : null}
+                            {copiedText === `d_${idx}` ? <Check className="w-3 h-3 text-indigo-600" /> : null}
                           </button>
                           <a
                             href={getArabicDictSearchUrl(item.word)}
@@ -1830,7 +1822,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                             className="text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-indigo-100 p-0.5"
                             title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
                           >
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
+                            <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
                           </a>
                           <AddToNotebookButton
                             word={submittedText}
@@ -1849,72 +1841,17 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
 
               {arabicDictionaryMatches.length === 0 && dictLoading && (
                 <div className="pt-1 border-t border-stone-100 dark:border-stone-800">
-                  <div className="p-2 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-2xs text-indigo-900 dark:text-indigo-200 font-bold animate-pulse">
+                  <div className="p-2.5 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between gap-2 text-xs text-indigo-900 dark:text-indigo-200 font-medium animate-pulse">
                     <div className="flex items-center gap-1.5">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" />
                       <span>جاري تحميل المعجم العربي الشامل واكتشاف الكلمات المعجمية...</span>
                     </div>
-                    <span className="text-3xs bg-indigo-200/60 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded-full font-black">
+                    <span className="text-xs bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full font-medium">
                       {dictProgress}%
                     </span>
                   </div>
                 </div>
               )}
-
-              {/* Priority 3: Permutations Bank */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAllPermutations(!showAllPermutations)}
-                  className="w-full flex items-center justify-between p-2 rounded-lg bg-stone-50 dark:bg-stone-950/60 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer text-2xs sm:text-xs"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Filter className="w-3.5 h-3.5 text-stone-500" />
-                    <span className="font-bold text-stone-700 dark:text-stone-300">
-                      بنك الاحتمالات ({rawCombinations.length})
-                    </span>
-                  </div>
-                  {showAllPermutations ? <ChevronUp className="w-3.5 h-3.5 text-stone-500" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-500" />}
-                </button>
-
-                {showAllPermutations && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/50 border border-stone-200 dark:border-stone-800 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="relative flex-1">
-                        <Search className="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                        <input
-                          type="text"
-                          value={permutationSearch}
-                          onChange={(e) => setPermutationSearch(e.target.value)}
-                          placeholder="تصفية الاحتمالات..."
-                          className="w-full text-2xs py-1 px-2 pe-7 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(filteredPermutations.join('\n'), 'all_perms')}
-                        className="p-1.5 rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors shrink-0 cursor-pointer shadow-2xs"
-                        title="نسخ كافة الاحتمالات"
-                      >
-                        {copiedText === 'all_perms' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-
-                    <div className="max-h-40 overflow-y-auto p-1.5 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-wrap gap-1">
-                      {filteredPermutations.map((word, i) => (
-                        <span
-                          key={`perm_${word}_${i}`}
-                          onClick={() => handleCopy(word, `perm_${i}`)}
-                          className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 hover:bg-amber-100 dark:hover:bg-amber-950 cursor-pointer"
-                          title="انقر للنسخ"
-                        >
-                          {word}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
 
             </div>
           )}
@@ -1930,78 +1867,31 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             >
               <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center font-semibold text-xs">
                     <Lock className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 font-sans">
-                    نتائج التشفير
+                  <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 font-sans">
+                    التشفير
                   </h3>
-                  {!nooraniAnalysis?.isPureNoorani && (
-                    <span className="px-1.5 py-0.2 rounded-md text-3xs font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-0.5 font-sans">
-                      <Lock className="w-2.5 h-2.5" />
-                      <span>مسار مقترح</span>
-                    </span>
-                  )}
                 </div>
 
                 {onNavigateToEncrypt && (
                   <button
                     onClick={() => onNavigateToEncrypt(submittedText)}
-                    className="text-2xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    className="text-2xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <span>التفاصيل الكاملة</span>
+                    <span>التفاصيل</span>
                     <ExternalLink className="w-3 h-3" />
                   </button>
                 )}
               </div>
 
               {hasMissingArabic ? (
-                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-center text-xs font-bold text-rose-700 dark:text-rose-300">
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-center text-xs font-medium text-rose-700 dark:text-rose-300">
                   بعض أحرف هذه الكلمة غير موجودة في جدول التشفير الحالي.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Dense Output Banner */}
-                  <div className="p-2.5 rounded-lg bg-stone-50 dark:bg-stone-950/60 border border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-2xs font-black text-amber-600 dark:text-amber-400 shrink-0">
-                        الشفرة:
-                      </span>
-                      <div className="text-xl font-black font-['Amiri',serif] tracking-wider text-stone-900 dark:text-stone-100 truncate">
-                        {primaryCipherOutput}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <AddToNotebookButton
-                        word={submittedText}
-                        cipher={primaryCipherOutput}
-                        systemName={activeTableName}
-                        type="encryption"
-                        variant="button"
-                        label="حفظ بالدفتر"
-                      />
-
-                      <button
-                        onClick={() => handleCopy(primaryCipherOutput, 'enc_res')}
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer shrink-0"
-                      >
-                        {copiedText === 'enc_res' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>نسخ</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Noorani Segments if any */}
-                  {encCipherSegmentation && encCipherSegmentation.segments.length > 0 && (
-                    <div className="p-1.5 rounded-lg bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 flex items-center gap-1.5 flex-wrap">
-                      <span className="text-3xs font-bold text-amber-800 dark:text-amber-300">
-                        فواتح السور:
-                      </span>
-                      <NooraniSegmentsBadge segmentation={encCipherSegmentation} />
-                    </div>
-                  )}
-
                   {/* Dense Letter Breakdown with Color-Only Micro Tiles (No redundant layer number labels) */}
                   <div className="flex items-center gap-1 flex-wrap">
                     {encryptionDetails.map((detail, idx) => {
@@ -2022,10 +1912,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
                           title={`الحرف [${detail.char}]`}
                         >
-                          <span className={`w-5 h-5 rounded font-black text-xs font-['Amiri',serif] flex items-center justify-center shrink-0 ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}>
+                          <span className={`w-5 h-5 rounded font-semibold text-xs font-quran flex items-center justify-center shrink-0 ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}>
                             {detail.char}
                           </span>
-                          <span className="text-2xs font-mono font-bold text-stone-600 dark:text-stone-300">
+                          <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-300">
                             {ciphers.join('/')}
                           </span>
                         </div>
@@ -2033,11 +1923,11 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     })}
                   </div>
 
-                  {/* Priority 1: Exact Quranic Matches from Encryption Combinations (خلفية كهرمانية تشفير وإطار زمردي قرآني) */}
+                  {/* Priority 1: Exact Quranic Matches from Encryption Combinations */}
                   {encQuranicMatches.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                        <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                           <BookOpen className="w-3.5 h-3.5 text-amber-600" />
                           <span>المطابقات القرآنية المؤكدة للشفرة ({encQuranicMatches.length})</span>
                         </h4>
@@ -2051,15 +1941,15 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                             <div
                               key={`enc_quran_${item.word}_${idx}`}
                               onClick={() => handleCopy(item.word, `enc_q_${idx}`)}
-                              className="px-2.5 py-1 rounded-lg bg-amber-50/80 dark:bg-amber-950/70 border-2 border-emerald-500 dark:border-emerald-400 flex items-center justify-between gap-1.5 shadow-2xs hover:border-emerald-600 dark:hover:border-emerald-300 transition-all cursor-pointer select-none group"
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/70 border-2 border-emerald-500 dark:border-emerald-400 flex items-center justify-between gap-1.5 shadow-2xs hover:border-emerald-600 dark:hover:border-emerald-300 transition-all cursor-pointer select-none group"
                               title={`انقر لنسخ [${item.word}]`}
                             >
                               <div className="flex items-baseline gap-1.5 min-w-0">
-                                <span className="text-base sm:text-lg font-black font-['Amiri',serif] text-amber-950 dark:text-amber-100 leading-tight">
+                                <span className="text-sm sm:text-base font-semibold font-quran text-amber-950 dark:text-amber-100 leading-tight">
                                   {item.word}
                                 </span>
                                 {isCopied ? (
-                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                                     تم النسخ
                                   </span>
                                 ) : (
@@ -2068,7 +1958,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-[10.5px] text-amber-800 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-200 font-sans truncate hover:underline"
+                                    className="text-xs text-amber-800 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-200 font-sans truncate hover:underline"
                                     title="عرض السورة والآيات"
                                   >
                                     {item.meta.surahName} {item.meta.occurrences > 1 ? `(${item.meta.occurrences}×)` : ''}
@@ -2079,7 +1969,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                               <div className="flex items-center gap-1 shrink-0">
                                 {item.isReversed && (
                                   <RotateCcw
-                                    className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0"
+                                    className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0"
                                     title="معكوس التوليفة"
                                   />
                                 )}
@@ -2101,11 +1991,11 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     </div>
                   )}
 
-                  {/* Priority 2: Distinct Nearest Quranic Vocabulary Matches (Sky Blue Border & Distinct Color) */}
+                  {/* Priority 2: Distinct Nearest Quranic Vocabulary Matches */}
                   {encNearestQuranicMatches.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-sky-100 dark:border-stone-800">
+                    <div className="space-y-2 pt-2 border-t border-sky-100 dark:border-stone-800">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-black text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+                        <h4 className="text-xs font-semibold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-sky-600" />
                           <span>أقرب المفردات شبهاً ({encNearestQuranicMatches.length})</span>
                         </h4>
@@ -2117,25 +2007,25 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                           return (
                             <div
                               key={`enc_near_${item.combo}_${idx}`}
-                              className="px-2 py-1 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border-2 border-sky-300/80 dark:border-sky-700/70 hover:border-sky-500 flex items-center gap-1.5 text-xs transition-all shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border-2 border-sky-300/80 dark:border-sky-700/70 hover:border-sky-500 flex items-center gap-1.5 text-xs transition-all shadow-2xs"
                               title={`احتمال الشفرة: [${item.combo}] ← أقرب مفردة قرآنية: [${item.nearest.word}] في ${item.nearest.surahName}`}
                             >
-                              <span className="text-3xs font-black px-1.5 py-0.5 rounded bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200">
+                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200">
                                 {item.nearest.similarity}%
                               </span>
                               <span
                                 onClick={() => handleCopy(item.nearest.word, `enc_near_${idx}`)}
-                                className="font-bold font-['Amiri',serif] text-stone-900 dark:text-stone-100 text-sm cursor-pointer hover:underline"
+                                className="font-semibold font-quran text-stone-900 dark:text-stone-100 text-sm cursor-pointer hover:underline"
                               >
                                 {item.nearest.word}
                               </span>
-                              <span className="text-3xs text-stone-400 font-mono">
+                              <span className="text-xs text-stone-400 font-mono">
                                 ← {item.combo}
                               </span>
                               {item.isReversed && (
-                                <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس" />
+                                <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس" />
                               )}
-                              {isCopied && <Check className="w-3 h-3 text-emerald-600 shrink-0" />}
+                              {isCopied && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                               <AddToNotebookButton
                                 word={submittedText}
                                 cipher={item.nearest.word}
@@ -2152,26 +2042,26 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     </div>
                   )}
 
-                  {/* Priority 3: Confirmed Arabic Lexicon Matches (خلفية كهرمانية تشفير وإطار رمادي معجمي) */}
+                  {/* Priority 3: Confirmed Arabic Lexicon Matches */}
                   {encArabicDictionaryMatches.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
-                      <h4 className="text-xs font-black text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1">
+                    <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                           <span>الكلمات المعجمية ({encArabicDictionaryMatches.length})</span>
                         </div>
                         {dictLoading && (
-                          <span className="inline-flex items-center gap-1 text-3xs font-semibold text-amber-600 dark:text-amber-400 animate-pulse me-1">
-                            <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
-                            <span>جاري فحص باقي المعجم ({dictProgress}%)...</span>
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 animate-pulse me-1">
+                            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                            <span>جاري فحص المعجم ({dictProgress}%)...</span>
                           </span>
                         )}
                       </h4>
-                      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800">
                         {encArabicDictionaryMatches.map((item, idx) => (
                           <div
                             key={`enc_dict_${item.word}_${idx}`}
-                            className="px-2 py-0.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-stone-300 dark:border-stone-700 text-2xs font-bold hover:scale-105 transition-all inline-flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-stone-300 dark:border-stone-700 text-xs font-medium hover:scale-102 transition-all inline-flex items-center gap-1.5"
                           >
                             <button
                               type="button"
@@ -2181,9 +2071,9 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                             >
                               <span>{item.word}</span>
                               {item.isReversed && (
-                                <RotateCcw className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
+                                <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
                               )}
-                              {copiedText === `enc_d_${idx}` ? <Check className="w-2.5 h-2.5 text-amber-600" /> : null}
+                              {copiedText === `enc_d_${idx}` ? <Check className="w-3 h-3 text-amber-600" /> : null}
                             </button>
                             <a
                               href={getArabicDictSearchUrl(item.word)}
@@ -2192,7 +2082,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                               className="text-amber-700 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-100 p-0.5"
                               title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
                             >
-                              <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
+                              <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
                             </a>
                             <AddToNotebookButton
                               word={submittedText}
@@ -2222,75 +2112,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     </div>
                   )}
 
-                  {/* Priority 4: Encryption Permutations Bank */}
-                  {rawEncCombinations.length > 0 && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowAllEncPermutations(!showAllEncPermutations)}
-                        className="w-full flex items-center justify-between p-2 rounded-lg bg-stone-50 dark:bg-stone-950/60 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer text-2xs sm:text-xs"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <Filter className="w-3.5 h-3.5 text-stone-500" />
-                          <span className="font-bold text-stone-700 dark:text-stone-300">
-                            بنك الاحتمالات ({rawEncCombinations.length})
-                          </span>
-                        </div>
-                        {showAllEncPermutations ? <ChevronUp className="w-3.5 h-3.5 text-stone-500" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-500" />}
-                      </button>
-
-                      {showAllEncPermutations && (
-                        <div className="mt-2 p-2.5 rounded-lg bg-stone-50/50 dark:bg-stone-950/50 border border-stone-200 dark:border-stone-800 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="relative flex-1">
-                              <Search className="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                              <input
-                                type="text"
-                                value={encPermutationSearch}
-                                onChange={(e) => setEncPermutationSearch(e.target.value)}
-                                placeholder="تصفية الاحتمالات..."
-                                className="w-full text-2xs py-1 px-2 pe-7 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(filteredEncPermutations.join('\n'), 'all_enc_perms')}
-                              className="p-1.5 rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors shrink-0 cursor-pointer shadow-2xs"
-                              title="نسخ كافة الاحتمالات"
-                            >
-                              {copiedText === 'all_enc_perms' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-
-                          <div className="max-h-40 overflow-y-auto p-1.5 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-wrap gap-1">
-                            {filteredEncPermutations.map((word, i) => (
-                              <span
-                                key={`enc_perm_${word}_${i}`}
-                                onClick={() => handleCopy(word, `enc_perm_${i}`)}
-                                className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 hover:bg-amber-100 dark:hover:bg-amber-950 cursor-pointer"
-                                title="انقر للنسخ"
-                              >
-                                {word}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Section C: Gematria Calculation & Quranic Matches Results */}
-          {(viewMode === 'both' || viewMode === 'gematria') && (
-            <div className={viewMode === 'both' ? 'col-span-1 lg:col-span-2' : ''}>
-              <GematriaResultsCard
-                query={submittedText}
-                onNavigateToGematria={onNavigateToGematria}
-              />
             </div>
           )}
 

@@ -305,7 +305,7 @@ export function NotebookDrawer() {
                 <button
                   type="button"
                   onClick={() => setDrawerTab('systems')}
-                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
+                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-medium transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
                     drawerTab === 'systems'
                       ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                       : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -313,7 +313,7 @@ export function NotebookDrawer() {
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span className="truncate">المنظومات</span>
-                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-bold border border-amber-300/50 shrink-0">
+                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-medium border border-amber-300/50 shrink-0">
                     {savedSystems.length}
                   </span>
                 </button>
@@ -321,7 +321,7 @@ export function NotebookDrawer() {
                 <button
                   type="button"
                   onClick={() => setDrawerTab('entries')}
-                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
+                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-medium transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
                     drawerTab === 'entries'
                       ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                       : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -329,7 +329,7 @@ export function NotebookDrawer() {
                 >
                   <BookMarked className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                   <span className="truncate">الكلمات</span>
-                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold shrink-0">
+                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-medium shrink-0">
                     {entries.length}
                   </span>
                 </button>
@@ -337,7 +337,7 @@ export function NotebookDrawer() {
                 <button
                   type="button"
                   onClick={() => setDrawerTab('quiz')}
-                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
+                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-medium transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
                     drawerTab === 'quiz'
                       ? 'bg-white dark:bg-stone-900 text-indigo-700 dark:text-indigo-300 shadow-xs border border-indigo-200 dark:border-indigo-800'
                       : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -351,7 +351,7 @@ export function NotebookDrawer() {
                 <button
                   type="button"
                   onClick={() => setDrawerTab('pages')}
-                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
+                  className={`flex-1 py-1.5 px-1.5 sm:px-2 rounded-lg text-3xs sm:text-xs font-medium transition-all cursor-pointer inline-flex items-center justify-center gap-1 ${
                     drawerTab === 'pages'
                       ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200/80 dark:border-stone-700'
                       : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -359,7 +359,7 @@ export function NotebookDrawer() {
                 >
                   <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <span className="truncate">الصفحات</span>
-                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-300 font-bold border border-indigo-300/50 shrink-0">
+                  <span className="text-4xs sm:text-3xs font-mono px-1 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-300 font-medium border border-indigo-300/50 shrink-0">
                     {pages.length}
                   </span>
                 </button>

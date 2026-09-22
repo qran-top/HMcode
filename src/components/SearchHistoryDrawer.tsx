@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ExternalLink,
   Sparkles,
+  Globe,
   RotateCcw,
 } from 'lucide-react';
 
@@ -102,13 +103,13 @@ export function SearchHistoryDrawer({
               <History className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold text-stone-900 dark:text-white flex items-center gap-1.5">
                 <span>سجل عمليات البحث</span>
-                <span className="text-2xs font-mono px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold">
+                <span className="text-2xs font-mono px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold">
                   {items.length}
                 </span>
               </h2>
-              <p className="text-3xs text-stone-500 dark:text-stone-400">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 يحفظ كل كلمة مع منظومة التشفير المستخدمة لها
               </p>
             </div>
@@ -139,13 +140,13 @@ export function SearchHistoryDrawer({
         {/* Filter and Search Bar */}
         <div className="p-3 border-b border-stone-200 dark:border-stone-800 space-y-2 bg-white dark:bg-stone-900">
           {/* Tabs: All vs Favorites */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 dark:bg-stone-800 rounded-lg text-xs font-bold">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 dark:bg-stone-800 rounded-lg text-xs font-medium">
             <button
               type="button"
               onClick={() => setFilterMode('all')}
               className={`py-1 px-2 rounded-md transition-all cursor-pointer ${
                 filterMode === 'all'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-2xs'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-2xs font-semibold'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
@@ -156,11 +157,11 @@ export function SearchHistoryDrawer({
               onClick={() => setFilterMode('favorites')}
               className={`py-1 px-2 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 filterMode === 'favorites'
-                  ? 'bg-amber-500 text-white shadow-2xs'
+                  ? 'bg-amber-500 text-white shadow-2xs font-semibold'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
               }`}
             >
-              <Star className="w-3 h-3 fill-current" />
+              <Star className="w-3.5 h-3.5 fill-current" />
               <span>المفضلة ({favoritesCount})</span>
             </button>
           </div>
@@ -191,12 +192,12 @@ export function SearchHistoryDrawer({
                   <History className="w-6 h-6" />
                 )}
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-stone-700 dark:text-stone-300">
+              <h3 className="text-xs sm:text-sm font-semibold text-stone-700 dark:text-stone-300">
                 {filterMode === 'favorites'
                   ? 'لا توجد كلمات في المفضلة بعد'
                   : 'سجل البحث فارغ حالياً'}
               </h3>
-              <p className="text-3xs text-stone-400 dark:text-stone-500 max-w-xs mx-auto">
+              <p className="text-xs text-stone-400 dark:text-stone-500 max-w-xs mx-auto">
                 {filterMode === 'favorites'
                   ? 'انقر على رمز النجمة بجانب أي كلمة بحث لتثبيتها في المفضلة للعودة إليها سريعاً'
                   : 'كل كلمة تبحث عنها ستُحفظ هنا مع نوع الشيفرة المستخدمة تلقائياً'}
@@ -220,39 +221,41 @@ export function SearchHistoryDrawer({
                     title="انقر لاسترجاع الكلمة ومنظومة التشفير والبحث فوراً"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-stone-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                      <span className="font-semibold text-sm text-stone-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                         {item.word}
                       </span>
                       {item.timestamp && (
-                        <span className="text-3xs text-stone-400 font-mono">
+                        <span className="text-xs text-stone-400 font-mono">
                           {formatDate(item.timestamp)}
                         </span>
                       )}
                     </div>
 
                     {/* Cipher Systems Details */}
-                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5 text-3xs font-bold">
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5 text-2xs font-medium">
                       {/* Sky System */}
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                        <span>🌌 سماء:</span>
+                        <Sparkles className="w-3 h-3 text-indigo-600" />
+                        <span>سماء:</span>
                         <span>{item.nooraniName || item.nooraniId}</span>
                         {item.isNooraniReversed && (
-                          <RotateCcw className="w-2.5 h-2.5 text-rose-500" title="معكوس" />
+                          <RotateCcw className="w-3 h-3 text-rose-500" title="معكوس" />
                         )}
                       </span>
 
                       {/* Earth System */}
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        <span>🌍 أرض:</span>
+                        <Globe className="w-3 h-3 text-emerald-600" />
+                        <span>أرض:</span>
                         <span>{item.arabicName || item.arabicId}</span>
                         {item.isArabicReversed && (
-                          <RotateCcw className="w-2.5 h-2.5 text-rose-500" title="معكوس" />
+                          <RotateCcw className="w-3 h-3 text-rose-500" title="معكوس" />
                         )}
                       </span>
 
                       {/* Waw Option */}
                       {item.includeWaw && (
-                        <span className="px-1 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                           +و
                         </span>
                       )}
@@ -288,7 +291,7 @@ export function SearchHistoryDrawer({
                       className="p-1.5 rounded-lg text-stone-300 dark:text-stone-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                       title="حذف من السجل"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

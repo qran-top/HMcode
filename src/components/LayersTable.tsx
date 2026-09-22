@@ -23,6 +23,7 @@ import {
   FileText,
   ArrowRight,
   Sparkles,
+  Globe,
   Info,
 } from 'lucide-react';
 import {
@@ -191,30 +192,30 @@ export function LayersTable({
   }, [layers, allArabicItems]);
 
   // Suggest naming according to rule:
-  // Sky: First char of layer 7 + " - " + last char of layer 1
-  // Earth: First 2 chars of layer 7 + " - " + last 2 chars of layer 1
+  // Sky: First char of layer 1 + " - " + last char of layer 7
+  // Earth: First 2 chars of layer 1 + " - " + last 2 chars of layer 7
   const suggestedName = useMemo(() => {
-    const sorted = [...layers].sort((a, b) => b.layer - a.layer);
-    const topLayer = sorted[0];
-    const bottomLayer = sorted[sorted.length - 1];
+    const sorted = [...layers].sort((a, b) => a.layer - b.layer);
+    const firstLayer = sorted[0];
+    const lastLayer = sorted[sorted.length - 1];
 
     if (activeTableTab === 'sky') {
-      const topChars = (topLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
-      const bottomChars = (bottomLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
-      const firstChar = topChars[0] || 'ن';
-      const lastChar = bottomChars[bottomChars.length - 1] || 'ر';
+      const firstChars = (firstLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
+      const lastChars = (lastLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
+      const firstChar = firstChars[0] || 'ا';
+      const lastChar = lastChars[lastChars.length - 1] || 'ن';
       return `${firstChar} - ${lastChar}`;
     } else {
-      const topChars = (topLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
-      const bottomChars = (bottomLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
-      const firstTwo = topChars.slice(0, 2).join('') || 'اب';
-      const lastTwo = bottomChars.slice(-2).join('') || 'وي';
+      const firstChars = (firstLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
+      const lastChars = (lastLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
+      const firstTwo = firstChars.slice(0, 2).join('') || 'اب';
+      const lastTwo = lastChars.slice(-2).join('') || 'ظغ';
       return `${firstTwo} - ${lastTwo}`;
     }
   }, [layers, activeTableTab]);
 
   // Keyboard navigation across slots
-  const getSortedLayers = () => [...layers].sort((a, b) => b.layer - a.layer);
+  const getSortedLayers = () => [...layers].sort((a, b) => a.layer - b.layer);
 
   const moveToNextCell = (current: ActiveCell) => {
     const sorted = getSortedLayers();
@@ -433,7 +434,7 @@ export function LayersTable({
             <span className="text-2xs opacity-90">(سماء وأرض)</span>
           </div>
           <span
-            className={`text-3xs px-1.5 py-0.5 rounded-full font-bold ${
+            className={`text-2xs px-1.5 py-0.5 rounded-full font-medium ${
               activeTableTab === 'dual' ? 'bg-amber-800 text-amber-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
             }`}
           >
@@ -448,19 +449,19 @@ export function LayersTable({
             setActiveTableTab('sky');
             setActiveCell(null);
           }}
-          className={`py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3 sm:px-4 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTableTab === 'sky'
               ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md ring-2 ring-indigo-500/30'
               : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-stone-800'
           }`}
         >
-          <span className="text-sm">🌌</span>
+          <Sparkles className="w-4 h-4" />
           <div className="flex items-center gap-1">
             <span>جدول السماء</span>
             <span className="hidden sm:inline text-2xs opacity-90">(النورانية)</span>
           </div>
           <span
-            className={`text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            className={`text-2xs px-1.5 py-0.5 rounded-full font-mono font-medium ${
               activeTableTab === 'sky' ? 'bg-indigo-800 text-indigo-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
             }`}
           >
@@ -475,19 +476,19 @@ export function LayersTable({
             setActiveTableTab('earth');
             setActiveCell(null);
           }}
-          className={`py-2.5 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3 sm:px-4 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTableTab === 'earth'
               ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-500/30'
               : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-stone-800'
           }`}
         >
-          <span className="text-sm">🌍</span>
+          <Globe className="w-4 h-4" />
           <div className="flex items-center gap-1">
             <span>جدول الأرض</span>
             <span className="hidden sm:inline text-2xs opacity-90">(العربية)</span>
           </div>
           <span
-            className={`text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            className={`text-2xs px-1.5 py-0.5 rounded-full font-mono font-medium ${
               activeTableTab === 'earth' ? 'bg-emerald-800 text-emerald-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
             }`}
           >
@@ -504,11 +505,11 @@ export function LayersTable({
           <button
             type="button"
             onClick={() => setTableSubView('grid')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               tableSubView === 'grid'
                 ? activeTableTab === 'sky'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-amber-600 text-white shadow-2xs'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                  : 'bg-amber-600 text-white shadow-2xs font-semibold'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-800 hover:bg-stone-50'
             }`}
           >
@@ -519,11 +520,11 @@ export function LayersTable({
           <button
             type="button"
             onClick={() => setTableSubView('text-editor')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               tableSubView === 'text-editor'
                 ? activeTableTab === 'sky'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-amber-600 text-white shadow-2xs'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                  : 'bg-amber-600 text-white shadow-2xs font-semibold'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-800 hover:bg-stone-50'
             }`}
           >
@@ -534,11 +535,11 @@ export function LayersTable({
           <button
             type="button"
             onClick={() => setTableSubView('bulk-paste')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               tableSubView === 'bulk-paste'
                 ? activeTableTab === 'sky'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-amber-600 text-white shadow-2xs'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                  : 'bg-amber-600 text-white shadow-2xs font-semibold'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-800 hover:bg-stone-50'
             }`}
           >
@@ -549,11 +550,11 @@ export function LayersTable({
           <button
             type="button"
             onClick={() => setTableSubView('duplicates')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               tableSubView === 'duplicates'
                 ? activeTableTab === 'sky'
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-amber-600 text-white shadow-2xs'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                  : 'bg-amber-600 text-white shadow-2xs font-semibold'
                 : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-800 hover:bg-stone-50'
             }`}
           >
@@ -575,10 +576,10 @@ export function LayersTable({
               resetToDefault();
               setNotification({ type: 'info', message: 'تمت استعادة الإعدادات الافتراضية للجداول.' });
             }}
-            className="px-2.5 py-1 text-2xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 flex items-center gap-1 cursor-pointer shrink-0"
+            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 flex items-center gap-1 cursor-pointer shrink-0"
             title="استعادة الجداول الافتراضية"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>استعادة الافتراضي</span>
           </button>
         )}

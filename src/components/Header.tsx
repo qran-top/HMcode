@@ -34,7 +34,7 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
           <div className="w-8 h-8 rounded-xl bg-stone-900 dark:bg-stone-800 text-amber-400 flex items-center justify-center font-bold text-base border border-stone-800 dark:border-stone-700 shadow-xs shrink-0 group-hover:scale-105 group-hover:border-amber-500/50 group-hover:bg-stone-950 dark:group-hover:bg-stone-700 transition-all">
             <span className="font-['Amiri',serif]">ع</span>
           </div>
-          <h1 id="app-title" className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100 tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+          <h1 id="app-title" className="text-lg font-bold text-stone-900 dark:text-stone-100 tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
             التشفير
           </h1>
         </button>
@@ -46,9 +46,9 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
               id="tab-dual"
               type="button"
               onClick={() => setActiveTab('dual')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'dual' || activeTab === 'encrypt' || activeTab === 'decrypt'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700 font-semibold'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
@@ -60,9 +60,9 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
               id="tab-gematria"
               type="button"
               onClick={() => setActiveTab('gematria')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'gematria'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700 font-semibold'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
@@ -74,9 +74,9 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
               id="tab-table"
               type="button"
               onClick={() => setActiveTab('table')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'table'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs border border-stone-200/80 dark:border-stone-700 font-semibold'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >

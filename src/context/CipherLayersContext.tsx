@@ -233,10 +233,10 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
 
 function loadInitialLayers(): LayerInfo[] {
   try {
-    const v5BenchmarkKey = localStorage.getItem('quran_cipher_preset_v5_eastern_ascending_baseline_set');
-    if (!v5BenchmarkKey) {
-      // Seed to Eastern Ascending standard default
-      localStorage.setItem('quran_cipher_preset_v5_eastern_ascending_baseline_set', 'true');
+    const v6BenchmarkKey = localStorage.getItem('quran_cipher_preset_v6_sky3_earth2_baseline_set');
+    if (!v6BenchmarkKey) {
+      // Seed to Sky 3 (ا - ن) x Earth 2 (اب - ظغ) standard default requested by user
+      localStorage.setItem('quran_cipher_preset_v6_sky3_earth2_baseline_set', 'true');
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_CIPHER_LAYERS));
       return JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS));
     }
@@ -685,8 +685,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [savedArabicPresets, setSavedArabicPresets] = useState<SavedArabicPreset[]>(loadInitialArabicPresets);
   const [savedNooraniPresets, setSavedNooraniPresets] = useState<SavedNooraniPreset[]>(loadInitialNooraniPresets);
   const [activeTableName, setActiveTableName] = useState<string | null>(BENCHMARK_TABLE_NAME);
-  const [activeArabicPresetName, setActiveArabicPresetName] = useState<string | null>(null);
-  const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<string | null>(null);
+  const [activeArabicPresetName, setActiveArabicPresetName] = useState<string | null>(
+    ARABIC_PRESETS.arabic_abjad_sheen?.name || 'اب - ظغ'
+  );
+  const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<string | null>(
+    NOORANI_PRESETS.noorani_an?.name || 'ا - ن'
+  );
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
 
   // Persist current layers to localStorage whenever layers change

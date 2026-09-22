@@ -111,7 +111,7 @@ export function App() {
               <div className="flex items-center gap-2 flex-wrap">
                 <label
                   htmlFor="arabic-input"
-                  className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100"
+                  className="text-sm sm:text-base font-medium text-stone-900 dark:text-stone-100"
                 >
                   النص المراد تشفيره:
                 </label>
@@ -122,7 +122,7 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('table')}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
                     title="يتم تطبيق جدول الطبقات المخصص - انقر لعرضه أو تعديله"
                   >
                     <Settings2 className="w-3 h-3 text-amber-700 dark:text-amber-400" />
@@ -147,7 +147,7 @@ export function App() {
                   id="clear-input-btn"
                   onClick={handleClear}
                   disabled={!inputText}
-                  className={`flex-1 sm:w-full py-2 sm:py-1.5 px-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-1 transition-all ${
+                  className={`flex-1 sm:w-full py-2 sm:py-1.5 px-2 rounded-lg font-medium text-xs inline-flex items-center justify-center gap-1 transition-all ${
                     inputText
                       ? 'bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer'
                       : 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
@@ -164,7 +164,7 @@ export function App() {
                   id="generate-input-combos-btn"
                   onClick={handleTriggerGenerate}
                   disabled={!inputText.trim()}
-                  className={`flex-2 sm:w-full sm:flex-1 py-2 sm:py-2 px-2 rounded-xl font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
+                  className={`flex-2 sm:w-full sm:flex-1 py-2 sm:py-2 px-2 rounded-xl font-medium text-xs inline-flex items-center justify-center gap-1.5 transition-all text-center leading-tight shadow-xs ${
                     !inputText.trim()
                       ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-300 dark:text-stone-600 border border-stone-200 dark:border-stone-800 cursor-not-allowed opacity-60'
                       : encryptGenStatus.isGenerating
@@ -199,7 +199,7 @@ export function App() {
                   }
                 }}
                 placeholder="اكتب كلمة أو كلمتين هنا..."
-                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-bold p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 transition-all"
+                className="w-full sm:flex-1 min-w-0 max-w-full box-border text-base sm:text-xl font-normal p-3 sm:p-3.5 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right bg-stone-50/50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 transition-all"
               />
             </div>
 
@@ -212,7 +212,7 @@ export function App() {
                     : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200'
                 }`}
               >
-                <div className="flex items-center gap-2 font-bold flex-wrap">
+                <div className="flex items-center gap-2 font-medium flex-wrap">
                   <div
                     className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${
                       encryptNooraniAnalysis.isPure
@@ -231,7 +231,7 @@ export function App() {
                   <span className="inline-flex items-center gap-1">
                     <span>المسار الطبيعي:</span>
                     <span
-                      className={`px-1.5 py-0.5 rounded font-black inline-flex items-center gap-1 ${
+                      className={`px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1 ${
                         encryptNooraniAnalysis.isPure
                           ? 'bg-indigo-600 text-white dark:bg-indigo-500'
                           : 'bg-amber-600 text-white dark:bg-amber-500'
@@ -259,7 +259,7 @@ export function App() {
                       setDecryptCipherInput(inputText);
                       setActiveTab('decrypt');
                     }}
-                    className="text-3xs font-bold px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shrink-0 shadow-2xs"
+                    className="text-3xs font-medium px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shrink-0 shadow-2xs"
                   >
                     الانتقال لفك التشفير
                   </button>
