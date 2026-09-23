@@ -468,6 +468,81 @@ function getQuranGematriaIndex(): Map<number, IndexedQuranWord[]> {
 }
 
 /**
+ * Generate all exact combinations of 2 distinct Arabic letters (without repetition)
+ * that sum exactly to targetValue.
+ */
+export function generateExactTwoLetterCombinations(
+  targetValue: number,
+  options: {
+    letterValues?: { char: string; val: number }[];
+    includePermutations?: boolean;
+    maxResults?: number;
+  } = {}
+): {
+  combinations: { letters: [string, string]; values: [number, number] }[];
+  permutations: string[];
+} {
+  const { includePermutations = true, maxResults = 500 } = options;
+
+  const canonicalChars = [
+    'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
+    'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
+    'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+  ];
+
+  const pool: { char: string; val: number }[] = options.letterValues && options.letterValues.length > 0
+    ? options.letterValues
+    : canonicalChars.map((c) => ({ char: c, val: ABJAD_VALUES[c] || 0 }));
+
+  const sorted = [...pool].sort((a, b) => a.val - b.val);
+  const n = sorted.length;
+
+  const combinations: { letters: [string, string]; values: [number, number] }[] = [];
+  const permutations: string[] = [];
+  const seenPermutations = new Set<string>();
+
+  let left = 0;
+  let right = n - 1;
+
+  while (left < right) {
+    const itemA = sorted[left];
+    const itemB = sorted[right];
+    const sum = itemA.val + itemB.val;
+
+    if (sum === targetValue) {
+      combinations.push({
+        letters: [itemA.char, itemB.char],
+        values: [itemA.val, itemB.val],
+      });
+
+      if (includePermutations) {
+        const p1 = itemA.char + itemB.char;
+        const p2 = itemB.char + itemA.char;
+        if (!seenPermutations.has(p1)) {
+          seenPermutations.add(p1);
+          permutations.push(p1);
+        }
+        if (!seenPermutations.has(p2)) {
+          seenPermutations.add(p2);
+          permutations.push(p2);
+        }
+      }
+
+      left++;
+      right--;
+    } else if (sum < targetValue) {
+      left++;
+    } else {
+      right--;
+    }
+
+    if (permutations.length >= maxResults) break;
+  }
+
+  return { combinations, permutations };
+}
+
+/**
  * Generate all exact combinations of 3 distinct Arabic letters (without repetition)
  * across the entire Arabic alphabet (28 canonical letters) that sum exactly to targetValue.
  * Also includes all 6 permutations for each combination (e.g. أ+ب+ج -> أبج, أجب, بأج, بجأ, جأب, جبا)
@@ -483,7 +558,7 @@ export function generateExactThreeLetterCombinations(
   combinations: { letters: [string, string, string]; values: [number, number, number] }[];
   permutations: string[];
 } {
-  const { includePermutations = true, maxResults = 1000 } = options;
+  const { includePermutations = true, maxResults = 3000 } = options;
 
   // 28 canonical Arabic letters
   const canonicalChars = [
@@ -559,6 +634,211 @@ export function generateExactThreeLetterCombinations(
       if (permutations.length >= maxResults) break;
     }
 
+    if (permutations.length >= maxResults) break;
+  }
+
+  return { combinations, permutations };
+}
+
+/**
+ * Generate all exact combinations of 4 distinct Arabic letters (without repetition)
+ * that sum exactly to targetValue.
+ */
+export function generateExactFourLetterCombinations(
+  targetValue: number,
+  options: {
+    letterValues?: { char: string; val: number }[];
+    includePermutations?: boolean;
+    maxResults?: number;
+  } = {}
+): {
+  combinations: { letters: [string, string, string, string]; values: [number, number, number, number] }[];
+  permutations: string[];
+} {
+  const { includePermutations = true, maxResults = 1500 } = options;
+
+  const canonicalChars = [
+    'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
+    'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
+    'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+  ];
+
+  const pool: { char: string; val: number }[] = options.letterValues && options.letterValues.length > 0
+    ? options.letterValues
+    : canonicalChars.map((c) => ({ char: c, val: ABJAD_VALUES[c] || 0 }));
+
+  const sorted = [...pool].sort((a, b) => a.val - b.val);
+  const n = sorted.length;
+
+  const combinations: { letters: [string, string, string, string]; values: [number, number, number, number] }[] = [];
+  const permutations: string[] = [];
+  const seenPermutations = new Set<string>();
+
+  // 4-Sum algorithm: O(N^3) where N=28 is at most ~3,276 operations! Extremely fast.
+  for (let i = 0; i < n - 3; i++) {
+    const itemA = sorted[i];
+    if (itemA.val >= targetValue) break;
+
+    for (let j = i + 1; j < n - 2; j++) {
+      const itemB = sorted[j];
+      if (itemA.val + itemB.val >= targetValue) break;
+
+      let left = j + 1;
+      let right = n - 1;
+
+      while (left < right) {
+        const itemC = sorted[left];
+        const itemD = sorted[right];
+        const sum = itemA.val + itemB.val + itemC.val + itemD.val;
+
+        if (sum === targetValue) {
+          combinations.push({
+            letters: [itemA.char, itemB.char, itemC.char, itemD.char],
+            values: [itemA.val, itemB.val, itemC.val, itemD.val],
+          });
+
+          if (includePermutations) {
+            const l1 = itemA.char;
+            const l2 = itemB.char;
+            const l3 = itemC.char;
+            const l4 = itemD.char;
+
+            // Representative phonetic orderings:
+            const samplePerms = [
+              l1 + l2 + l3 + l4,
+              l4 + l3 + l2 + l1,
+              l1 + l3 + l2 + l4,
+              l2 + l1 + l4 + l3,
+              l3 + l1 + l2 + l4,
+              l2 + l4 + l1 + l3,
+            ];
+
+            for (const p of samplePerms) {
+              if (!seenPermutations.has(p)) {
+                seenPermutations.add(p);
+                permutations.push(p);
+                if (permutations.length >= maxResults) break;
+              }
+            }
+          }
+
+          left++;
+          right--;
+        } else if (sum < targetValue) {
+          left++;
+        } else {
+          right--;
+        }
+
+        if (permutations.length >= maxResults) break;
+      }
+      if (permutations.length >= maxResults) break;
+    }
+    if (permutations.length >= maxResults) break;
+  }
+
+  return { combinations, permutations };
+}
+
+/**
+ * Generate all exact combinations of 5 distinct Arabic letters (without repetition)
+ * that sum exactly to targetValue.
+ */
+export function generateExactFiveLetterCombinations(
+  targetValue: number,
+  options: {
+    letterValues?: { char: string; val: number }[];
+    includePermutations?: boolean;
+    maxResults?: number;
+  } = {}
+): {
+  combinations: { letters: [string, string, string, string, string]; values: [number, number, number, number, number] }[];
+  permutations: string[];
+} {
+  const { includePermutations = true, maxResults = 2500 } = options;
+
+  const canonicalChars = [
+    'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
+    'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
+    'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+  ];
+
+  const pool: { char: string; val: number }[] = options.letterValues && options.letterValues.length > 0
+    ? options.letterValues
+    : canonicalChars.map((c) => ({ char: c, val: ABJAD_VALUES[c] || 0 }));
+
+  const sorted = [...pool].sort((a, b) => a.val - b.val);
+  const n = sorted.length;
+
+  const combinations: { letters: [string, string, string, string, string]; values: [number, number, number, number, number] }[] = [];
+  const permutations: string[] = [];
+  const seenPermutations = new Set<string>();
+
+  for (let i = 0; i < n - 4; i++) {
+    const itemA = sorted[i];
+    if (itemA.val >= targetValue) break;
+
+    for (let j = i + 1; j < n - 3; j++) {
+      const itemB = sorted[j];
+      if (itemA.val + itemB.val >= targetValue) break;
+
+      for (let k = j + 1; k < n - 2; k++) {
+        const itemC = sorted[k];
+        if (itemA.val + itemB.val + itemC.val >= targetValue) break;
+
+        let left = k + 1;
+        let right = n - 1;
+
+        while (left < right) {
+          const itemD = sorted[left];
+          const itemE = sorted[right];
+          const sum = itemA.val + itemB.val + itemC.val + itemD.val + itemE.val;
+
+          if (sum === targetValue) {
+            combinations.push({
+              letters: [itemA.char, itemB.char, itemC.char, itemD.char, itemE.char],
+              values: [itemA.val, itemB.val, itemC.val, itemD.val, itemE.val],
+            });
+
+            if (includePermutations) {
+              const l1 = itemA.char;
+              const l2 = itemB.char;
+              const l3 = itemC.char;
+              const l4 = itemD.char;
+              const l5 = itemE.char;
+
+              const samplePerms = [
+                l1 + l2 + l3 + l4 + l5,
+                l5 + l4 + l3 + l2 + l1,
+                l1 + l3 + l5 + l2 + l4,
+                l2 + l4 + l1 + l3 + l5,
+                l3 + l1 + l4 + l2 + l5,
+                l1 + l4 + l2 + l5 + l3,
+              ];
+
+              for (const p of samplePerms) {
+                if (!seenPermutations.has(p)) {
+                  seenPermutations.add(p);
+                  permutations.push(p);
+                  if (permutations.length >= maxResults) break;
+                }
+              }
+            }
+
+            left++;
+            right--;
+          } else if (sum < targetValue) {
+            left++;
+          } else {
+            right--;
+          }
+
+          if (permutations.length >= maxResults) break;
+        }
+        if (permutations.length >= maxResults) break;
+      }
+      if (permutations.length >= maxResults) break;
+    }
     if (permutations.length >= maxResults) break;
   }
 

@@ -9,7 +9,10 @@ import {
   DEFAULT_GEMATRIA_OPTIONS,
   calculateGematriaWithOptions,
   synthesizeCombinationsDP,
+  generateExactTwoLetterCombinations,
   generateExactThreeLetterCombinations,
+  generateExactFourLetterCombinations,
+  generateExactFiveLetterCombinations,
 } from '../utils/gematriaEngine';
 import { NOORANI_LETTERS_SET } from '../cipherData';
 
@@ -683,14 +686,89 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       const results: SynthesizedTextResult[] = [];
       const seen = new Set<string>();
 
-      // 1. Priority: All exact combinations of 3 distinct letters without repetition (كافة احتمالات 3 أحرف بدون تكرار)
+      // 1. Exact combinations of 2 distinct letters without repetition
+      const exactTwoLetters = generateExactTwoLetterCombinations(targetValue, {
+        letterValues,
+        includePermutations: true,
+        maxResults: 500,
+      });
+
+      for (const permWord of exactTwoLetters.permutations) {
+        if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
+          seen.add(permWord);
+          const chars = permWord.split('');
+          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          results.push({
+            text: permWord,
+            value: targetValue,
+            letterCount: chars.length,
+            letters: chars,
+            isQuranic: false,
+            isLexical: false,
+            quranicMeta: null,
+            isNooraniOnly: isNoorani,
+          });
+        }
+      }
+
+      // 2. Exact combinations of 3 distinct letters without repetition (كافة احتمالات 3 أحرف بدون تكرار)
       const exactThreeLetters = generateExactThreeLetterCombinations(targetValue, {
         letterValues,
         includePermutations: true,
-        maxResults: maxResults,
+        maxResults: 3000,
       });
 
       for (const permWord of exactThreeLetters.permutations) {
+        if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
+          seen.add(permWord);
+          const chars = permWord.split('');
+          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          results.push({
+            text: permWord,
+            value: targetValue,
+            letterCount: chars.length,
+            letters: chars,
+            isQuranic: false,
+            isLexical: false,
+            quranicMeta: null,
+            isNooraniOnly: isNoorani,
+          });
+        }
+      }
+
+      // 3. Exact combinations of 4 distinct letters without repetition
+      const exactFourLetters = generateExactFourLetterCombinations(targetValue, {
+        letterValues,
+        includePermutations: true,
+        maxResults: 3000,
+      });
+
+      for (const permWord of exactFourLetters.permutations) {
+        if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
+          seen.add(permWord);
+          const chars = permWord.split('');
+          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          results.push({
+            text: permWord,
+            value: targetValue,
+            letterCount: chars.length,
+            letters: chars,
+            isQuranic: false,
+            isLexical: false,
+            quranicMeta: null,
+            isNooraniOnly: isNoorani,
+          });
+        }
+      }
+
+      // 4. Exact combinations of 5 distinct letters without repetition
+      const exactFiveLetters = generateExactFiveLetterCombinations(targetValue, {
+        letterValues,
+        includePermutations: true,
+        maxResults: 4000,
+      });
+
+      for (const permWord of exactFiveLetters.permutations) {
         if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
           seen.add(permWord);
           const chars = permWord.split('');
