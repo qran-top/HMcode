@@ -980,16 +980,16 @@ export function DecryptView({
 
                     {/* Arabic Dictionary Reference Link */}
                     {!quranicMeta && isDictWord && (
-                      <div className="pt-1 border-t border-emerald-200/60 dark:border-stone-700 flex items-center justify-between text-2xs text-emerald-900 dark:text-emerald-300 font-extrabold">
+                      <div className="pt-1 border-t border-emerald-200/60 dark:border-stone-700 flex items-center justify-between text-2xs text-emerald-900 dark:text-emerald-300 font-medium">
                         <a
                           href={getArabicDictSearchUrl(item.word)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 hover:underline hover:text-emerald-950 dark:hover:text-emerald-200 transition-colors group/link"
-                          title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
+                          title={`البحث عن "${item.word}" في Google`}
                         >
                           <BookOpen className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                          <span>كلمة معجمية (المعجم العربي)</span>
+                          <span>كلمة معجمية (بحث Google)</span>
                           <ExternalLink className="w-2.5 h-2.5 text-emerald-700 dark:text-emerald-400 opacity-60 group-hover/link:opacity-100 transition-opacity shrink-0" />
                         </a>
                       </div>

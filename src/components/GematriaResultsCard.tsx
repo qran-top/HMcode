@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGematria } from '../context/GematriaContext';
 import { getQuranTopWordUrl } from '../utils/quranicDictionary';
 import { AddToNotebookButton } from './AddToNotebookButton';
+import { findLayerForChar, LAYER_RAINBOW_COLORS } from '../cipherData';
 import {
   Calculator,
   BookOpen,
@@ -88,39 +89,52 @@ export function GematriaResultsCard({ word, query, onNavigateToGematria, onSelec
             الجُمَّل
           </h3>
 
-          {/* Quick Model Selector */}
+          {/* Quick Model Selector: سمبل وخفيف (شرقي / غربي) بدون إطالة */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowModelPicker(!showModelPicker)}
-              className="px-2 py-0.5 rounded-lg text-2xs font-medium bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors inline-flex items-center gap-1 cursor-pointer border border-emerald-200 dark:border-emerald-700"
-              title="تغيير نظام حساب الجُمَّل"
+              className="px-1.5 py-0.5 rounded-md text-2xs font-medium bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors inline-flex items-center gap-1 cursor-pointer border border-emerald-200/80 dark:border-emerald-700/80"
+              title="تغيير نظام الجُمَّل"
             >
-              <span>نظام: {activeTable.name.replace(/\(.*\)/, '').trim()}</span>
-              <ChevronDown className="w-2.5 h-2.5" />
+              <span>
+                {activeTable.id === 'mashriqi'
+                  ? 'شرقي'
+                  : activeTable.id === 'maghribi'
+                  ? 'غربي'
+                  : activeTable.name.replace(/\(.*\)/, '').replace('النموذج', '').trim()}
+              </span>
+              <ChevronDown className="w-2.5 h-2.5 opacity-70" />
             </button>
 
             {showModelPicker && (
-              <div className="absolute top-full right-0 mt-1 w-52 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-lg p-1.5 z-30 space-y-1 animate-in fade-in zoom-in-95">
-                <div className="text-2xs font-medium text-stone-400 px-1 py-0.5">اختر نظام حساب الجُمَّل:</div>
-                {tables.map((tbl) => (
-                  <button
-                    key={tbl.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveTableId(tbl.id);
-                      setShowModelPicker(false);
-                    }}
-                    className={`w-full text-right px-2 py-1 rounded-lg text-2xs font-medium transition-all flex items-center justify-between cursor-pointer ${
-                      activeTableId === tbl.id
-                        ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
-                        : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                    }`}
-                  >
-                    <span className="truncate">{tbl.name}</span>
-                    {activeTableId === tbl.id && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </button>
-                ))}
+              <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg p-1 z-30 space-y-0.5 animate-in fade-in zoom-in-95">
+                {tables.map((tbl) => {
+                  const shortName =
+                    tbl.id === 'mashriqi'
+                      ? 'شرقي'
+                      : tbl.id === 'maghribi'
+                      ? 'غربي'
+                      : tbl.name.replace(/\(.*\)/, '').replace('النموذج', '').trim();
+                  return (
+                    <button
+                      key={tbl.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTableId(tbl.id);
+                        setShowModelPicker(false);
+                      }}
+                      className={`w-full text-right px-2 py-1 rounded text-2xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                        activeTableId === tbl.id
+                          ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
+                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                      }`}
+                    >
+                      <span className="truncate">{shortName}</span>
+                      {activeTableId === tbl.id && <Check className="w-3 h-3 shrink-0" />}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -132,35 +146,85 @@ export function GematriaResultsCard({ word, query, onNavigateToGematria, onSelec
             onClick={() => onNavigateToGematria(cleanWord)}
             className="text-2xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
-            <span>إدارة الجداول</span>
+            <span>التفاصيل</span>
             <ExternalLink className="w-3 h-3" />
           </button>
         )}
       </div>
 
-      {/* 2. Standardized Summary Strip (الكلمة + المجموع + المعادلة بالأرقام فقط) */}
-      <div className="px-2.5 py-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-between gap-2 flex-wrap text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="font-quran font-semibold text-sm sm:text-base text-stone-900 dark:text-stone-100 leading-tight">
+      {/* 2. Standardized Summary Strip: Letter Cards with Numbers, +, =, and Highlighted Total */}
+      <div className="px-3 py-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-between gap-3 flex-wrap text-xs">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          {/* Word badge */}
+          <span className="font-quran font-bold text-base sm:text-lg text-emerald-950 dark:text-emerald-200 shrink-0">
             {cleanWord}
           </span>
-          <span className="text-stone-400 font-mono text-xs">=</span>
-          <span className="font-mono font-semibold text-xs sm:text-sm text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/80 px-2 py-0.5 rounded border border-emerald-300/80 dark:border-emerald-700/80 leading-none">
-            {totalValue}
-          </span>
-        </div>
+          <span className="text-stone-400 font-mono font-bold select-none">:</span>
 
-        {/* المعادلة بالأرقام فقط */}
-        {!isDirectNumber && breakdown.length > 0 && (
-          <div
-            className="font-mono text-xs text-stone-600 dark:text-stone-400 font-medium dir-ltr flex items-center gap-1"
-            title={breakdown.map((b) => `${b.char}=${b.value}`).join(' + ') + ` = ${totalValue}`}
-          >
-            <span>{breakdown.map((b) => b.value).join(' + ')}</span>
-            <span>=</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{totalValue}</span>
-          </div>
-        )}
+          {/* Letter Breakdown Cards: [حرف ملون] [رقم رمادي] + ... = [المجموع] */}
+          {!isDirectNumber && breakdown.length > 0 ? (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {breakdown.map((item, idx) => {
+                const layer = findLayerForChar(item.char);
+                const layerNum = layer ? layer.layer : 0;
+                const color = LAYER_RAINBOW_COLORS[layerNum] || {
+                  name: 'زمردي',
+                  activeBg: 'bg-emerald-600',
+                  activeText: 'text-white',
+                  activeBorder: 'border-emerald-700',
+                };
+
+                return (
+                  <React.Fragment key={`breakdown_${idx}`}>
+                    <div
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
+                      title={`الحرف [${item.char}] = ${item.value}`}
+                    >
+                      {/* Colored box containing the letter with high clarity */}
+                      <span
+                        className={`w-6.5 h-6.5 rounded-md font-bold text-xs sm:text-sm font-quran flex items-center justify-center shrink-0 shadow-2xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                      >
+                        {item.char}
+                      </span>
+                      {/* Gray box with the number */}
+                      <span
+                        className="h-6.5 min-w-[28px] px-1.5 rounded-md font-mono font-bold text-xs flex items-center justify-center shrink-0 bg-stone-100 dark:bg-stone-700/90 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 shadow-2xs"
+                        title={`قيمة الجُمَّل: ${item.value}`}
+                      >
+                        {item.value}
+                      </span>
+                    </div>
+
+                    {idx < breakdown.length - 1 && (
+                      <span className="text-stone-400 dark:text-stone-500 font-bold font-mono text-xs sm:text-sm px-0.5 select-none">
+                        +
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+
+              <span className="text-stone-400 dark:text-stone-500 font-bold font-mono text-xs sm:text-sm px-0.5 select-none">
+                =
+              </span>
+
+              {/* Distinctive highlighted box for total result */}
+              <div
+                className="h-7 min-w-[38px] px-2.5 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white font-mono font-black text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs border border-emerald-700 dark:border-emerald-400"
+                title={`المجموع الكلي للجُمَّل: ${totalValue}`}
+              >
+                {totalValue}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="h-7 min-w-[38px] px-2.5 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white font-mono font-black text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs border border-emerald-700 dark:border-emerald-400"
+              title={`القيمة: ${totalValue}`}
+            >
+              {totalValue}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3. Quranic Words Matches Filter and Grid */}

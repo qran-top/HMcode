@@ -160,9 +160,10 @@ export function LetterAnalysisCard({
                 lightBorder: 'border-stone-200',
               };
 
-              const options = item.cipherOptions && item.cipherOptions.length > 0
+              const options = (item.cipherOptions && item.cipherOptions.length > 0
                 ? item.cipherOptions
-                : [item.prob1, item.prob2];
+                : [item.prob1, item.prob2]
+              ).filter((c) => Boolean(c) && c !== 'و');
 
               return (
                 <div

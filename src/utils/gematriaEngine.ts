@@ -468,6 +468,104 @@ function getQuranGematriaIndex(): Map<number, IndexedQuranWord[]> {
 }
 
 /**
+ * Generate all exact combinations of 3 distinct Arabic letters (without repetition)
+ * across the entire Arabic alphabet (28 canonical letters) that sum exactly to targetValue.
+ * Also includes all 6 permutations for each combination (e.g. أ+ب+ج -> أبج, أجب, بأج, بجأ, جأب, جبا)
+ */
+export function generateExactThreeLetterCombinations(
+  targetValue: number,
+  options: {
+    letterValues?: { char: string; val: number }[];
+    includePermutations?: boolean;
+    maxResults?: number;
+  } = {}
+): {
+  combinations: { letters: [string, string, string]; values: [number, number, number] }[];
+  permutations: string[];
+} {
+  const { includePermutations = true, maxResults = 1000 } = options;
+
+  // 28 canonical Arabic letters
+  const canonicalChars = [
+    'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
+    'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
+    'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+  ];
+
+  const pool: { char: string; val: number }[] = options.letterValues && options.letterValues.length > 0
+    ? options.letterValues
+    : canonicalChars.map((c) => ({ char: c, val: ABJAD_VALUES[c] || 0 }));
+
+  // Sort ascending by value for efficient two-pointer search
+  const sorted = [...pool].sort((a, b) => a.val - b.val);
+  const n = sorted.length;
+
+  const combinations: { letters: [string, string, string]; values: [number, number, number] }[] = [];
+  const permutations: string[] = [];
+  const seenPermutations = new Set<string>();
+
+  // 3-Sum algorithm: O(N^2) where N=28, which is only ~378 iterations! Instant and 100% comprehensive.
+  for (let i = 0; i < n - 2; i++) {
+    const itemA = sorted[i];
+    if (itemA.val >= targetValue) break;
+
+    let left = i + 1;
+    let right = n - 1;
+
+    while (left < right) {
+      const itemB = sorted[left];
+      const itemC = sorted[right];
+      const sum = itemA.val + itemB.val + itemC.val;
+
+      if (sum === targetValue) {
+        // Distinct letters: i < left < right guarantees itemA, itemB, itemC are 3 different letters!
+        combinations.push({
+          letters: [itemA.char, itemB.char, itemC.char],
+          values: [itemA.val, itemB.val, itemC.val],
+        });
+
+        if (includePermutations) {
+          const l1 = itemA.char;
+          const l2 = itemB.char;
+          const l3 = itemC.char;
+
+          // All 6 distinct permutations of 3 different letters:
+          const perms = [
+            l1 + l2 + l3,
+            l1 + l3 + l2,
+            l2 + l1 + l3,
+            l2 + l3 + l1,
+            l3 + l1 + l2,
+            l3 + l2 + l1,
+          ];
+
+          for (const p of perms) {
+            if (!seenPermutations.has(p)) {
+              seenPermutations.add(p);
+              permutations.push(p);
+              if (permutations.length >= maxResults) break;
+            }
+          }
+        }
+
+        left++;
+        right--;
+      } else if (sum < targetValue) {
+        left++;
+      } else {
+        right--;
+      }
+
+      if (permutations.length >= maxResults) break;
+    }
+
+    if (permutations.length >= maxResults) break;
+  }
+
+  return { combinations, permutations };
+}
+
+/**
  * Dynamic Programming & Backtracking with Bounding & Pruning
  * Finds letters combinations that sum to targetValue exactly.
  * Sorts solutions from fewest letters to most letters.

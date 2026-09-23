@@ -103,6 +103,26 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
   // Feature Options: Consider 'و' (Waw) in all cipher layers (افتراضياً مفعل)
   const [includeWawInAllLayers, setIncludeWawInAllLayers] = useState(true);
 
+  // Collapsible Nearest Quranic Vocabulary drawer ("سحاب أقرب المفردات شبهاً" مع حفظ الحالة في المتصفح)
+  const [isNearestQuranicOpen, setIsNearestQuranicOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('hmcode_nearest_quranic_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleNearestQuranicOpen = () => {
+    setIsNearestQuranicOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('hmcode_nearest_quranic_open', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // Reverse / Inversion toggles for Sky and Earth selectors
   const [isNooraniReversed, setIsNooraniReversed] = useState(false);
   const [isArabicReversed, setIsArabicReversed] = useState(false);
@@ -819,9 +839,9 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
   // Default cipher output (taking first available cipher letter for each layer)
   const primaryCipherOutput = useMemo(() => {
     return encryptionDetails.map(d => {
-      if (d.isSpecialOrSpace) return d.char;
+      if (d.isSpecialOrSpace) return d.originalChar;
       if (d.layer && d.layer.cipherLetters && d.layer.cipherLetters.length > 0) {
-        const active = d.layer.cipherLetters.filter(Boolean);
+        const active = d.layer.cipherLetters.filter(c => Boolean(c) && c !== 'و');
         return active[0] || '?';
       }
       return '?';
@@ -1174,21 +1194,22 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             </div>
           </div>
 
-          {/* Action buttons on same row: [ المنظومات ] and [ الأدوات ] */}
+          {/* Action buttons on same row: [ مفكرة المنظومات ] and [ الأدوات ] */}
           <div className="flex items-center gap-1.5 justify-end shrink-0">
-            {/* Multi-System Scanner Button */}
+            {/* Open Systems Notebook Button */}
             <button
               type="button"
-              onClick={() => setShowMultiSystemScanner((prev) => !prev)}
-              className={`px-2.5 py-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 font-sans ${
-                showMultiSystemScanner
-                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
-                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700'
-              }`}
-              title="فحص ومقارنة المنظومات"
+              onClick={() => openDrawer('systems')}
+              className="px-2.5 py-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shrink-0 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 shadow-2xs font-sans relative"
+              title="فتح مفكرة المنظومات"
             >
-              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>المنظومات</span>
+              <BookMarked className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>مفكرة المنظومات</span>
+              {savedSystems.length > 0 && (
+                <span className="font-mono text-3xs px-1 py-0.2 rounded-full bg-amber-500 text-white font-medium leading-none min-w-[14px] text-center">
+                  {savedSystems.length}
+                </span>
+              )}
             </button>
 
             {/* Collapsible Tools Toggle Button */}
@@ -1238,20 +1259,6 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 title={copiedSummaryLink ? 'تم نسخ الملخص! ✓' : 'مشاركة ملخص الشيفرة والنتائج'}
               >
                 {copiedSummaryLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-              </button>
-
-              {/* Save System */}
-              <button
-                type="button"
-                onClick={() => setShowSaveCurrentSystemModal(true)}
-                className={`p-1.5 rounded-lg transition-all cursor-pointer border ${
-                  isCurrentSystemSaved
-                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-800 border-stone-200 dark:border-stone-700'
-                }`}
-                title={isCurrentSystemSaved ? 'محفوظة بالمفكرة ✓' : 'حفظ هذه المنظومة في المفكرة'}
-              >
-                <BookmarkPlus className={`w-3.5 h-3.5 ${isCurrentSystemSaved ? 'text-amber-600 dark:text-amber-400' : 'text-stone-500'}`} />
               </button>
 
               {/* Open Notebook */}
@@ -1820,7 +1827,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-indigo-100 p-0.5"
-                            title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
+                            title={`البحث عن "${item.word}" في Google`}
                           >
                             <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
                           </a>
@@ -1892,32 +1899,49 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Dense Letter Breakdown with Color-Only Micro Tiles (No redundant layer number labels) */}
-                  <div className="flex items-center gap-1 flex-wrap">
+                  {/* Dense Letter Breakdown with Color Micro Tiles: Clear Letter in Colored Box & Pure Ciphers without Waw */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {encryptionDetails.map((detail, idx) => {
                       if (detail.isSpecialOrSpace) return null;
                       const layerNum = detail.layer ? detail.layer.layer : 0;
                       const color = LAYER_RAINBOW_COLORS[layerNum] || {
+                        name: 'رمادي',
                         activeBg: 'bg-stone-800',
                         activeText: 'text-white',
                         activeBorder: 'border-stone-900',
                         lightBg: 'bg-stone-50',
                         lightBorder: 'border-stone-200',
                       };
-                      const ciphers = detail.layer ? detail.layer.cipherLetters.filter(Boolean) : [];
+                      // Strictly filter out letter 'و' (Waw) as requested
+                      const ciphers = detail.layer
+                        ? (detail.layer.cipherLetters || []).filter((c) => Boolean(c) && c !== 'و')
+                        : [];
+                      const displayChar = detail.originalChar || detail.normalizedChar || '';
 
                       return (
                         <div
                           key={`char_${idx}`}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
-                          title={`الحرف [${detail.char}]`}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
+                          title={`الحرف [${displayChar}] - سماء ${layerNum} (${color.name})`}
                         >
-                          <span className={`w-5 h-5 rounded font-semibold text-xs font-quran flex items-center justify-center shrink-0 ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}>
-                            {detail.char}
+                          {/* Colored box containing the letter with high clarity */}
+                          <span
+                            className={`w-6.5 h-6.5 rounded-md font-bold text-xs sm:text-sm font-quran flex items-center justify-center shrink-0 shadow-2xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                          >
+                            {displayChar}
                           </span>
-                          <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-300">
-                            {ciphers.join('/')}
-                          </span>
+                          {/* Cipher letters in individual gray square boxes without separators */}
+                          <div className="flex items-center gap-1">
+                            {ciphers.map((cipherChar, cIdx) => (
+                              <span
+                                key={cIdx}
+                                className="w-6.5 h-6.5 rounded-md font-bold text-xs sm:text-sm font-quran flex items-center justify-center shrink-0 bg-stone-100 dark:bg-stone-700/90 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 shadow-2xs"
+                                title={`رمز التشفير: [${cipherChar}]`}
+                              >
+                                {cipherChar}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       );
                     })}
@@ -1991,54 +2015,67 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     </div>
                   )}
 
-                  {/* Priority 2: Distinct Nearest Quranic Vocabulary Matches */}
+                  {/* Priority 2: Distinct Nearest Quranic Vocabulary Matches (سحاب قابل للطي والفتح مع تذكر الخيار) */}
                   {encNearestQuranicMatches.length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-sky-100 dark:border-stone-800">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                          <span>أقرب المفردات شبهاً ({encNearestQuranicMatches.length})</span>
-                        </h4>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleNearestQuranicOpen}
+                        className="w-full flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-stone-100/70 dark:hover:bg-stone-800/60 transition-colors cursor-pointer group text-start"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                          <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                            أقرب المفردات شبهاً ({encNearestQuranicMatches.length})
+                          </h4>
+                        </div>
+                        {isNearestQuranicOpen ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 dark:text-stone-500" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-600 dark:text-stone-500" />
+                        )}
+                      </button>
 
-                      <div className="flex flex-wrap gap-1.5">
-                        {encNearestQuranicMatches.map((item, idx) => {
-                          const isCopied = copiedText === `enc_near_${idx}`;
-                          return (
-                            <div
-                              key={`enc_near_${item.combo}_${idx}`}
-                              className="px-2.5 py-1 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border-2 border-sky-300/80 dark:border-sky-700/70 hover:border-sky-500 flex items-center gap-1.5 text-xs transition-all shadow-2xs"
-                              title={`احتمال الشفرة: [${item.combo}] ← أقرب مفردة قرآنية: [${item.nearest.word}] في ${item.nearest.surahName}`}
-                            >
-                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200">
-                                {item.nearest.similarity}%
-                              </span>
-                              <span
-                                onClick={() => handleCopy(item.nearest.word, `enc_near_${idx}`)}
-                                className="font-semibold font-quran text-stone-900 dark:text-stone-100 text-sm cursor-pointer hover:underline"
+                      {isNearestQuranicOpen && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {encNearestQuranicMatches.map((item, idx) => {
+                            const isCopied = copiedText === `enc_near_${idx}`;
+                            return (
+                              <div
+                                key={`enc_near_${item.combo}_${idx}`}
+                                className="px-2.5 py-1 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border-2 border-sky-300/80 dark:border-sky-700/70 hover:border-sky-500 flex items-center gap-1.5 text-xs transition-all shadow-2xs"
+                                title={`احتمال الشفرة: [${item.combo}] ← أقرب مفردة قرآنية: [${item.nearest.word}] في ${item.nearest.surahName}`}
                               >
-                                {item.nearest.word}
-                              </span>
-                              <span className="text-xs text-stone-400 font-mono">
-                                ← {item.combo}
-                              </span>
-                              {item.isReversed && (
-                                <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس" />
-                              )}
-                              {isCopied && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                              <AddToNotebookButton
-                                word={submittedText}
-                                cipher={item.nearest.word}
-                                systemName={activeTableName}
-                                surahInfo={item.nearest.surahName}
-                                isReversed={item.isReversed}
-                                type="quranic"
-                                variant="icon-only"
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                                <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200">
+                                  {item.nearest.similarity}%
+                                </span>
+                                <span
+                                  onClick={() => handleCopy(item.nearest.word, `enc_near_${idx}`)}
+                                  className="font-semibold font-quran text-stone-900 dark:text-stone-100 text-sm cursor-pointer hover:underline"
+                                >
+                                  {item.nearest.word}
+                                </span>
+                                <span className="text-xs text-stone-400 font-mono">
+                                  ← {item.combo}
+                                </span>
+                                {item.isReversed && (
+                                  <RotateCcw className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" title="معكوس" />
+                                )}
+                                {isCopied && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                <AddToNotebookButton
+                                  word={submittedText}
+                                  cipher={item.nearest.word}
+                                  systemName={activeTableName}
+                                  surahInfo={item.nearest.surahName}
+                                  isReversed={item.isReversed}
+                                  type="quranic"
+                                  variant="icon-only"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2080,7 +2117,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-amber-700 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-100 p-0.5"
-                              title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
+                              title={`البحث عن "${item.word}" في Google`}
                             >
                               <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
                             </a>

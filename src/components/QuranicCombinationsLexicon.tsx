@@ -46,7 +46,7 @@ export function QuranicCombinationsLexicon({
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);
-    window.open(`https://qran-top.github.io/dec/?q=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(text.trim())}`, "_blank");
   };
 
   const hasExact = exactMatches.length > 0;

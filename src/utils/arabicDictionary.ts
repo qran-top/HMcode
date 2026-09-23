@@ -221,6 +221,10 @@ class DictionaryService {
     return this.getMatchedWord(rawWord) !== null;
   }
 
+  getAllWords(): string[] {
+    return Array.from(this.wordSet);
+  }
+
   getWordCount(): number {
     return this.wordSet.size;
   }
@@ -237,10 +241,10 @@ class DictionaryService {
 export const arabicDictionary = new DictionaryService();
 
 /**
- * Generates the official dictionary lookup URL on qran-top:
- * Example: https://qran-top.github.io/dec/?q=%D8%AD%D9%85%D8%AF
+ * Generates the dictionary lookup URL via Google Search:
+ * Example: https://www.google.com/search?q=%D8%AD%D9%85%D8%AF
  */
 export function getArabicDictSearchUrl(word: string): string {
   const clean = word.trim();
-  return `https://qran-top.github.io/dec/?q=${encodeURIComponent(clean)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(clean)}`;
 }

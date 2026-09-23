@@ -960,8 +960,8 @@ export function EncryptionResults({
                         href={getArabicDictSearchUrl(item.word)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-2xs font-bold w-fit hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors group cursor-pointer"
-                        title={`البحث عن "${item.word}" في المعجم على موقع قرآن توب`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-2xs font-medium w-fit hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors group cursor-pointer"
+                        title={`البحث عن "${item.word}" في Google`}
                       >
                         <SpellCheck className="w-3 h-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
                         <span>كلمة عربية قاموسية</span>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { quranicDictionary, QuranicWordMeta } from '../utils/quranicDictionary';
+import { arabicDictionary } from '../utils/arabicDictionary';
 import {
   cleanArabicTextForGematria,
   normalizeAbjadChar,
@@ -7,6 +8,8 @@ import {
   GematriaCalculationOptions,
   DEFAULT_GEMATRIA_OPTIONS,
   calculateGematriaWithOptions,
+  synthesizeCombinationsDP,
+  generateExactThreeLetterCombinations,
 } from '../utils/gematriaEngine';
 import { NOORANI_LETTERS_SET } from '../cipherData';
 
@@ -193,6 +196,14 @@ export interface GematriaContextType {
   findQuranicMatches: (
     targetValue: number,
     options?: { filterType?: 'all' | 'noorani' | 'non_noorani'; maxResults?: number; tableId?: string }
+  ) => SynthesizedTextResult[];
+  findArabicMatches: (
+    targetValue: number,
+    options?: { maxResults?: number; tableId?: string }
+  ) => SynthesizedTextResult[];
+  synthesizeNonArabicPossibilities: (
+    targetValue: number,
+    options?: { maxResults?: number; tableId?: string }
   ) => SynthesizedTextResult[];
 }
 
@@ -557,6 +568,223 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
     [tables, activeTable, getQuranIndexForTable]
   );
 
+  // Inverted Arabic dictionary index cache
+  const arabicIndexCacheRef = React.useRef<Map<string, Map<number, { word: string; clean: string; value: number; isNoorani: boolean }[]>>>(new Map());
+
+  const getArabicIndexForTable = useCallback(
+    (table: GematriaTable) => {
+      const allWords = arabicDictionary.getAllWords();
+      const cacheKey = `${table.id}_${allWords.length}_${JSON.stringify(table.values)}_${JSON.stringify(calculationOptions)}`;
+      const existing = arabicIndexCacheRef.current.get(cacheKey);
+      if (existing) return existing;
+
+      const map = new Map<number, { word: string; clean: string; value: number; isNoorani: boolean }[]>();
+      const seen = new Set<string>();
+
+      for (const rawWord of allWords) {
+        const clean = cleanArabicTextForGematria(rawWord);
+        if (!clean || seen.has(clean)) continue;
+        seen.add(clean);
+
+        const val = calculateGematriaWithOptions(rawWord, calculationOptions, table.values);
+        if (val <= 0) continue;
+
+        let isNoorani = true;
+        for (let i = 0; i < clean.length; i++) {
+          const ch = clean[i];
+          if (ch === ' ') continue;
+          const norm = normalizeAbjadChar(ch);
+          if (!NOORANI_LETTERS_SET.has(ch) && !NOORANI_LETTERS_SET.has(norm)) {
+            isNoorani = false;
+          }
+        }
+
+        const entry = { word: rawWord, clean, value: val, isNoorani };
+        const list = map.get(val);
+        if (list) {
+          list.push(entry);
+        } else {
+          map.set(val, [entry]);
+        }
+      }
+
+      arabicIndexCacheRef.current.set(cacheKey, map);
+      return map;
+    },
+    [calculationOptions]
+  );
+
+  // Find general Arabic words (معجم اللغة العربية العام) matching this Gematria weight
+  const findArabicMatches = useCallback(
+    (
+      targetValue: number,
+      options: { maxResults?: number; tableId?: string } = {}
+    ): SynthesizedTextResult[] => {
+      const { maxResults = 150, tableId } = options;
+      if (targetValue <= 0) return [];
+
+      const targetTbl = (tableId ? tables.find((t) => t.id === tableId) : activeTable) || activeTable;
+      const index = getArabicIndexForTable(targetTbl);
+      const list = index.get(targetValue) || [];
+
+      const matches: SynthesizedTextResult[] = [];
+      const seen = new Set<string>();
+
+      for (const item of list) {
+        if (seen.has(item.clean)) continue;
+        seen.add(item.clean);
+
+        const qMeta = quranicDictionary.getWordDetails(item.clean);
+
+        matches.push({
+          text: item.word,
+          value: item.value,
+          letterCount: item.clean.replace(/\s+/g, '').length,
+          letters: item.clean.replace(/\s+/g, '').split(''),
+          isQuranic: !!qMeta,
+          isLexical: true,
+          quranicMeta: qMeta,
+          isNooraniOnly: item.isNoorani,
+        });
+
+        if (matches.length >= maxResults) break;
+      }
+
+      // Sort by shortest letter count first
+      matches.sort((a, b) => a.letterCount - b.letterCount);
+      return matches;
+    },
+    [tables, activeTable, getArabicIndexForTable]
+  );
+
+  // Synthesize non-Arabic combinations & structural permutations (جميع احتمالات وتراكيب الحروف غير المعجمية)
+  const synthesizeNonArabicPossibilities = useCallback(
+    (
+      targetValue: number,
+      options: { maxResults?: number; tableId?: string } = {}
+    ): SynthesizedTextResult[] => {
+      const { maxResults = 500, tableId } = options;
+      if (targetValue <= 0) return [];
+
+      const targetTable = tableId ? tables.find((t) => t.id === tableId) || activeTable : activeTable;
+
+      // Extract letter values for the active table for all 28 canonical letters
+      const canonicalChars = [
+        'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
+        'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
+        'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+      ];
+
+      const letterValues = canonicalChars.map((c) => ({
+        char: c,
+        val: getLetterValueInTable(targetTable, c),
+      }));
+
+      const results: SynthesizedTextResult[] = [];
+      const seen = new Set<string>();
+
+      // 1. Priority: All exact combinations of 3 distinct letters without repetition (كافة احتمالات 3 أحرف بدون تكرار)
+      const exactThreeLetters = generateExactThreeLetterCombinations(targetValue, {
+        letterValues,
+        includePermutations: true,
+        maxResults: maxResults,
+      });
+
+      for (const permWord of exactThreeLetters.permutations) {
+        if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
+          seen.add(permWord);
+          const chars = permWord.split('');
+          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          results.push({
+            text: permWord,
+            value: targetValue,
+            letterCount: chars.length,
+            letters: chars,
+            isQuranic: false,
+            isLexical: false,
+            quranicMeta: null,
+            isNooraniOnly: isNoorani,
+          });
+        }
+      }
+
+      // 2. Also generate DP combinations for other lengths (2 letters, 4 letters, etc.)
+      const rawCombos = synthesizeCombinationsDP(targetValue, {
+        onlyNoorani: false,
+        maxResults: 60,
+        maxLetterCount: 7,
+      });
+
+      for (const combo of rawCombos) {
+        // Direct combination word
+        const baseWord = combo.join('');
+        if (!seen.has(baseWord) && !arabicDictionary.isWord(baseWord)) {
+          seen.add(baseWord);
+          const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          results.push({
+            text: baseWord,
+            value: targetValue,
+            letterCount: combo.length,
+            letters: combo,
+            isQuranic: false,
+            isLexical: false,
+            quranicMeta: null,
+            isNooraniOnly: isNoorani,
+          });
+        }
+
+        // Permutations (reverse & alternations to give all sound possibilities)
+        if (combo.length >= 2 && combo.length <= 5) {
+          const reversed = [...combo].reverse().join('');
+          if (!seen.has(reversed) && !arabicDictionary.isWord(reversed)) {
+            seen.add(reversed);
+            const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+            results.push({
+              text: reversed,
+              value: targetValue,
+              letterCount: combo.length,
+              letters: reversed.split(''),
+              isQuranic: false,
+              isLexical: false,
+              quranicMeta: null,
+              isNooraniOnly: isNoorani,
+            });
+          }
+
+          if (combo.length >= 3) {
+            const transposed = [combo[1], combo[0], ...combo.slice(2)].join('');
+            if (!seen.has(transposed) && !arabicDictionary.isWord(transposed)) {
+              seen.add(transposed);
+              const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+              results.push({
+                text: transposed,
+                value: targetValue,
+                letterCount: combo.length,
+                letters: transposed.split(''),
+                isQuranic: false,
+                isLexical: false,
+                quranicMeta: null,
+                isNooraniOnly: isNoorani,
+              });
+            }
+          }
+        }
+
+        if (results.length >= maxResults) break;
+      }
+
+      // Sort: 3-letter combinations first, then shortest length
+      results.sort((a, b) => {
+        if (a.letterCount === 3 && b.letterCount !== 3) return -1;
+        if (a.letterCount !== 3 && b.letterCount === 3) return 1;
+        return a.letterCount - b.letterCount;
+      });
+
+      return results.slice(0, maxResults);
+    },
+    [tables, activeTable]
+  );
+
   return (
     <GematriaContext.Provider
       value={{
@@ -575,6 +803,8 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         calculateWordGematria,
         getLetterBreakdown,
         findQuranicMatches,
+        findArabicMatches,
+        synthesizeNonArabicPossibilities,
       }}
     >
       {children}

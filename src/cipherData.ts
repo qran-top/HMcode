@@ -573,13 +573,34 @@ export interface EncryptedLetterDetail {
 }
 
 export function findLayerForChar(char: string, layers: LayerInfo[] = CIPHER_LAYERS): LayerInfo | null {
+  if (!char || !layers || layers.length === 0) return null;
   const norm = normalizeArabicChar(char);
   for (const l of layers) {
-    if (l.arabicLetters.includes(norm)) {
+    if (!l || !Array.isArray(l.arabicLetters)) continue;
+
+    // 1. Direct match with exact character
+    if (l.arabicLetters.includes(char)) {
       return l;
     }
-    // Also check raw char if it matched 'ا'
-    if (char === 'ا' && l.arabicLetters.includes('أ')) {
+
+    // 2. Direct match with normalized character
+    if (norm && l.arabicLetters.includes(norm)) {
+      return l;
+    }
+
+    // 3. Match normalized character against normalized characters in the layer
+    if (norm && l.arabicLetters.some((c) => normalizeArabicChar(c) === norm)) {
+      return l;
+    }
+
+    // 4. Match any Alef / Hamza variation (ا, أ, إ, آ, ء, ى)
+    const isAlefVar = ['ا', 'أ', 'إ', 'آ', 'ء', 'ى'].includes(char);
+    if (isAlefVar && l.arabicLetters.some((c) => ['ا', 'أ', 'إ', 'آ', 'ء', 'ى'].includes(c))) {
+      return l;
+    }
+
+    // 5. Match Ta Marbuta / Ha variations (ة / ه)
+    if ((char === 'ة' || char === 'ه') && l.arabicLetters.some((c) => c === 'ه' || c === 'ة')) {
       return l;
     }
   }
@@ -603,14 +624,15 @@ export function analyzeWord(text: string, layers: LayerInfo[] = CIPHER_LAYERS): 
 
     const layer = findLayerForChar(char, layers);
     if (!layer) {
+      const isArabic = /[ء-ي]/.test(char);
       return {
         originalChar: char,
-        normalizedChar: char,
+        normalizedChar: normalizeArabicChar(char),
         layer: null,
-        prob1: char,
-        prob2: char,
-        cipherOptions: [char],
-        isSpecialOrSpace: true,
+        prob1: isArabic ? '؟' : char,
+        prob2: isArabic ? '؟' : char,
+        cipherOptions: isArabic ? ['؟'] : [char],
+        isSpecialOrSpace: !isArabic,
       };
     }
 
