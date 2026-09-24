@@ -184,7 +184,7 @@ export function QuranicCombinationsLexicon({
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
-                      <span>المفردات القرآنية المتطابقة نصاً مع التنزيل الحكيم ({exactMatches.length}):</span>
+                      <span>مفردات قرآنية ({exactMatches.length}):</span>
                     </span>
                     <span className="text-2xs text-stone-500 dark:text-stone-400">
                       انقر على أي بطاقة لعرض تفاصيلها ونسخها
@@ -200,7 +200,7 @@ export function QuranicCombinationsLexicon({
                         <div className="flex items-start justify-between gap-1">
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 tracking-wider">
+                              <span className="text-base font-normal font-quran text-emerald-900 dark:text-emerald-300 tracking-wider">
                                 {combo}
                               </span>
                               {meta.originalQuranicWord !== combo && (

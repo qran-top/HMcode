@@ -7,6 +7,9 @@ import {
   parseNumericQuery,
   normalizeArabicDigits,
   GematriaCalculationOptions,
+  findNooraniCombinations,
+  NooraniFormulaMatch,
+  AUTHENTIC_QURANIC_FAWATIH,
 } from '../utils/gematriaEngine';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import {
@@ -39,7 +42,6 @@ import {
   Square,
   Play,
   ChevronsDown,
-  Sparkles,
 } from 'lucide-react';
 
 interface GematriaViewProps {
@@ -81,8 +83,8 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
   const [committedQuery, setCommittedQuery] = useState<string>(initialText || '');
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  // Filter for matching results: 'all' | 'quranic' | 'arabic' | 'non_arabic'
-  const [quranFilter, setQuranFilter] = useState<'all' | 'quranic' | 'arabic' | 'non_arabic'>('all');
+  // Filter for matching results: 'all' | 'quranic' | 'noorani' | 'arabic' | 'non_arabic'
+  const [quranFilter, setQuranFilter] = useState<'all' | 'quranic' | 'noorani' | 'arabic' | 'non_arabic'>('quranic');
   const [resultsSearchQuery, setResultsSearchQuery] = useState<string>('');
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
@@ -90,6 +92,9 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
   const [visibleCount, setVisibleCount] = useState<number>(BATCH_SIZE);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState<boolean>(false);
   const [isCancelled, setIsCancelled] = useState<boolean>(false);
+  const [isGridFoldOpen, setIsGridFoldOpen] = useState<boolean>(false);
+  const [calcProgress, setCalcProgress] = useState<number>(100);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const batchTimeoutRef = useRef<number | null>(null);
 
   // Table Management UI State
@@ -211,35 +216,130 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
     };
   }, [letterBreakdown]);
 
-  // Fetch all Quranic words matching this exact Gematria value
-  const allQuranicMatches = useMemo(() => {
-    if (!targetNumber || targetNumber <= 0) return [];
-    return findQuranicMatches(targetNumber, {
-      filterType: 'all',
-      maxResults: 500,
-    });
-  }, [targetNumber, findQuranicMatches]);
+  // Progressive asynchronous matches calculation state
+  const [allQuranicMatches, setAllQuranicMatches] = useState<any[]>([]);
+  const [arabicLexiconMatches, setArabicLexiconMatches] = useState<any[]>([]);
+  const [nonArabicPossibilities, setNonArabicPossibilities] = useState<any[]>([]);
+  const [nooraniFormulasMatches, setNooraniFormulasMatches] = useState<NooraniFormulaMatch[]>([]);
+  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(true);
+  const [calcStatusText, setCalcStatusText] = useState<string>('');
+  const calcTimerRef = useRef<any>(null);
 
-  // Fetch all Arabic vocabulary matches from general Arabic dictionary
-  const arabicLexiconMatches = useMemo(() => {
-    if (!targetNumber || targetNumber <= 0) return [];
-    return findArabicMatches(targetNumber, {
-      maxResults: 600,
-    });
-  }, [targetNumber, findArabicMatches]);
+  // Asynchronous progressive calculation pipeline to prevent any browser freezing
+  useEffect(() => {
+    if (calcTimerRef.current) {
+      clearTimeout(calcTimerRef.current);
+    }
 
-  // Synthesize non-Arabic permutations / letter combinations
-  const nonArabicPossibilities = useMemo(() => {
-    if (!targetNumber || targetNumber <= 0) return [];
-    return synthesizeNonArabicPossibilities(targetNumber, {
-      maxResults: 6000,
-    });
-  }, [targetNumber, synthesizeNonArabicPossibilities]);
+    if (!targetNumber || targetNumber <= 0) {
+      setAllQuranicMatches([]);
+      setArabicLexiconMatches([]);
+      setNonArabicPossibilities([]);
+      setNooraniFormulasMatches([]);
+      setIsCalculating(false);
+      setCalcProgress(100);
+      setCalcStatusText('');
+      return;
+    }
+
+    setIsCalculating(true);
+    setCalcProgress(20);
+    setCalcStatusText('جاري مطابقة المفردات القرآنية والصيغ النورانية...');
+
+    // Phase 1: Immediate Quranic Matches & Noorani Formulas (<1ms)
+    try {
+      const quranic = findQuranicMatches(targetNumber, {
+        filterType: 'all',
+        maxResults: 500,
+      });
+      setAllQuranicMatches(quranic);
+
+      // Extract Noorani-only letter combinations ordered as close to Fawatih as possible
+      const noorani = findNooraniCombinations(targetNumber, activeTable.values, {
+        maxResults: 150,
+        uniqueLettersOnly: uniqueNooraniOnly,
+      });
+      setNooraniFormulasMatches(noorani);
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Phase 2: Lexicon matches on next animation frame / tick
+    calcTimerRef.current = setTimeout(() => {
+      setCalcProgress(55);
+      setCalcStatusText('جاري البحث في المعاجم اللغوية العربية...');
+
+      try {
+        const arabic = findArabicMatches(targetNumber, {
+          maxResults: 600,
+        });
+        setArabicLexiconMatches(arabic);
+      } catch (e) {
+        console.error(e);
+      }
+
+      // Phase 3: Letter combination synthesis with phonotactic checks
+      calcTimerRef.current = setTimeout(() => {
+        setCalcProgress(85);
+        setCalcStatusText('جاري توليد التراكيب وفحص الممنوعات الصوتية...');
+
+        try {
+          const nonArabic = synthesizeNonArabicPossibilities(targetNumber, {
+            maxResults: 1500,
+          });
+          setNonArabicPossibilities(nonArabic);
+        } catch (e) {
+          console.error(e);
+        }
+
+        calcTimerRef.current = setTimeout(() => {
+          setCalcProgress(100);
+          setIsCalculating(false);
+          setCalcStatusText('');
+        }, 30);
+      }, 25);
+    }, 15);
+
+    return () => {
+      if (calcTimerRef.current) {
+        clearTimeout(calcTimerRef.current);
+      }
+    };
+  }, [targetNumber, activeTable.values, uniqueNooraniOnly, findQuranicMatches, findArabicMatches, synthesizeNonArabicPossibilities]);
+
+  // Noorani combinations converted to SynthesizedTextResult for unified display
+  const nooraniSynthesizedMatches = useMemo(() => {
+    return nooraniFormulasMatches.map((m) => ({
+      text: m.formula,
+      value: m.sum,
+      letterCount: m.letters.length,
+      letters: m.letters,
+      isQuranic: m.isAuthenticQuranicFawatih,
+      isLexical: false,
+      quranicMeta: m.isAuthenticQuranicFawatih
+        ? {
+            surahName: m.surahs?.join('، ') || 'فاتحة قرآنية',
+            surahNumber: 0,
+            ayahNum: 1,
+            isExactMatch: true,
+            meaning: m.description,
+          }
+        : undefined,
+      isNooraniOnly: true,
+    }));
+  }, [nooraniFormulasMatches]);
 
   // Combined all words (Quranic + general Arabic + letter combinations)
   const allCombinedMatches = useMemo(() => {
-    const list: typeof allQuranicMatches = [];
+    const list: any[] = [];
     const seen = new Set<string>();
+
+    for (const item of nooraniSynthesizedMatches) {
+      if (!seen.has(item.text)) {
+        seen.add(item.text);
+        list.push(item);
+      }
+    }
 
     for (const item of allQuranicMatches) {
       if (!seen.has(item.text)) {
@@ -263,12 +363,13 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
     }
 
     return list;
-  }, [allQuranicMatches, arabicLexiconMatches, nonArabicPossibilities]);
+  }, [nooraniSynthesizedMatches, allQuranicMatches, arabicLexiconMatches, nonArabicPossibilities]);
 
   // Visible matches based on selected tab filter and optional search query
   const displayedMatches = useMemo(() => {
     let baseList = allCombinedMatches;
     if (quranFilter === 'quranic') baseList = allQuranicMatches;
+    else if (quranFilter === 'noorani') baseList = nooraniSynthesizedMatches;
     else if (quranFilter === 'arabic') baseList = arabicLexiconMatches;
     else if (quranFilter === 'non_arabic') baseList = nonArabicPossibilities;
 
@@ -279,7 +380,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
     const query = resultsSearchQuery.trim().toLowerCase();
     return baseList.filter((item) => {
       if (item.text.toLowerCase().includes(query)) return true;
-      if (item.letters.some((c) => c.includes(query))) return true;
+      if (item.letters.some((c: string) => c.includes(query))) return true;
       if (item.quranicMeta?.surahName?.includes(query)) return true;
       if (String(item.quranicMeta?.ayahNum) === query) return true;
       return false;
@@ -288,6 +389,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
     quranFilter,
     resultsSearchQuery,
     allQuranicMatches,
+    nooraniSynthesizedMatches,
     arabicLexiconMatches,
     nonArabicPossibilities,
     allCombinedMatches,
@@ -861,24 +963,19 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                   </span>
                 ) : null}
 
-                {/* Total Value Badge (Minimal, no bulky caption) */}
-                <div
-                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-mono font-black text-sm sm:text-base px-2.5 py-1 rounded-lg shadow-2xs"
-                  title={`المجموع الكلي: ${targetNumber}`}
+                {/* Total Value Badge (Clickable to search divisors on Google) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const query = encodeURIComponent(`ما هي قواسم العدد ${targetNumber}`);
+                    window.open(`https://www.google.com/search?q=${query}`, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-mono font-black text-sm sm:text-base px-3 py-1 rounded-lg shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+                  title={`انقر للبحث عن قواسم العدد ${targetNumber} في جوجل`}
                 >
                   <span>{targetNumber}</span>
-                </div>
-
-                {/* Mini Quranic Matches Counter Badge */}
-                {allQuranicMatches.length > 0 && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-3xs font-bold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 font-mono"
-                    title={`يوجد ${allQuranicMatches.length} مفردة قرآنية تطابق هذا الوزن`}
-                  >
-                    <BookOpen className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>{allQuranicMatches.length}</span>
-                  </span>
-                )}
+                  <ExternalLink className="w-3.5 h-3.5 opacity-75 group-hover:opacity-100 transition-opacity" />
+                </button>
               </div>
 
               {/* Action Icons: Notebook Save (Icon-Only) + Copy */}
@@ -908,6 +1005,131 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
           )}
 
           {/* ======================================================== */}
+          {/* 2.5 DEDICATED NOORANI COMBINATIONS SECTION (أحرف نورانية فقط مرتبة كالفواتح) */}
+          {/* ======================================================== */}
+          {targetNumber > 0 && nooraniFormulasMatches.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-indigo-500/10 dark:from-amber-950/40 dark:via-emerald-950/40 dark:to-indigo-950/40 rounded-xl border border-amber-300/80 dark:border-amber-700/60 p-2.5 sm:p-3 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-amber-200/80 dark:border-amber-800/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                      <span>التراكيب والصيغ النورانية المحتملة (أحرف نورانية فقط)</span>
+                      <span className="text-3xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-mono font-bold">
+                        {nooraniFormulasMatches.length} صيغة
+                      </span>
+                    </h3>
+                    <p className="text-3xs text-stone-600 dark:text-stone-400">
+                      توليفات من الأحرف النورانية الـ 14 مرتبة بأقرب صيغة لفواتح السور (مثل: الر، المر، المص، كهيعص، طه، يس، حم، عسق)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setUniqueNooraniOnly(!uniqueNooraniOnly)}
+                    className={`text-3xs font-bold px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs flex items-center gap-1 border ${
+                      uniqueNooraniOnly
+                        ? 'bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'
+                    }`}
+                    title={uniqueNooraniOnly ? 'إخفاء التراكيب التي تحتوي أحرفاً مكررة' : 'السماح بتكرار الأحرف في التركيب'}
+                  >
+                    <span>{uniqueNooraniOnly ? '✓ أحرف فريدة (دون تكرار)' : 'السماح بتكرار الحرف'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuranFilter('noorani')}
+                    className="text-3xs font-bold px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-2xs"
+                  >
+                    عرض في جدول النتائج ↓
+                  </button>
+                </div>
+              </div>
+
+              {/* Noorani Formulas Horizontal / Grid Pills */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[420px] overflow-y-auto pr-1">
+                {nooraniFormulasMatches.map((noorani, idx) => (
+                  <div
+                    key={`noorani_card_${idx}`}
+                    className={`p-2.5 rounded-lg border transition-all select-none flex flex-col justify-between gap-1.5 shadow-2xs ${
+                      noorani.isAuthenticQuranicFawatih
+                        ? 'bg-amber-50/95 dark:bg-amber-950/70 border-amber-400 dark:border-amber-600 ring-1 ring-amber-400/40'
+                        : 'bg-white/95 dark:bg-stone-900/90 border-amber-200/70 dark:border-amber-900/40 hover:border-amber-400'
+                    }`}
+                  >
+                    {/* Header: Formula & Quranic Badge */}
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-base sm:text-lg font-quran font-black text-amber-950 dark:text-amber-100 tracking-wider">
+                        {noorani.formula}
+                      </span>
+                      {noorani.isAuthenticQuranicFawatih ? (
+                        <span className="inline-flex items-center gap-1 text-3xs font-bold px-1.5 py-0.5 rounded-md bg-amber-600 text-white shadow-2xs">
+                          <span>⭐ فاتحة أصيلة</span>
+                        </span>
+                      ) : (
+                        <span className="text-3xs px-1.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-mono">
+                          {noorani.letters.length} أحرف
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Letter breakdown chips with values */}
+                    <div className="flex items-center gap-1 flex-wrap text-3xs font-mono">
+                      {noorani.letters.map((char, cIdx) => (
+                        <span
+                          key={cIdx}
+                          className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-amber-100/70 dark:bg-amber-900/50 text-stone-800 dark:text-stone-200 border border-amber-200/80 dark:border-amber-800/60"
+                        >
+                          <strong className="font-quran">{char}</strong>
+                          <span className="text-stone-500 dark:text-stone-400">({noorani.values[cIdx]})</span>
+                          {cIdx < noorani.letters.length - 1 && <span className="text-amber-600 font-bold">+</span>}
+                        </span>
+                      ))}
+                      <span className="text-stone-700 dark:text-stone-300 font-bold">= {noorani.sum}</span>
+                    </div>
+
+                    {/* Surah reference if available */}
+                    {noorani.surahs && noorani.surahs.length > 0 && (
+                      <div className="text-3xs text-emerald-700 dark:text-emerald-400 font-bold truncate">
+                        سورة: {noorani.surahs.join('، ')}
+                      </div>
+                    )}
+
+                    {/* Actions: Copy & Add to Notebook */}
+                    <div className="flex items-center justify-end gap-1 pt-1.5 border-t border-amber-100 dark:border-amber-900/40">
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(noorani.formula)}
+                        className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        title="نسخ الصيغة"
+                      >
+                        {copiedText === noorani.formula ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <AddToNotebookButton
+                        word={committedQuery}
+                        cipher={noorani.formula}
+                        systemName={`صيغة نورانية (${noorani.sum})`}
+                        surahInfo={noorani.surahs?.join('، ')}
+                        type="manual"
+                        note={`صيغة أحرف نورانية: ${noorani.formula} = ${noorani.sum}`}
+                        variant="icon-only"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
           {/* 3. VOCABULARY & POSSIBILITIES MATCHING SECTION */}
           {/* ======================================================== */}
           {targetNumber > 0 && (
@@ -921,38 +1143,25 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                   <div>
                     <h3 className="text-xs sm:text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
                       <span>المفردات والاحتمالات المتطابقة</span>
-                      <span className="text-3xs px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono font-bold">
-                        = {targetNumber}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const query = encodeURIComponent(`ما هي قواسم العدد ${targetNumber}`);
+                          window.open(`https://www.google.com/search?q=${query}`, '_blank', 'noopener,noreferrer');
+                        }}
+                        className="text-3xs px-2 py-0.5 rounded-full bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 font-mono font-bold transition-colors cursor-pointer flex items-center gap-1"
+                        title={`انقر للبحث عن قواسم العدد ${targetNumber} في جوجل`}
+                      >
+                        <span>= {targetNumber}</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </button>
                     </h3>
                   </div>
                 </div>
 
                 {/* Filter Selector Tabs */}
                 <div className="flex items-center gap-1 p-0.5 bg-stone-100 dark:bg-stone-800/80 rounded-lg overflow-x-auto">
-                  {/* Tab 1: All Possibilities */}
-                  <button
-                    type="button"
-                    onClick={() => setQuranFilter('all')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-2xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      quranFilter === 'all'
-                        ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 shadow-xs'
-                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-                    }`}
-                  >
-                    <span>الكل</span>
-                    <span
-                      className={`text-3xs px-1 py-0.2 rounded-full font-mono ${
-                        quranFilter === 'all'
-                          ? 'bg-stone-700 text-white dark:bg-stone-300 dark:text-stone-900'
-                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
-                      }`}
-                    >
-                      {allCombinedMatches.length}
-                    </span>
-                  </button>
-
-                  {/* Tab 2: Quranic */}
+                  {/* Tab 1: Quranic (Default) */}
                   <button
                     type="button"
                     onClick={() => setQuranFilter('quranic')}
@@ -972,6 +1181,29 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                       }`}
                     >
                       {allQuranicMatches.length}
+                    </span>
+                  </button>
+
+                  {/* Tab 2: Noorani Formulas Only */}
+                  <button
+                    type="button"
+                    onClick={() => setQuranFilter('noorani')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-2xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      quranFilter === 'noorani'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-amber-600'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>نورانية فقط</span>
+                    <span
+                      className={`text-3xs px-1 py-0.2 rounded-full font-mono ${
+                        quranFilter === 'noorani'
+                          ? 'bg-amber-800 text-white'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+                      }`}
+                    >
+                      {nooraniFormulasMatches.length}
                     </span>
                   </button>
 
@@ -1004,8 +1236,8 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                     onClick={() => setQuranFilter('non_arabic')}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-2xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       quranFilter === 'non_arabic'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-stone-600 dark:text-stone-400 hover:text-amber-600'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-indigo-600'
                     }`}
                   >
                     <Globe className="w-3 h-3" />
@@ -1013,17 +1245,58 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                     <span
                       className={`text-3xs px-1 py-0.2 rounded-full font-mono ${
                         quranFilter === 'non_arabic'
-                          ? 'bg-amber-800 text-white'
+                          ? 'bg-indigo-800 text-white'
                           : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
                       }`}
                     >
                       {nonArabicPossibilities.length}
                     </span>
                   </button>
+
+                  {/* Tab 5: All Possibilities */}
+                  <button
+                    type="button"
+                    onClick={() => setQuranFilter('all')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-2xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      quranFilter === 'all'
+                        ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 shadow-xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>الكل</span>
+                    <span
+                      className={`text-3xs px-1 py-0.2 rounded-full font-mono ${
+                        quranFilter === 'all'
+                          ? 'bg-stone-700 text-white dark:bg-stone-300 dark:text-stone-900'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+                      }`}
+                    >
+                      {allCombinedMatches.length}
+                    </span>
+                  </button>
                 </div>
               </div>
 
-              {/* In-results Instant Search Input + Progress Indicator */}
+              {/* Interactive Calculation Progress Bar */}
+              {isCalculating && (
+                <div className="p-2.5 bg-gradient-to-r from-emerald-50 via-amber-50 to-indigo-50 dark:from-emerald-950/40 dark:via-amber-950/40 dark:to-indigo-950/40 rounded-xl border border-amber-300 dark:border-amber-800/80 shadow-xs space-y-1.5 transition-all animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between text-2xs font-bold text-stone-800 dark:text-stone-200">
+                    <div className="flex items-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-spin" />
+                      <span>{calcStatusText || 'جاري استخراج وفحص المفردات المتطابقة...'}</span>
+                    </div>
+                    <span className="font-mono text-amber-700 dark:text-amber-300 font-black">{calcProgress}%</span>
+                  </div>
+                  <div className="w-full bg-stone-200 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 via-amber-500 to-indigo-500 h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${calcProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* In-results Instant Search Input + Progress Bar Controller */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <div className="relative flex-1">
                   <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-stone-400">
@@ -1048,11 +1321,29 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                   )}
                 </div>
 
-                {/* Progressive Batch Loading Controller & Counter */}
-                <div className="flex items-center justify-between sm:justify-end gap-2 text-2xs text-stone-500 shrink-0">
+                {/* Progressive Batch Loading Controller & Counter & Small Fold Toggle Button */}
+                <div className="flex items-center justify-between sm:justify-end gap-1.5 text-2xs text-stone-500 shrink-0">
                   <span className="font-mono font-bold text-stone-700 dark:text-stone-300">
-                    معروض {Math.min(visibleCount, displayedMatches.length)} من {displayedMatches.length}
+                    {quranFilter === 'quranic'
+                      ? `معروض ${displayedMatches.length} مفردة قرآنية`
+                      : `معروض ${Math.min(visibleCount, displayedMatches.length)} من ${displayedMatches.length}`}
                   </span>
+
+                  {/* Fold toggle icon for expanding viewport */}
+                  {displayedMatches.length > 8 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsGridFoldOpen((prev) => !prev)}
+                      className="p-1 rounded-md border border-stone-300 dark:border-stone-700 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer flex items-center justify-center"
+                      title={isGridFoldOpen ? 'الرجوع للحجم القياسي' : 'توسيع نافذة العرض للحد الأقصى'}
+                    >
+                      {isGridFoldOpen ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
 
                   {isGeneratingBatch && (
                     <div className="flex items-center gap-1.5">
@@ -1074,7 +1365,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                     </div>
                   )}
 
-                  {!isGeneratingBatch && visibleCount < displayedMatches.length && (
+                  {quranFilter !== 'quranic' && !isGeneratingBatch && visibleCount < displayedMatches.length && (
                     <button
                       type="button"
                       onClick={handleLoadAll}
@@ -1104,70 +1395,81 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                 </span>
               </div>
 
-              {/* High-density Results Grid */}
-              {renderedBatchList.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5">
-                  {renderedBatchList.map((item, idx) => {
-                    const isQuran = item.isQuranic;
-                    const isArabic = !item.isQuranic && item.isLexical;
-                    const isNonArabic = !item.isQuranic && !item.isLexical;
+              {/* High-density Results Grid: ALWAYS scrollable with smooth scrollbar */}
+              {displayedMatches.length > 0 ? (
+                <>
+                  <div
+                    className={`transition-all duration-300 pr-1.5 pl-1 space-y-2 border border-stone-200/80 dark:border-stone-800/80 rounded-lg p-2 bg-stone-50/40 dark:bg-stone-950/40 overflow-y-auto overscroll-contain ${
+                      isGridFoldOpen
+                        ? 'max-h-[750px]'
+                        : 'max-h-[460px] sm:max-h-[520px]'
+                    }`}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5">
+                      {(quranFilter === 'quranic' ? displayedMatches : renderedBatchList).map((item, idx) => {
+                        const isQuran = item.isQuranic;
+                        const isArabic = !item.isQuranic && item.isLexical;
+                        const isNonArabic = !item.isQuranic && !item.isLexical;
 
-                    const searchHref = isQuran
-                      ? (item.quranicMeta
-                          ? getQuranTopWordUrl(
-                              item.quranicMeta.word,
-                              item.quranicMeta.surahName,
-                              item.quranicMeta.ayahNum,
-                              item.quranicMeta.occurrences
-                            )
-                          : getQuranTopSearchUrl(item.text))
-                      : getArabicDictSearchUrl(item.text);
+                        const searchHref = isQuran
+                          ? (item.quranicMeta
+                              ? getQuranTopWordUrl(
+                                  item.quranicMeta.word,
+                                  item.quranicMeta.surahName,
+                                  item.quranicMeta.ayahNum,
+                                  item.quranicMeta.occurrences
+                                )
+                              : getQuranTopSearchUrl(item.text))
+                          : getArabicDictSearchUrl(item.text);
 
-                    const borderBgStyle = isQuran
-                      ? 'border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500'
-                      : isArabic
-                      ? 'border-blue-300/80 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-950/30 text-blue-950 dark:text-blue-100 hover:border-blue-500'
-                      : 'border-amber-300/80 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100 hover:border-amber-500';
+                        const borderBgStyle = isQuran
+                          ? 'border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500'
+                          : isArabic
+                          ? 'border-blue-300/80 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-950/30 text-blue-950 dark:text-blue-100 hover:border-blue-500'
+                          : 'border-amber-300/80 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100 hover:border-amber-500';
 
-                    return (
-                      <div
-                        key={idx}
-                        className={`rounded-lg border p-1.5 flex items-center justify-between gap-1 transition-all hover:shadow-2xs group ${borderBgStyle}`}
-                      >
-                        <a
-                          href={searchHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-quran text-sm sm:text-base font-black truncate hover:underline flex-1 text-right"
-                          title={
-                            isQuran
-                              ? `انقر للبحث عن "${item.text}" في موقع القرآن الكريم`
-                              : `انقر للبحث عن "${item.text}" في جوجل`
-                          }
-                        >
-                          {item.text}
-                        </a>
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-lg border p-1.5 flex items-center justify-between gap-1 transition-all hover:shadow-2xs group ${borderBgStyle}`}
+                          >
+                            <a
+                              href={searchHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-quran text-xs sm:text-sm font-normal truncate hover:underline flex-1 text-right"
+                              title={
+                                isQuran
+                                  ? `انقر للبحث عن "${item.text}" في موقع القرآن الكريم`
+                                  : `انقر للبحث عن "${item.text}" في جوجل`
+                              }
+                            >
+                              {item.text}
+                            </a>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopy(item.text);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-0.5 rounded transition-opacity cursor-pointer shrink-0"
-                          title="نسخ"
-                        >
-                          {copiedText === item.text ? (
-                            <Check className="w-2.5 h-2.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-2.5 h-2.5" />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {/* Bottom Progressive Load / Expand Bar */}
-                  {visibleCount < displayedMatches.length && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopy(item.text);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 p-0.5 rounded transition-opacity cursor-pointer shrink-0"
+                              title="نسخ"
+                            >
+                              {copiedText === item.text ? (
+                                <Check className="w-2.5 h-2.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-2.5 h-2.5" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Bottom Progressive Load / Expand Bar for Non-Quranic large sets */}
+                  {quranFilter !== 'quranic' && visibleCount < displayedMatches.length && (
                     <div className="col-span-full pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
                       <button
                         type="button"
@@ -1202,7 +1504,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
                       </button>
                     </div>
                   )}
-                </div>
+                </>
               ) : (
                 <div className="text-center py-6 px-3 bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 space-y-1">
                   <BookOpen className="w-6 h-6 text-stone-400 mx-auto opacity-60" />

@@ -4,6 +4,7 @@
 import { DEFAULT_CIPHER_LAYERS, NOORANI_LETTERS_SET, LayerInfo } from '../cipherData';
 import { quranicDictionary, QuranicWordMeta } from './quranicDictionary';
 import { arabicDictionary } from './arabicDictionary';
+import { checkArabicPhonotactics } from './arabicPhonotactics';
 
 export const ABJAD_VALUES: Record<string, number> = {
   'ا': 1, 'أ': 1, 'إ': 1, 'آ': 1, 'ء': 1,
@@ -617,7 +618,10 @@ export function generateExactThreeLetterCombinations(
           for (const p of perms) {
             if (!seenPermutations.has(p)) {
               seenPermutations.add(p);
-              permutations.push(p);
+              const phCheck = checkArabicPhonotactics(p);
+              if (phCheck.isValid) {
+                permutations.push(p);
+              }
               if (permutations.length >= maxResults) break;
             }
           }
@@ -954,6 +958,427 @@ export function findQuranicWordsByGematria(
   });
 
   return matches.slice(0, maxResults);
+}
+
+/**
+ * Authentic 14 Quranic Opening Formulas (الفواتح النورانية الـ 14 في 29 سورة)
+ */
+export const AUTHENTIC_QURANIC_FAWATIH = [
+  { formula: 'الم', letters: ['ا', 'ل', 'م'], surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'], description: 'فاتحة 6 سور في القرآن الكريم' },
+  { formula: 'المص', letters: ['ا', 'ل', 'م', 'ص'], surahs: ['الأعراف'], description: 'فاتحة سورة الأعراف' },
+  { formula: 'الر', letters: ['ا', 'ل', 'ر'], surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'], description: 'فاتحة 5 سور في القرآن الكريم' },
+  { formula: 'المر', letters: ['ا', 'ل', 'م', 'ر'], surahs: ['الرعد'], description: 'فاتحة سورة الرعد' },
+  { formula: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], surahs: ['مريم'], description: 'فاتحة سورة مريم (الخماسية النورانية)' },
+  { formula: 'طه', letters: ['ط', 'ه'], surahs: ['طه'], description: 'فاتحة سورة طه' },
+  { formula: 'طسم', letters: ['ط', 'س', 'م'], surahs: ['الشعراء', 'القصص'], description: 'فاتحة سورتي الشعراء والقصص' },
+  { formula: 'طس', letters: ['ط', 'س'], surahs: ['النمل'], description: 'فاتحة سورة النمل' },
+  { formula: 'يس', letters: ['ي', 'س'], surahs: ['يس'], description: 'فاتحة سورة يس (قلب القرآن)' },
+  { formula: 'ص', letters: ['ص'], surahs: ['ص'], description: 'فاتحة سورة ص' },
+  { formula: 'حم', letters: ['ح', 'م'], surahs: ['غافر', 'فصلت', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'], description: 'الحواميم السبعة' },
+  { formula: 'عسق', letters: ['ع', 'س', 'ق'], surahs: ['الشورى (الآية 2)'], description: 'فواتح سورة الشورى' },
+  { formula: 'حم عسق', letters: ['ح', 'م', 'ع', 'س', 'ق'], surahs: ['الشورى'], description: 'فاتحة سورة الشورى المزدوجة' },
+  { formula: 'ق', letters: ['ق'], surahs: ['ق'], description: 'فاتحة سورة ق والقرآن المجيد' },
+  { formula: 'ن', letters: ['ن'], surahs: ['القلم'], description: 'فاتحة سورة القلم (ن والقلم)' }
+];
+
+/**
+ * Authentic Quranic Fawatih Multi-letter Words and Single Letters
+ * (فواتح السور القرآنية مرتبة حسب السور وعدد الأحرف)
+ */
+export const QURANIC_FAWATIH_WORD_BLOCKS = [
+  { word: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], weight: 50000, surahOrder: 19, surahs: ['مريم'] },
+  { word: 'حم عسق', letters: ['ح', 'م', 'ع', 'س', 'ق'], weight: 45000, surahOrder: 42, surahs: ['الشورى'] },
+  { word: 'المص', letters: ['ا', 'ل', 'م', 'ص'], weight: 35000, surahOrder: 7, surahs: ['الأعراف'] },
+  { word: 'المر', letters: ['ا', 'ل', 'م', 'ر'], weight: 35000, surahOrder: 13, surahs: ['الرعد'] },
+  { word: 'طسم', letters: ['ط', 'س', 'م'], weight: 25000, surahOrder: 26, surahs: ['الشعراء', 'القصص'] },
+  { word: 'عسق', letters: ['ع', 'س', 'ق'], weight: 25000, surahOrder: 42, surahs: ['الشورى'] },
+  { word: 'الم', letters: ['ا', 'ل', 'م'], weight: 20000, surahOrder: 2, surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'] },
+  { word: 'الر', letters: ['ا', 'ل', 'ر'], weight: 20000, surahOrder: 10, surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'] },
+  { word: 'طه', letters: ['ط', 'ه'], weight: 15000, surahOrder: 20, surahs: ['طه'] },
+  { word: 'طس', letters: ['ط', 'س'], weight: 15000, surahOrder: 27, surahs: ['النمل'] },
+  { word: 'يس', letters: ['ي', 'س'], weight: 15000, surahOrder: 36, surahs: ['يس'] },
+  { word: 'حم', letters: ['ح', 'م'], weight: 15000, surahOrder: 40, surahs: ['غافر', 'فصلت', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'] },
+  { word: 'ص', letters: ['ص'], weight: 5000, surahOrder: 38, surahs: ['ص'] },
+  { word: 'ق', letters: ['ق'], weight: 5000, surahOrder: 50, surahs: ['ق'] },
+  { word: 'ن', letters: ['ن'], weight: 5000, surahOrder: 68, surahs: ['القلم'] },
+];
+
+/**
+ * Sequential canonical order of appearance of the 14 Noorani letters across the Quran
+ * (ترتيب ورود الأحرف النورانية في سور القرآن من الفاتحة إلى الناس)
+ */
+export const NOORANI_QURANIC_ORDER = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن'];
+
+export const NOORANI_ORDER_MAP: Record<string, number> = {
+  'ا': 1,
+  'ل': 2,
+  'م': 3,
+  'ص': 4,
+  'ر': 5,
+  'ك': 6,
+  'ه': 7,
+  'ي': 8,
+  'ع': 9,
+  'ط': 10,
+  'س': 11,
+  'ح': 12,
+  'ق': 13,
+  'ن': 14,
+};
+
+export interface NooraniFormulaMatch {
+  formula: string;
+  letters: string[];
+  values: number[];
+  sum: number;
+  isAuthenticQuranicFawatih: boolean;
+  surahs?: string[];
+  description?: string;
+  matchScore: number;
+  hasDuplicates?: boolean;
+}
+
+/**
+ * Decomposes and orders an arbitrary collection of Noorani letters into authentic
+ * Quranic Fawatih words separated by spaces (e.g. ['ع', 'ق', 'ص', 'س', 'ط'] -> "عسق ص ط").
+ */
+export function orderNooraniLettersQuranic(letters: string[]): {
+  orderedString: string;
+  orderedLetters: string[];
+  score: number;
+  isAuthentic: boolean;
+  surahs?: string[];
+  description?: string;
+} {
+  if (!letters || letters.length === 0) {
+    return { orderedString: '', orderedLetters: [], score: 0, isAuthentic: false };
+  }
+
+  // Exact single letter
+  if (letters.length === 1) {
+    const ch = letters[0];
+    const isAuth = ['ص', 'ق', 'ن'].includes(ch);
+    const surahs = ch === 'ص' ? ['ص'] : ch === 'ق' ? ['ق'] : ch === 'ن' ? ['القلم'] : undefined;
+    return {
+      orderedString: ch,
+      orderedLetters: [ch],
+      score: isAuth ? 10000 : 1000,
+      isAuthentic: isAuth,
+      surahs,
+      description: isAuth ? `فاتحة سورة ${surahs?.join('، ')}` : `حرف نوراني [${ch}]`,
+    };
+  }
+
+  // Exact authentic full formula match
+  const sortedOriginal = [...letters].sort().join('');
+  for (const f of AUTHENTIC_QURANIC_FAWATIH) {
+    const fSorted = [...f.letters].sort().join('');
+    if (fSorted === sortedOriginal) {
+      return {
+        orderedString: f.formula,
+        orderedLetters: f.letters,
+        score: 100000,
+        isAuthentic: true,
+        surahs: f.surahs,
+        description: f.description,
+      };
+    }
+  }
+
+  // Count availability map
+  const getCounts = (arr: string[]): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const c of arr) counts[c] = (counts[c] || 0) + 1;
+    return counts;
+  };
+
+  const initialCounts = getCounts(letters);
+
+  interface PartitionResult {
+    words: { word: string; letters: string[]; weight: number; surahOrder: number; isMulti: boolean }[];
+    leftovers: string[];
+    totalWeight: number;
+  }
+
+  let bestPartition: PartitionResult = {
+    words: [],
+    leftovers: [...letters],
+    totalWeight: -1,
+  };
+
+  const solvePartition = (
+    currentCounts: Record<string, number>,
+    chosenBlocks: { word: string; letters: string[]; weight: number; surahOrder: number; isMulti: boolean }[],
+    accumulatedWeight: number,
+    blockStartIndex: number
+  ) => {
+    let canChooseAny = false;
+
+    for (let i = blockStartIndex; i < QURANIC_FAWATIH_WORD_BLOCKS.length; i++) {
+      const b = QURANIC_FAWATIH_WORD_BLOCKS[i];
+      if (b.letters.length < 2) continue; // multi-letter blocks first
+
+      // Check if b can be extracted from currentCounts
+      let canExtract = true;
+      const bCount = getCounts(b.letters);
+      for (const [ch, req] of Object.entries(bCount)) {
+        if ((currentCounts[ch] || 0) < req) {
+          canExtract = false;
+          break;
+        }
+      }
+
+      if (canExtract) {
+        canChooseAny = true;
+        const nextCounts = { ...currentCounts };
+        for (const [ch, req] of Object.entries(bCount)) {
+          nextCounts[ch] -= req;
+        }
+
+        solvePartition(
+          nextCounts,
+          [...chosenBlocks, { ...b, isMulti: true }],
+          accumulatedWeight + b.weight,
+          i // allow repeated block if available
+        );
+      }
+    }
+
+    if (!canChooseAny) {
+      // Gather leftovers
+      const leftovers: string[] = [];
+      for (const [ch, count] of Object.entries(currentCounts)) {
+        for (let k = 0; k < count; k++) {
+          leftovers.push(ch);
+        }
+      }
+
+      // Leftover score based on Quranic order
+      let leftoverScore = 0;
+      for (const ch of leftovers) {
+        if (['ص', 'ق', 'ن'].includes(ch)) leftoverScore += 2000;
+        else leftoverScore += 500;
+      }
+
+      const totalScore = accumulatedWeight + leftoverScore;
+      if (totalScore > bestPartition.totalWeight) {
+        bestPartition = {
+          words: chosenBlocks,
+          leftovers,
+          totalWeight: totalScore,
+        };
+      }
+    }
+  };
+
+  solvePartition(initialCounts, [], 0, 0);
+
+  // Sort leftover single letters by canonical Quranic appearance order
+  const sortedLeftovers = [...bestPartition.leftovers].sort((a, b) => {
+    const orderA = NOORANI_ORDER_MAP[a] || 99;
+    const orderB = NOORANI_ORDER_MAP[b] || 99;
+    return orderA - orderB;
+  });
+
+  // Assemble formatted words and ordered letter list
+  const finalTokens: string[] = [];
+  const finalOrderedLetters: string[] = [];
+  const surahsSet = new Set<string>();
+
+  // 1. Multi-letter authentic Fawatih blocks
+  for (const w of bestPartition.words) {
+    finalTokens.push(w.word);
+    // If the word contains space like "حم عسق", extract raw letters
+    const rawLetters = Array.from(w.word.replace(/\s+/g, ''));
+    finalOrderedLetters.push(...rawLetters);
+    const authEntry = AUTHENTIC_QURANIC_FAWATIH.find((f) => f.formula === w.word);
+    if (authEntry?.surahs) {
+      authEntry.surahs.forEach((s) => surahsSet.add(s));
+    }
+  }
+
+  // 2. Individual leftover Noorani letters with space between each
+  for (const ch of sortedLeftovers) {
+    finalTokens.push(ch);
+    finalOrderedLetters.push(ch);
+    if (ch === 'ص') surahsSet.add('ص');
+    if (ch === 'ق') surahsSet.add('ق');
+    if (ch === 'ن') surahsSet.add('القلم');
+  }
+
+  const formattedFormula = finalTokens.join(' ').trim();
+  const isAllAuthentic = bestPartition.words.length === 1 && sortedLeftovers.length === 0;
+
+  return {
+    orderedString: formattedFormula,
+    orderedLetters: finalOrderedLetters,
+    score: bestPartition.totalWeight,
+    isAuthentic: isAllAuthentic,
+    surahs: surahsSet.size > 0 ? Array.from(surahsSet) : undefined,
+    description: isAllAuthentic
+      ? `فاتحة قرآنية أصيلة [${formattedFormula}]`
+      : `تركيبة نورانية بنسق فواتح السور (${letters.length} أحرف)`,
+  };
+}
+
+/**
+ * Exhaustive Noorani Letter Combinations Search (أحرف نورانية فقط)
+ * Finds all combinations of the 14 Noorani letters summing to targetValue,
+ * and formats them into authentic Quranic Fawatih blocks with spaces.
+ */
+export function findNooraniCombinations(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: {
+    maxResults?: number;
+    uniqueLettersOnly?: boolean;
+  } = {}
+): NooraniFormulaMatch[] {
+  if (!targetValue || targetValue <= 0) return [];
+  const { maxResults = 150, uniqueLettersOnly = false } = options;
+
+  const nooraniChars = Array.from(NOORANI_LETTERS_SET);
+  const letterMap = nooraniChars
+    .map((ch) => ({
+      char: ch,
+      val: tableValues[ch] ?? ABJAD_VALUES[ch] ?? 0,
+    }))
+    .filter((item) => item.val > 0);
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenMultisets = new Set<string>();
+
+  // 1. Direct Authentic Quranic Fawatih check
+  for (const f of AUTHENTIC_QURANIC_FAWATIH) {
+    const rawLetters = f.letters;
+    const hasDup = new Set(rawLetters).size !== rawLetters.length;
+    if (uniqueLettersOnly && hasDup) continue;
+
+    const fSum = rawLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+    if (fSum === targetValue) {
+      const multisetKey = [...rawLetters].sort().join('');
+      seenMultisets.add(multisetKey);
+      results.push({
+        formula: f.formula,
+        letters: rawLetters,
+        values: rawLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+        sum: fSum,
+        isAuthenticQuranicFawatih: true,
+        surahs: f.surahs,
+        description: f.description,
+        matchScore: 100000,
+        hasDuplicates: hasDup,
+      });
+    }
+  }
+
+  // 2. Single Noorani letter check
+  for (const item of letterMap) {
+    if (item.val === targetValue) {
+      const multisetKey = item.char;
+      if (!seenMultisets.has(multisetKey)) {
+        seenMultisets.add(multisetKey);
+        const isAuth = ['ص', 'ق', 'ن'].includes(item.char);
+        results.push({
+          formula: item.char,
+          letters: [item.char],
+          values: [item.val],
+          sum: item.val,
+          isAuthenticQuranicFawatih: isAuth,
+          surahs: item.char === 'ص' ? ['ص'] : item.char === 'ق' ? ['ق'] : item.char === 'ن' ? ['القلم'] : undefined,
+          description: isAuth ? `فاتحة قرآنية منفردة [${item.char}]` : `حرف نوراني منفرد [${item.char}]`,
+          matchScore: isAuth ? 50000 : 10000,
+          hasDuplicates: false,
+        });
+      }
+    }
+  }
+
+  // 3. Exhaustive Backtracking Search (Lengths 2 to 7)
+  // Sort letters descending by value for optimal Branch-and-Bound pruning
+  const sortedLetters = [...letterMap].sort((a, b) => b.val - a.val);
+  const n = sortedLetters.length;
+
+  const collectedCombos: { chars: string[]; sum: number; hasDup: boolean }[] = [];
+
+  const dfs = (
+    startIndex: number,
+    currentLetters: { char: string; val: number }[],
+    currentSum: number,
+    maxLen: number
+  ) => {
+    if (currentSum === targetValue) {
+      if (currentLetters.length >= 2) {
+        const chars = currentLetters.map((l) => l.char);
+        const hasDup = new Set(chars).size !== chars.length;
+        if (uniqueLettersOnly && hasDup) return;
+
+        const multisetKey = [...chars].sort().join('');
+        if (!seenMultisets.has(multisetKey)) {
+          seenMultisets.add(multisetKey);
+          collectedCombos.push({ chars, sum: currentSum, hasDup });
+        }
+      }
+      return;
+    }
+
+    if (currentSum > targetValue || currentLetters.length >= maxLen) {
+      return;
+    }
+
+    // Branch and Bound: Check if maximum possible remaining sum can reach targetValue
+    const remainingSlots = maxLen - currentLetters.length;
+    const maxPossibleVal = sortedLetters[startIndex]?.val || sortedLetters[0].val;
+    if (currentSum + remainingSlots * maxPossibleVal < targetValue) {
+      return;
+    }
+
+    for (let i = startIndex; i < n; i++) {
+      const item = sortedLetters[i];
+      if (currentSum + item.val > targetValue) continue;
+
+      if (uniqueLettersOnly) {
+        // If unique letters only, cannot pick the same letter index or character again
+        if (currentLetters.some((l) => l.char === item.char)) continue;
+        dfs(i + 1, [...currentLetters, item], currentSum + item.val, maxLen);
+      } else {
+        // Limit repetition of the same character to max 3 times
+        const currentCount = currentLetters.filter((l) => l.char === item.char).length;
+        if (currentCount >= 3) continue;
+        dfs(i, [...currentLetters, item], currentSum + item.val, maxLen);
+      }
+    }
+  };
+
+  // Search lengths up to 7
+  dfs(0, [], 0, 7);
+
+  // Order all collected combinations into Quranic Fawatih words with spaces
+  for (const combo of collectedCombos) {
+    const ordering = orderNooraniLettersQuranic(combo.chars);
+
+    results.push({
+      formula: ordering.orderedString,
+      letters: ordering.orderedLetters,
+      values: ordering.orderedLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+      sum: combo.sum,
+      isAuthenticQuranicFawatih: ordering.isAuthentic,
+      surahs: ordering.surahs,
+      description: ordering.description,
+      matchScore: ordering.score,
+      hasDuplicates: combo.hasDup,
+    });
+  }
+
+  // Sort results: Authentic Fawatih first, then highest matchScore, then shortest length
+  results.sort((a, b) => {
+    if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
+    if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    return a.letters.length - b.letters.length;
+  });
+
+  return results.slice(0, maxResults);
 }
 
 /**

@@ -169,7 +169,7 @@ export const DEFAULT_CIPHER_LAYERS: LayerInfo[] = [
   },
 ];
 
-export const BENCHMARK_TABLE_NAME = 'سماء: ا - ن × أرض: اب - ظغ';
+export const BENCHMARK_TABLE_NAME = 'سماء: المص - سحقن × أرض: ابجد - ذضظغ';
 
 export const CIPHER_LAYERS: LayerInfo[] = DEFAULT_CIPHER_LAYERS;
 
@@ -197,10 +197,25 @@ export interface NooraniDistributionPreset {
 }
 
 export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
+  arabic_abjad_sheen: {
+    id: 'arabic_abjad_sheen',
+    name: 'ابجد - ذضظغ',
+    badge: 'ابجد - ذضظغ',
+    description: 'أبجد هوز المشرقي المشهور (ا ب ج د ... ذ ض ظ غ)',
+    arabicLayers: [
+      { layer: 1, letters: ['ا', 'ب', 'ج', 'د'] },
+      { layer: 2, letters: ['ه', 'و', 'ز', 'ح'] },
+      { layer: 3, letters: ['ط', 'ي', 'ك', 'ل'] },
+      { layer: 4, letters: ['م', 'ن', 'س', 'ع'] },
+      { layer: 5, letters: ['ف', 'ص', 'ق', 'ر'] },
+      { layer: 6, letters: ['ش', 'ت', 'ث', 'خ'] },
+      { layer: 7, letters: ['ذ', 'ض', 'ظ', 'غ'] },
+    ],
+  },
   arabic_alphabetical: {
     id: 'arabic_alphabetical',
-    name: 'اب - وي',
-    badge: 'اب - وي',
+    name: 'أبتث - نهوي',
+    badge: 'أبتث - نهوي',
     description: 'الترتيب الهجائي الألفبائي (أ ب ت ث ... ن ه و ي)',
     arabicLayers: [
       { layer: 1, letters: ['أ', 'ب', 'ت', 'ث'] },
@@ -212,26 +227,11 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
       { layer: 7, letters: ['ن', 'ه', 'و', 'ي'] },
     ],
   },
-  arabic_abjad_sheen: {
-    id: 'arabic_abjad_sheen',
-    name: 'اب - ظغ',
-    badge: 'اب - ظغ',
-    description: 'أبجد هوز المشهور بشين (ا ب ج د ... ذ ض ظ غ)',
-    arabicLayers: [
-      { layer: 1, letters: ['ا', 'ب', 'ج', 'د'] },
-      { layer: 2, letters: ['ه', 'و', 'ز', 'ح'] },
-      { layer: 3, letters: ['ط', 'ي', 'ك', 'ل'] },
-      { layer: 4, letters: ['م', 'ن', 'س', 'ع'] },
-      { layer: 5, letters: ['ف', 'ص', 'ق', 'ر'] },
-      { layer: 6, letters: ['ش', 'ت', 'ث', 'خ'] },
-      { layer: 7, letters: ['ذ', 'ض', 'ظ', 'غ'] },
-    ],
-  },
   arabic_abjad_ghain: {
     id: 'arabic_abjad_ghain',
-    name: 'اب - غش',
-    badge: 'اب - غش',
-    description: 'أبجد هوز المغربي بغين (ا ب ج د ... ذ ظ غ ش)',
+    name: 'ابجد - ذظغش',
+    badge: 'ابجد - ذظغش',
+    description: 'أبجد هوز المغربي (ا ب ج د ... ذ ظ غ ش)',
     arabicLayers: [
       { layer: 1, letters: ['ا', 'ب', 'ج', 'د'] },
       { layer: 2, letters: ['ه', 'و', 'ز', 'ح'] },
@@ -244,8 +244,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_sowti: {
     id: 'arabic_sowti',
-    name: 'عح - يا',
-    badge: 'عح - يا',
+    name: 'عحهخ - مويا',
+    badge: 'عحهخ - مويا',
     description: 'الترتيب الصوتي حسب مخارج الحروف (ع ح ه خ ... م و ي ا)',
     arabicLayers: [
       { layer: 1, letters: ['ع', 'ح', 'ه', 'خ'] },
@@ -259,8 +259,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_noorani: {
     id: 'arabic_noorani',
-    name: 'نص - فو',
-    badge: 'نص - فو',
+    name: 'نصحك - ظغفو',
+    badge: 'نصحك - ظغفو',
     description: 'الأحرف النورانية أولاً ثم غير النورانية (ن ص ح ك ... ظ غ ف و)',
     arabicLayers: [
       { layer: 1, letters: ['ن', 'ص', 'ح', 'ك'] },
@@ -274,8 +274,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_ehsa_i: {
     id: 'arabic_ehsa_i',
-    name: 'ال - ظغ',
-    badge: 'ال - ظغ',
+    name: 'النم - طثظغ',
+    badge: 'النم - طثظغ',
     description: 'الترتيب الإحصائي لتكرار الحروف في القرآن الكريم (ا ل ن م ... ط ث ظ غ)',
     arabicLayers: [
       { layer: 1, letters: ['ا', 'ل', 'ن', 'م'] },
@@ -289,9 +289,9 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_al_togh: {
     id: 'arabic_al_togh',
-    name: 'ال - طغ',
-    badge: 'ال - طغ',
-    description: 'أرض أ ل س ف ... ج خ ط غ (الم نشرح)',
+    name: 'السف - جخطغ',
+    badge: 'السف - جخطغ',
+    description: 'أرض أ ل س ف ... ج خ ط غ (ألم نشرح)',
     arabicLayers: [
       { layer: 1, letters: ['ا', 'ل', 'س', 'ف'] },
       { layer: 2, letters: ['ت', 'ن', 'ه', 'ر'] },
@@ -304,8 +304,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_sar_zaza: {
     id: 'arabic_sar_zaza',
-    name: 'صر - زظ',
-    badge: 'صر - زظ',
+    name: 'صرفن - ضخزظ',
+    badge: 'صرفن - ضخزظ',
     description: 'أرض ص ر ف ن ... ض خ ز ظ (تعجب)',
     arabicLayers: [
       { layer: 1, letters: ['ص', 'ر', 'ف', 'ن'] },
@@ -319,8 +319,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_mar_daza: {
     id: 'arabic_mar_daza',
-    name: 'مر - دظ',
-    badge: 'مر - دظ',
+    name: 'مراو - زضدظ',
+    badge: 'مراو - زضدظ',
     description: 'أرض م ر ا و ... ز ض د ظ (ذكر عسق)',
     arabicLayers: [
       { layer: 1, letters: ['م', 'ر', 'ا', 'و'] },
@@ -334,8 +334,8 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
   },
   arabic_zal_dagh: {
     id: 'arabic_zal_dagh',
-    name: 'ذل - ضغ',
-    badge: 'ذل - ضغ',
+    name: 'ذلام - زشضغ',
+    badge: 'ذلام - زشضغ',
     description: 'أرض ذ ل ا م ... ز ش ض غ (ذكر للعالمين)',
     arabicLayers: [
       { layer: 1, letters: ['ذ', 'ل', 'ا', 'م'] },
@@ -350,41 +350,11 @@ export const ARABIC_PRESETS: Record<string, ArabicDistributionPreset> = {
 };
 
 export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
-  noorani_kn: {
-    id: 'noorani_kn',
-    name: 'ن - ك',
-    badge: 'ن - ك',
-    description: 'ن ق، ص ح، م ي، س ط، ه ا، ل ر، ع ك (سماء ن ك)',
-    nooraniLayers: [
-      { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), description: 'السماء 1: ن ق' },
-      { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ص', 'ح']), description: 'السماء 2: ص ح' },
-      { layer: 3, cipherLetters: createNineCipherSlotsFromList(['م', 'ي']), description: 'السماء 3: م ي' },
-      { layer: 4, cipherLetters: createNineCipherSlotsFromList(['س', 'ط']), description: 'السماء 4: س ط' },
-      { layer: 5, cipherLetters: createNineCipherSlotsFromList(['ه', 'ا']), description: 'السماء 5: ه ا' },
-      { layer: 6, cipherLetters: createNineCipherSlotsFromList(['ل', 'ر']), description: 'السماء 6: ل ر' },
-      { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ع', 'ك']), description: 'السماء 7: ع ك' },
-    ],
-  },
-  noorani_nr: {
-    id: 'noorani_nr',
-    name: 'ن - ر',
-    badge: 'ن - ر',
-    description: 'ن ق، ح م، ع س، ص ي، ط ه، ك ا، ل ر (سماء ن ر)',
-    nooraniLayers: [
-      { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), description: 'السماء 1: ن ق' },
-      { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ح', 'م']), description: 'السماء 2: ح م' },
-      { layer: 3, cipherLetters: createNineCipherSlotsFromList(['ع', 'س']), description: 'السماء 3: ع س' },
-      { layer: 4, cipherLetters: createNineCipherSlotsFromList(['ص', 'ي']), description: 'السماء 4: ص ي' },
-      { layer: 5, cipherLetters: createNineCipherSlotsFromList(['ط', 'ه']), description: 'السماء 5: ط ه' },
-      { layer: 6, cipherLetters: createNineCipherSlotsFromList(['ك', 'ا']), description: 'السماء 6: ك ا' },
-      { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ل', 'ر']), description: 'السماء 7: ل ر' },
-    ],
-  },
   noorani_an: {
     id: 'noorani_an',
-    name: 'ا - ن',
-    badge: 'ا - ن',
-    description: 'ا ل، م ص، ر ك، ه ي، ع ط، س ح، ق ن (سماء ا ن)',
+    name: 'المص - سحقن',
+    badge: 'المص - سحقن',
+    description: 'ا ل، م ص، ر ك، ه ي، ع ط، س ح، ق ن (سماء المص سحقن)',
     nooraniLayers: [
       { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ا', 'ل']), description: 'السماء 1: ا ل' },
       { layer: 2, cipherLetters: createNineCipherSlotsFromList(['م', 'ص']), description: 'السماء 2: م ص' },
@@ -395,11 +365,41 @@ export const NOORANI_PRESETS: Record<string, NooraniDistributionPreset> = {
       { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ق', 'ن']), description: 'السماء 7: ق ن' },
     ],
   },
+  noorani_nr: {
+    id: 'noorani_nr',
+    name: 'نقحم - كالر',
+    badge: 'نقحم - كالر',
+    description: 'ن ق، ح م، ع س، ص ي، ط ه، ك ا، ل ر (سماء نقحم كالر)',
+    nooraniLayers: [
+      { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), description: 'السماء 1: ن ق' },
+      { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ح', 'م']), description: 'السماء 2: ح م' },
+      { layer: 3, cipherLetters: createNineCipherSlotsFromList(['ع', 'س']), description: 'السماء 3: ع س' },
+      { layer: 4, cipherLetters: createNineCipherSlotsFromList(['ص', 'ي']), description: 'السماء 4: ص ي' },
+      { layer: 5, cipherLetters: createNineCipherSlotsFromList(['ط', 'ه']), description: 'السماء 5: ط ه' },
+      { layer: 6, cipherLetters: createNineCipherSlotsFromList(['ك', 'ا']), description: 'السماء 6: ك ا' },
+      { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ل', 'ر']), description: 'السماء 7: ل ر' },
+    ],
+  },
+  noorani_kn: {
+    id: 'noorani_kn',
+    name: 'نقصح - لرعك',
+    badge: 'نقصح - لرعك',
+    description: 'ن ق، ص ح، م ي، س ط، ه ا، ل ر، ع ك (سماء نقصح لرعك)',
+    nooraniLayers: [
+      { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), description: 'السماء 1: ن ق' },
+      { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ص', 'ح']), description: 'السماء 2: ص ح' },
+      { layer: 3, cipherLetters: createNineCipherSlotsFromList(['م', 'ي']), description: 'السماء 3: م ي' },
+      { layer: 4, cipherLetters: createNineCipherSlotsFromList(['س', 'ط']), description: 'السماء 4: س ط' },
+      { layer: 5, cipherLetters: createNineCipherSlotsFromList(['ه', 'ا']), description: 'السماء 5: ه ا' },
+      { layer: 6, cipherLetters: createNineCipherSlotsFromList(['ل', 'ر']), description: 'السماء 6: ل ر' },
+      { layer: 7, cipherLetters: createNineCipherSlotsFromList(['ع', 'ك']), description: 'السماء 7: ع ك' },
+    ],
+  },
   noorani_nr_alt: {
     id: 'noorani_nr_alt',
-    name: 'ن - ر (٢)',
-    badge: 'ن - ر',
-    description: 'ن ق، ح م، ع س، ص ي، ا ل، ط ه، ك ر (سماء ن ر قديم)',
+    name: 'نقحم - طهكر',
+    badge: 'نقحم - طهكر',
+    description: 'ن ق، ح م، ع س، ص ي، ا ل، ط ه، ك ر (سماء نقحم طهكر)',
     nooraniLayers: [
       { layer: 1, cipherLetters: createNineCipherSlotsFromList(['ن', 'ق']), description: 'السماء 1: ن ق' },
       { layer: 2, cipherLetters: createNineCipherSlotsFromList(['ح', 'م']), description: 'السماء 2: ح م' },
@@ -450,10 +450,10 @@ export function getExpandedPresetId(idOrShort: string): string {
 }
 
 export const BENCHMARK_PRESET = {
-  id: 'noorani_nr_arabic_alphabetical',
-  name: 'سماء: ن - ر × أرض: اب - وي',
+  id: 'noorani_an_arabic_abjad_sheen',
+  name: 'سماء: المص - سحقن × أرض: ابجد - ذضظغ',
   badge: 'افتراضي',
-  description: 'منظومة حرة متقاطعة: [سماء: ن - ر] × [أرض: اب - وي]',
+  description: 'منظومة حرة متقاطعة: [سماء: المص - سحقن] × [أرض: ابجد - ذضظغ]',
   createLayers: (): LayerInfo[] => JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS)),
 };
 

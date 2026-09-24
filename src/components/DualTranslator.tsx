@@ -1194,22 +1194,35 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             </div>
           </div>
 
-          {/* Action buttons on same row: [ مفكرة المنظومات ] and [ الأدوات ] */}
+          {/* Action buttons on same row: [ مفكرة المنظومات ] and [ حفظ المنظومة ] and [ الأدوات ] */}
           <div className="flex items-center gap-1.5 justify-end shrink-0">
-            {/* Open Systems Notebook Button */}
+            {/* Open Systems Notebook Button (Icon Only) */}
             <button
               type="button"
               onClick={() => openDrawer('systems')}
-              className="px-2.5 py-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shrink-0 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 shadow-2xs font-sans relative"
-              title="فتح مفكرة المنظومات"
+              className="p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer flex items-center justify-center shrink-0 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 shadow-2xs relative"
+              title="مفكرة المنظومات"
             >
               <BookMarked className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>مفكرة المنظومات</span>
               {savedSystems.length > 0 && (
-                <span className="font-mono text-3xs px-1 py-0.2 rounded-full bg-amber-500 text-white font-medium leading-none min-w-[14px] text-center">
+                <span className="font-mono text-3xs px-1 py-0.2 rounded-full bg-amber-500 text-white font-medium leading-none min-w-[14px] text-center absolute -top-1.5 -right-1.5 shadow-2xs">
                   {savedSystems.length}
                 </span>
               )}
+            </button>
+
+            {/* Save Current System to Notebook Button (Icon Only) */}
+            <button
+              type="button"
+              onClick={() => setShowSaveCurrentSystemModal(true)}
+              className={`p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                isCurrentSystemSaved
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                  : 'bg-stone-50 dark:bg-stone-850 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:border-amber-300'
+              }`}
+              title="حفظ المنظومة الحالية في المفكرة"
+            >
+              <BookmarkPlus className={`w-3.5 h-3.5 ${isCurrentSystemSaved ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
             </button>
 
             {/* Collapsible Tools Toggle Button */}
@@ -1696,10 +1709,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 {onNavigateToDecrypt && (
                   <button
                     onClick={() => onNavigateToDecrypt(submittedText)}
-                    className="text-2xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    className="p-1 rounded-md text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
+                    title="عرض فك التشفير"
                   >
-                    <span>التفاصيل</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -1709,7 +1722,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>المطابقات القرآنية المؤكدة ({quranicMatches.length})</span>
+                    <span>مفردات قرآنية ({quranicMatches.length})</span>
                   </h4>
                 </div>
 
@@ -1783,7 +1796,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                   <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                      <span>الكلمات المعجمية ({arabicDictionaryMatches.length})</span>
+                      <span>معجمية ({arabicDictionaryMatches.length})</span>
                     </div>
                     {dictLoading && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 animate-pulse me-1">
@@ -1885,10 +1898,10 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                 {onNavigateToEncrypt && (
                   <button
                     onClick={() => onNavigateToEncrypt(submittedText)}
-                    className="text-2xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    className="p-1 rounded-md text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
+                    title="عرض التشفير"
                   >
-                    <span>التفاصيل</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -1953,7 +1966,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                           <BookOpen className="w-3.5 h-3.5 text-amber-600" />
-                          <span>المطابقات القرآنية المؤكدة للشفرة ({encQuranicMatches.length})</span>
+                          <span>مفردات قرآنية ({encQuranicMatches.length})</span>
                         </h4>
                       </div>
 
@@ -2085,7 +2098,7 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                       <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1">
                         <div className="flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span>الكلمات المعجمية ({encArabicDictionaryMatches.length})</span>
+                          <span>معجمية ({encArabicDictionaryMatches.length})</span>
                         </div>
                         {dictLoading && (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 animate-pulse me-1">
