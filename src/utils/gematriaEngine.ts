@@ -170,8 +170,8 @@ export function calculateGematriaWithOptions(
     if (rawMatches) {
       daggerAlifCount = rawMatches.length;
     } else if (opts.orthographyMode === 'uthmani') {
-      // In Uthmani Quranic script, prominent words have inherent dagger alif:
-      const uthmaniImplicitAlifWords = ['الرحمن', 'رحمن', 'هذا', 'هذه', 'هؤلاء', 'ذلك', 'ذلكم', 'إله', 'اله', 'إلهكم', 'إلهنا', 'إبراهيم', 'إسماعيل', 'إسحاق', 'هارون', 'سليمان', 'السموات', 'سموات', 'صلوة', 'زكوة', 'حيوة'];
+      // In Uthmani Quranic script, prominent words with implicit dagger alif:
+      const uthmaniImplicitAlifWords = ['الرحمن', 'رحمن', 'هذا', 'هذه', 'هؤلاء', 'ذلك', 'ذلكم', 'إبراهيم', 'إسماعيل', 'إسحاق', 'هارون', 'سليمان', 'السموات', 'سموات', 'صلوة', 'زكوة', 'حيوة'];
       const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
       if (uthmaniImplicitAlifWords.includes(cleanWord)) {
         daggerAlifCount = 1;

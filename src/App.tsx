@@ -13,12 +13,13 @@ import { LegalModal } from './components/LegalModal';
 import { PWAPrompt } from './components/PWAPrompt';
 import { analyzeWord, NOORANI_LETTERS_SET } from './cipherData';
 import { GematriaView } from './components/GematriaView';
+import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { useCipherLayers } from './context/CipherLayersContext';
 import { Eraser, Search, Sparkles, Loader2, Settings2, Lock, Unlock } from 'lucide-react';
 
 export function App() {
   const { analyzeText, isCustomized } = useCipherLayers();
-  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings' | 'gematria'>('dual');
+  const [activeTab, setActiveTab] = useState<'encrypt' | 'decrypt' | 'table' | 'dual' | 'settings' | 'gematria' | 'matcher'>('dual');
   const [inputText, setInputText] = useState('');
   const [decryptCipherInput, setDecryptCipherInput] = useState('');
   const [selectedProbabilities, setSelectedProbabilities] = useState<number[]>([]);
@@ -304,6 +305,11 @@ export function App() {
               setActiveTab('dual');
             }}
           />
+        </div>
+
+        {/* Tab Matcher: Quranic Verse & Chain Inverse Gematria Matcher */}
+        <div className={activeTab === 'matcher' ? 'block' : 'hidden'}>
+          <QuranicChainMatcher />
         </div>
 
         {/* Tab 3: Decryption (Preserved across tab switches) */}
