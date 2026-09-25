@@ -12,6 +12,9 @@ import {
   ArrowRightLeft,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
+  History,
+  Star,
 } from 'lucide-react';
 import { useGematria, MAGHRIBI_VALUES, MASHRIQI_VALUES } from '../context/GematriaContext';
 import {
@@ -28,6 +31,59 @@ import {
 import { getQuranTopSearchUrl } from '../utils/quranicDictionary';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import { NOORANI_LETTERS_SET } from '../cipherData';
+import { QuranicChainHistory, QuranicChainHistoryItem } from './QuranicChainHistory';
+
+const STORAGE_KEY_CHAIN_HISTORY = 'quranic_chain_matcher_history';
+const DEFAULT_CHAIN_SEARCHES: QuranicChainHistoryItem[] = [
+  {
+    id: 'init_1',
+    query: 'كهيعص',
+    timestamp: Date.now() - 1000 * 60 * 30,
+    scope: 'all',
+    onlyNoorani: false,
+    targetMaghribi: 195,
+    targetMashriqi: 195,
+    isIdentical: true,
+    matchesCount: 12,
+    isFavorite: true,
+  },
+  {
+    id: 'init_2',
+    query: 'الم',
+    timestamp: Date.now() - 1000 * 60 * 60,
+    scope: 'all',
+    onlyNoorani: false,
+    targetMaghribi: 71,
+    targetMashriqi: 71,
+    isIdentical: true,
+    matchesCount: 48,
+    isFavorite: false,
+  },
+  {
+    id: 'init_3',
+    query: 'طسم',
+    timestamp: Date.now() - 1000 * 60 * 120,
+    scope: 'all',
+    onlyNoorani: true,
+    targetMaghribi: 109,
+    targetMashriqi: 109,
+    isIdentical: true,
+    matchesCount: 19,
+    isFavorite: false,
+  },
+  {
+    id: 'init_4',
+    query: 'سلام',
+    timestamp: Date.now() - 1000 * 60 * 180,
+    scope: 'single_words',
+    onlyNoorani: false,
+    targetMaghribi: 131,
+    targetMashriqi: 131,
+    isIdentical: true,
+    matchesCount: 5,
+    isFavorite: true,
+  },
+];
 
 export function QuranicChainMatcher() {
   const { calculationOptions } = useGematria();
@@ -56,6 +112,22 @@ export function QuranicChainMatcher() {
   const [copiedAll, setCopiedAll] = useState<boolean>(false);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const scannerRef = useRef<InverseQuranicScanner | null>(null);
+
+  // Search History State (Loaded from localStorage)
+  const [searchHistory, setSearchHistory] = useState<QuranicChainHistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_CHAIN_HISTORY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Error loading chain history:', e);
+    }
+    return DEFAULT_CHAIN_SEARCHES;
+  });
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Dual Target calculation for the current input (Maghribi + Mashriqi)
   const dualTargetInfo = useMemo(() => {
@@ -115,9 +187,80 @@ export function QuranicChainMatcher() {
     };
   }, [inputQuery, calculationOptions]);
 
-  // Start batch dual scanner (Only triggered manually by button or Enter key)
-  const handleStartScan = async () => {
-    if (!dualTargetInfo) return;
+  // Record a search item into history
+  const recordSearchInHistory = (
+    queryText: string,
+    scope: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words',
+    nooraniOnly: boolean,
+    targetMag: number,
+    targetMash: number,
+    isIdenticalVal: boolean,
+    matchesTotal?: number
+  ) => {
+    if (!queryText.trim()) return;
+    setSearchHistory((prev) => {
+      const existing = prev.find(
+        (item) => item.query === queryText && item.scope === scope && item.onlyNoorani === nooraniOnly
+      );
+      const isFav = existing?.isFavorite || false;
+      const updatedItem: QuranicChainHistoryItem = {
+        id: existing?.id || `chain_hist_${Date.now()}`,
+        query: queryText,
+        timestamp: Date.now(),
+        scope,
+        onlyNoorani: nooraniOnly,
+        targetMaghribi: targetMag,
+        targetMashriqi: targetMash,
+        isIdentical: isIdenticalVal,
+        matchesCount: matchesTotal !== undefined ? matchesTotal : existing?.matchesCount,
+        isFavorite: isFav,
+      };
+      const filtered = prev.filter((item) => item.id !== updatedItem.id);
+      const nextList = [updatedItem, ...filtered].slice(0, 50);
+      try {
+        localStorage.setItem(STORAGE_KEY_CHAIN_HISTORY, JSON.stringify(nextList));
+      } catch (e) {
+        console.error('Failed to save chain history', e);
+      }
+      return nextList;
+    });
+  };
+
+  // Start batch dual scanner (Supports override params from history selection)
+  const handleStartScan = async (overrideParams?: {
+    query?: string;
+    scope?: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words';
+    onlyNoorani?: boolean;
+  }) => {
+    const activeQuery = overrideParams?.query !== undefined ? overrideParams.query : inputQuery;
+    const activeScope = overrideParams?.scope !== undefined ? overrideParams.scope : selectedScope;
+    const activeOnlyNoorani = overrideParams?.onlyNoorani !== undefined ? overrideParams.onlyNoorani : onlyNoorani;
+
+    const trimmed = activeQuery.trim();
+    if (!trimmed) return;
+
+    let targetMag = 0;
+    let targetMash = 0;
+    let isIdenticalVal = true;
+
+    const numCheck = parseNumericQuery(trimmed);
+    if (numCheck.isNumber) {
+      targetMag = numCheck.value;
+      targetMash = numCheck.value;
+      isIdenticalVal = true;
+    } else {
+      targetMag = calculateGematriaWithOptions(
+        trimmed,
+        calculationOptions || DEFAULT_GEMATRIA_OPTIONS,
+        MAGHRIBI_VALUES
+      );
+      targetMash = calculateGematriaWithOptions(
+        trimmed,
+        calculationOptions || DEFAULT_GEMATRIA_OPTIONS,
+        MASHRIQI_VALUES
+      );
+      isIdenticalVal = targetMag === targetMash;
+    }
 
     if (!scannerRef.current) {
       scannerRef.current = new InverseQuranicScanner();
@@ -138,14 +281,17 @@ export function QuranicChainMatcher() {
       isCancelled: false,
     });
 
+    // Record initial entry in history
+    recordSearchInHistory(trimmed, activeScope, activeOnlyNoorani, targetMag, targetMash, isIdenticalVal, undefined);
+
     try {
       await scannerRef.current.scan(
-        dualTargetInfo.targetMaghribi,
-        dualTargetInfo.targetMashriqi,
+        targetMag,
+        targetMash,
         {
           calcOptions: calculationOptions || DEFAULT_GEMATRIA_OPTIONS,
-          scope: selectedScope,
-          onlyNoorani,
+          scope: activeScope,
+          onlyNoorani: activeOnlyNoorani,
           maxResults: 1500,
           maxPhraseLength: 12,
           onProgress: (p) => {
@@ -156,11 +302,66 @@ export function QuranicChainMatcher() {
           },
           onComplete: (allMatches, cancelled) => {
             setMatches(allMatches);
+            if (!cancelled) {
+              recordSearchInHistory(
+                trimmed,
+                activeScope,
+                activeOnlyNoorani,
+                targetMag,
+                targetMash,
+                isIdenticalVal,
+                allMatches.length
+              );
+            }
           },
         }
       );
     } catch (err) {
       console.error('Scan error:', err);
+    }
+  };
+
+  const handleSelectHistoryItem = (item: QuranicChainHistoryItem) => {
+    setInputQuery(item.query);
+    setSelectedScope(item.scope);
+    setOnlyNoorani(item.onlyNoorani);
+    handleStartScan({
+      query: item.query,
+      scope: item.scope,
+      onlyNoorani: item.onlyNoorani,
+    });
+  };
+
+  const handleToggleHistoryFavorite = (id: string) => {
+    setSearchHistory((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, isFavorite: !item.isFavorite } : item));
+      try {
+        localStorage.setItem(STORAGE_KEY_CHAIN_HISTORY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save chain history', e);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteHistoryItem = (id: string) => {
+    setSearchHistory((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY_CHAIN_HISTORY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save chain history', e);
+      }
+      return next;
+    });
+  };
+
+  const handleClearHistory = () => {
+    setSearchHistory([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY_CHAIN_HISTORY);
+    } catch (e) {
+      console.error('Failed to clear chain history', e);
     }
   };
 
@@ -342,11 +543,11 @@ export function QuranicChainMatcher() {
             </div>
           </div>
 
-          {/* Scan Action Button */}
+          {/* Scan Action Button & History Drawer Trigger */}
           <div className="lg:col-span-4 flex items-center gap-1.5">
             <button
               type="button"
-              onClick={handleStartScan}
+              onClick={() => handleStartScan()}
               disabled={!dualTargetInfo || progress.isRunning}
               className={`flex-1 py-2 sm:py-2.5 px-3 rounded-xl text-white text-xs font-normal inline-flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer ${
                 progress.isRunning
@@ -357,8 +558,49 @@ export function QuranicChainMatcher() {
               <Play className={`w-3.5 h-3.5 ${progress.isRunning ? 'animate-pulse fill-current' : 'fill-current'}`} />
               <span>{progress.isRunning ? 'جاري المسح المدمج...' : 'بدء المسح القرآني المدمج'}</span>
             </button>
+
+            {/* History Drawer Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsHistoryOpen(true)}
+              className="p-2 sm:p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-all cursor-pointer shadow-2xs shrink-0 relative flex items-center justify-center min-w-[38px] min-h-[38px]"
+              title="فتح سجل بحوث مطابق السلاسل"
+              aria-label="فتح سجل بحوث مطابق السلاسل"
+            >
+              <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              {searchHistory.length > 0 && (
+                <span className="absolute -top-1 -right-1 font-mono text-[9px] font-bold px-1 py-0.2 rounded-full bg-emerald-600 text-white min-w-[14px] text-center leading-tight shadow-xs">
+                  {searchHistory.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Quick History Pills Row (Smooth swipable, 1-tap re-scan) */}
+        {searchHistory.length > 0 && (
+          <div className="flex items-center gap-1.5 min-w-0 max-w-full overflow-hidden pt-0.5">
+            <span className="text-3xs text-stone-400 shrink-0 flex items-center gap-0.5">
+              <History className="w-3 h-3 text-emerald-500" />
+              <span>السجل:</span>
+            </span>
+            <div className="flex flex-nowrap items-center gap-1 overflow-x-auto min-w-0 max-w-full py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {searchHistory.slice(0, 10).map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => handleSelectHistoryItem(h)}
+                  className="px-2 py-0.5 rounded-lg text-3xs font-medium bg-stone-100 dark:bg-stone-850 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 border border-stone-200 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-700 text-stone-700 dark:text-stone-300 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs font-sans"
+                  title={`إعادة المسح: ${h.query} (مغربي: ${h.targetMaghribi} | مشرقي: ${h.targetMashriqi})`}
+                >
+                  {h.isFavorite && <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500 shrink-0" />}
+                  <span className="font-quran">{h.query}</span>
+                  <span className="text-stone-400 font-mono text-3xs">({h.targetMaghribi})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Scope & Noorani Filters */}
         <div className="pt-1.5 border-t border-stone-100 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-2xs font-normal text-stone-600 dark:text-stone-400">
@@ -640,10 +882,16 @@ export function QuranicChainMatcher() {
               return (
                 <div
                   key={item.id}
-                  className={`px-2.5 py-1.5 rounded-lg border shadow-2xs transition-all select-none group flex flex-col justify-center gap-1 ${cardClasses}`}
+                  className={`px-2.5 py-2 rounded-xl border shadow-2xs transition-all select-none group flex flex-col justify-center gap-1 ${cardClasses} ${
+                    isExpanded ? 'ring-2 ring-emerald-500/20 shadow-xs' : ''
+                  }`}
                 >
-                  {/* Clean Single Row: Indicator Dot + Large Phrase (Click to search in Quran) + Action Buttons */}
-                  <div className="flex items-center justify-between gap-2 w-full">
+                  {/* Clean Single Row: Indicator Dot + Large Phrase (Clicking row opens details) + Action Buttons */}
+                  <div
+                    onClick={() => setExpandedMatchId(isExpanded ? null : item.id)}
+                    className="flex items-center justify-between gap-2 w-full cursor-pointer"
+                    title={isExpanded ? 'انقر لإغلاق التفاصيل' : 'انقر لعرض تفاصيل الآية والتفكيك'}
+                  >
                     {/* Right side: Color Dot + Clickable Full Quranic Phrase */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {/* Subtle Color Dot Indicator */}
@@ -658,15 +906,11 @@ export function QuranicChainMatcher() {
                         }
                       />
 
-                      <a
-                        href={searchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`text-sm sm:text-base font-semibold font-quran text-stone-900 dark:text-stone-100 hover:underline leading-relaxed break-words ${textHoverClass}`}
-                        title={`البحث عن [${item.phrase}] في المصحف`}
+                      <span
+                        className={`text-sm sm:text-base font-semibold font-quran text-stone-900 dark:text-stone-100 leading-relaxed break-words transition-colors ${textHoverClass}`}
                       >
                         {item.phrase}
-                      </a>
+                      </span>
 
                       {isCopied && (
                         <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal shrink-0">
@@ -675,14 +919,30 @@ export function QuranicChainMatcher() {
                       )}
                     </div>
 
-                    {/* Left side: Minimal Action Icons (Copy + Notebook + Details Toggle) */}
-                    <div className="flex items-center gap-0.5 shrink-0">
+                    {/* Left side: Minimal Action Icons (Search + Copy + Notebook + Details Toggle) */}
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {/* Search in Quran */}
+                      <a
+                        href={searchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors inline-flex items-center"
+                        title={`البحث عن [${item.phrase}] في المصحف`}
+                        aria-label={`البحث عن [${item.phrase}] في المصحف`}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+
                       {/* Copy Button */}
                       <button
                         type="button"
-                        onClick={() => handleCopyPhrase(item.id, item.phrase)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyPhrase(item.id, item.phrase);
+                        }}
                         className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors cursor-pointer"
                         title="نسخ العبارة"
+                        aria-label="نسخ العبارة"
                       >
                         {isCopied ? (
                           <Check className="w-3 h-3 text-emerald-600" />
@@ -704,18 +964,25 @@ export function QuranicChainMatcher() {
                       {/* Chevron Toggle Button for Details & Full Summation */}
                       <button
                         type="button"
-                        onClick={() => setExpandedMatchId(isExpanded ? null : item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedMatchId(isExpanded ? null : item.id);
+                        }}
                         className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors cursor-pointer"
-                        title="عرض التفكيك والجمع الكلي"
+                        title={isExpanded ? 'إخفاء التفاصيل' : 'عرض التفكيك والجمع الكلي'}
+                        aria-label="عرض التفاصيل"
                       >
-                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {isExpanded ? <ChevronUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                     </div>
                   </div>
 
                   {/* Expanded: Shows Full Ayah + Surah Reference + Complete Summation Equation */}
                   {isExpanded && (
-                    <div className="pt-2 mt-1 border-t border-stone-200/80 dark:border-stone-800 text-3xs space-y-2 bg-white/80 dark:bg-stone-950/80 p-2.5 rounded-lg font-normal animate-in fade-in duration-150">
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="pt-2 mt-1 border-t border-stone-200/80 dark:border-stone-800 text-3xs space-y-2 bg-white/80 dark:bg-stone-950/80 p-2.5 rounded-lg font-normal animate-in fade-in duration-150"
+                    >
                       {/* Full Quranic Ayah Box */}
                       {item.fullAyahText && (
                         <div className="p-2.5 rounded-lg bg-stone-50 dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-800 space-y-1.5">
@@ -784,6 +1051,17 @@ export function QuranicChainMatcher() {
           </div>
         ) : null}
       </div>
+
+      {/* Quranic Chain Matcher History Drawer */}
+      <QuranicChainHistory
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        items={searchHistory}
+        onSelectItem={handleSelectHistoryItem}
+        onToggleFavorite={handleToggleHistoryFavorite}
+        onDeleteItem={handleDeleteHistoryItem}
+        onClearHistory={handleClearHistory}
+      />
     </div>
   );
 }

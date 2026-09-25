@@ -44,7 +44,8 @@ import {
   Loader2,
   Star,
   Settings2,
-  Calculator
+  Calculator,
+  LayoutGrid
 } from 'lucide-react';
 import { MultiSystemScanner } from './MultiSystemScanner';
 import { AddToNotebookButton } from './AddToNotebookButton';
@@ -59,12 +60,22 @@ interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
   onNavigateToDecrypt?: (text: string) => void;
   onNavigateToGematria?: (text: string) => void;
+  mode?: 'decrypt' | 'encrypt' | 'both';
+  inputText?: string;
+  onInputTextChange?: (text: string) => void;
 }
 
 const DEFAULT_RECENT_SEARCHES = ['طسم', 'كهيعص', 'بقرة', 'يس', 'سلام'];
 const STORAGE_KEY_HISTORY = 'cipher_recent_searches';
 
-export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNavigateToGematria }: DualTranslatorProps) {
+export function DualTranslator({
+  onNavigateToEncrypt,
+  onNavigateToDecrypt,
+  onNavigateToGematria,
+  mode = 'both',
+  inputText: externalInputText,
+  onInputTextChange,
+}: DualTranslatorProps) {
   const { addEntry, openDrawer, isSystemSaved, savedSystems } = useNotebook();
   const {
     layers,
@@ -91,9 +102,33 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
 
   const { activeTable, activeTableId, tables, setActiveTableId, calculateWordGematria } = useGematria();
 
-  const [inputText, setInputText] = useState('');
-  const [submittedText, setSubmittedText] = useState('');
-  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt' | 'gematria'>('both');
+  const [internalInputText, setInternalInputText] = useState(externalInputText || '');
+  const inputText = externalInputText !== undefined ? externalInputText : internalInputText;
+  const setInputText = (val: string | ((prev: string) => string)) => {
+    const nextVal = typeof val === 'function' ? val(inputText) : val;
+    setInternalInputText(nextVal);
+    if (onInputTextChange) {
+      onInputTextChange(nextVal);
+    }
+  };
+  const [submittedText, setSubmittedText] = useState(externalInputText || '');
+  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt' | 'gematria'>(mode || 'decrypt');
+
+  // Sync mode if changed from parent
+  useEffect(() => {
+    if (mode && (mode === 'decrypt' || mode === 'encrypt' || mode === 'both')) {
+      setViewMode(mode);
+    }
+  }, [mode]);
+
+  // Sync externalInputText if changed from parent
+  useEffect(() => {
+    if (externalInputText !== undefined && externalInputText !== inputText) {
+      setInternalInputText(externalInputText);
+      setSubmittedText(externalInputText);
+    }
+  }, [externalInputText]);
+
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showMultiSystemScanner, setShowMultiSystemScanner] = useState(false);
 
@@ -1456,37 +1491,57 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Comprehensive Search Button (Icon + 'شامل' Only) */}
+          {/* Comprehensive Search Button (Icon Only - Saves space) */}
           <button
             type="button"
             onClick={handleComprehensiveSearchClick}
             disabled={!inputText.trim() && !submittedText.trim()}
-            className={`py-2 px-2.5 sm:px-3 rounded-xl font-medium text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+            className={`p-2 sm:p-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center cursor-pointer shrink-0 min-w-[40px] min-h-[40px] ${
               showMultiSystemScanner
                 ? 'bg-emerald-700 dark:bg-emerald-600 text-white ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
                 : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
             }`}
-            title="فحص شامل عبر كافة المنظومات الـ 50+ مباشرة للكلمة الحالية (Ctrl + Enter)"
+            title="فحص شامل عبر كافة المنظومات الـ 50+ (Ctrl + Enter)"
+            aria-label="فحص شامل عبر كافة المنظومات الـ 50+"
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>شامل</span>
+            <Layers className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Step B: Sky Layers Bar (أزرار السماوات السبع ومسار التشفير) */}
-        <div className="flex items-center justify-between gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 shadow-2xs transition-all flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+        {/* Step B: Sky Layers Bar (أزرار السماوات السبع ومسار التشفير - تصميم متكيف بنسبة 100%) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 shadow-2xs transition-all w-full max-w-full">
+          {/* Row 1 on mobile / Left group on desktop */}
+          <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             {/* The 7 Sky Layers buttons in order 1 to 7 */}
             <CompactLayersIndicator activeLayerNumbers={activeLayersNumbers} customLayers={effectiveLayers} />
 
-            <div className="h-4 w-px bg-stone-300 dark:bg-stone-700 hidden sm:block shrink-0" />
+            {/* Mobile Waw Option */}
+            <div className="flex items-center gap-1.5 shrink-0 sm:hidden font-sans">
+              <label
+                className="inline-flex items-center gap-1 cursor-pointer select-none group px-1.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700"
+                title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
+              >
+                <input
+                  type="checkbox"
+                  checked={includeWawInAllLayers}
+                  onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
+                  className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3 h-3 cursor-pointer"
+                />
+                <span className={`transition-colors text-3xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-stone-500'}`}>
+                  +(و)
+                </span>
+              </label>
+            </div>
+          </div>
 
+          {/* Row 2 on mobile / Right group on desktop */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto min-w-0 border-t sm:border-t-0 border-stone-200/80 dark:border-stone-800 pt-1 sm:pt-0">
             {/* Short Path Message */}
             {nooraniAnalysis ? (
-              <div className="flex items-center gap-1.5 font-medium text-xs text-stone-600 dark:text-stone-400 flex-wrap font-sans">
-                <span className="text-stone-500">المسار:</span>
+              <div className="flex items-center gap-1.5 font-medium text-xs text-stone-600 dark:text-stone-400 font-sans min-w-0 flex-wrap">
+                <span className="text-stone-500 text-2xs sm:text-xs shrink-0">المسار:</span>
                 <span
-                  className={`px-2 py-0.5 rounded font-medium text-xs inline-flex items-center gap-1 ${
+                  className={`px-1.5 sm:px-2 py-0.5 rounded font-medium text-2xs sm:text-xs inline-flex items-center gap-1 shrink-0 ${
                     nooraniAnalysis.isPureNoorani
                       ? 'bg-indigo-600 text-white dark:bg-indigo-500'
                       : 'bg-amber-600 text-white dark:bg-amber-500'
@@ -1504,42 +1559,42 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
                     </>
                   )}
                 </span>
-                <span className="text-stone-500 text-xs">
+                <span className="text-stone-500 text-2xs sm:text-xs truncate">
                   {nooraniAnalysis.isPureNoorani
                     ? `(${nooraniAnalysis.nooraniCount} نورانية)`
                     : `(${nooraniAnalysis.nonNooraniCount} هجائية)`}
                 </span>
 
                 {dictLoading && (
-                  <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse ms-0.5 font-sans">
+                  <span className="inline-flex items-center gap-1 text-2xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse ms-0.5 font-sans shrink-0">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     <span>({dictProgress}%)</span>
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-xs text-stone-400 truncate font-sans">
+              <span className="text-2xs sm:text-xs text-stone-400 truncate font-sans">
                 المسار: اكتب كلمة للتحليل
               </span>
             )}
-          </div>
 
-          {/* Unified Waw Option */}
-          <div className="flex items-center gap-1.5 shrink-0 ms-auto sm:ms-0 font-sans">
-            <label
-              className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-750 transition-colors"
-              title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
-            >
-              <input
-                type="checkbox"
-                checked={includeWawInAllLayers}
-                onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
-                className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
-              />
-              <span className={`transition-colors text-xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-stone-500 dark:text-stone-400 font-medium'}`}>
-                + (و) سماوي
-              </span>
-            </label>
+            {/* Desktop Waw Option */}
+            <div className="hidden sm:flex items-center gap-1.5 shrink-0 font-sans">
+              <label
+                className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-750 transition-colors"
+                title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
+              >
+                <input
+                  type="checkbox"
+                  checked={includeWawInAllLayers}
+                  onChange={(e) => setIncludeWawInAllLayers(e.target.checked)}
+                  className="rounded border-stone-300 dark:border-stone-700 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                />
+                <span className={`transition-colors text-xs ${includeWawInAllLayers ? 'text-indigo-700 dark:text-indigo-300 font-semibold' : 'text-stone-500 dark:text-stone-400 font-medium'}`}>
+                  + (و) سماوي
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -1562,59 +1617,70 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
           </div>
         )}
 
-        {/* Step C: View Modes & Compact 2-Line Recent Search History Pills */}
-        <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-col md:flex-row md:items-center justify-between gap-2">
-          {/* View Mode Toggle (شامل / فك / تشفير / جُمَّل) */}
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-xs font-medium self-start shrink-0">
+        {/* Step C: View Modes & Compact Swipable Recent Search History Pills */}
+        <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 max-w-full overflow-hidden">
+          {/* View Mode Toggle: Pure Icon-first buttons with immediate tooltips */}
+          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-850 p-1 rounded-xl text-xs font-medium self-start shrink-0 border border-stone-200/80 dark:border-stone-800">
             <button
               type="button"
               onClick={() => setViewMode('both')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'both'
                   ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
-              title="عرض متزامن لنتائج فك التشفير والتشفير وحساب الجُمَّل"
+              title="عرض كافة النتائج معاً (فك التشفير، التشفير، وحساب الجُمَّل والمطابقة)"
+              aria-label="عرض كافة النتائج معاً"
             >
-              شامل
+              <LayoutGrid className="w-3.5 h-3.5 text-stone-700 dark:text-stone-300" />
+              <span className="text-2xs hidden xs:inline">الكل</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('decrypt')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'decrypt'
                   ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
+              title="عرض نتائج فك التشفير فقط"
+              aria-label="عرض نتائج فك التشفير فقط"
             >
-              فك
+              <Unlock className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-2xs hidden xs:inline">فك</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('encrypt')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'encrypt'
                   ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
+              title="عرض نتائج التشفير فقط"
+              aria-label="عرض نتائج التشفير فقط"
             >
-              تشفير
+              <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-2xs hidden xs:inline">تشفير</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('gematria')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'gematria'
                   ? 'bg-white dark:bg-stone-700 text-emerald-700 dark:text-emerald-300 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
+              title="عرض نتائج حساب الجُمَّل والمطابقة القرآنية فقط"
+              aria-label="عرض نتائج حساب الجُمَّل والمطابقة القرآنية فقط"
             >
-              الجُمَّل
+              <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-2xs hidden xs:inline">الجُمَّل</span>
             </button>
           </div>
 
-          {/* Interactive Compact History Container */}
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-start md:justify-end">
+          {/* Interactive Compact History Container (Smooth swipable row without causing page horizontal scroll) */}
+          <div className="flex items-center gap-1.5 min-w-0 max-w-full flex-1 justify-start sm:justify-end overflow-hidden">
             {/* History Drawer Toggle Button */}
             <button
               type="button"
@@ -1634,8 +1700,8 @@ export function DualTranslator({ onNavigateToEncrypt, onNavigateToDecrypt, onNav
               )}
             </button>
 
-            {/* Compact Single-Line Pills */}
-            <div className="flex flex-nowrap items-center gap-1 overflow-hidden min-w-0 h-6">
+            {/* Smooth Swipable Single-Line Pills */}
+            <div className="flex flex-nowrap items-center gap-1 overflow-x-auto min-w-0 max-w-full py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {searchHistoryItems.slice(0, 10).map((item) => {
                 const itemChars = item.word.replace(/[^ء-ي]/g, '').split('');
                 const isItemPureNoorani = itemChars.length > 0 && itemChars.every((c) => NOORANI_LETTERS_SET.has(c));
