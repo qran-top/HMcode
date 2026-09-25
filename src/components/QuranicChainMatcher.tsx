@@ -29,6 +29,8 @@ import {
   DEFAULT_GEMATRIA_OPTIONS,
   GematriaCalculationOptions,
   findNooraniCombinations,
+  classifyAndMergeNooraniFormulas,
+  MergedNooraniFormulaItem,
 } from '../utils/gematriaEngine';
 import {
   InverseQuranicScanner,
@@ -103,7 +105,7 @@ export function QuranicChainMatcher() {
   const [resultsFilter, setResultsFilter] = useState<string>('');
 
   // Noorani Formulas Filtering State
-  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(true);
+  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
   const [copiedFormula, setCopiedFormula] = useState<string | null>(null);
 
   const [matches, setMatches] = useState<InverseQuranicMatch[]>([]);
@@ -248,94 +250,37 @@ export function QuranicChainMatcher() {
     };
   };
 
-  // Noorani combinations for both Mashriqi and Maghribi
-  const nooraniFormulasMashriqi = useMemo(() => {
-    if (!computedTarget || computedTarget.targetMashriqi <= 0) return [];
-    return findNooraniCombinations(computedTarget.targetMashriqi, MASHRIQI_VALUES, {
-      maxResults: 60,
-      uniqueLettersOnly: uniqueNooraniOnly,
-    });
-  }, [computedTarget, uniqueNooraniOnly]);
-
-  const nooraniFormulasMaghribi = useMemo(() => {
-    if (!computedTarget || computedTarget.targetMaghribi <= 0) return [];
-    if (computedTarget.isIdentical) return [];
-    return findNooraniCombinations(computedTarget.targetMaghribi, MAGHRIBI_VALUES, {
-      maxResults: 60,
-      uniqueLettersOnly: uniqueNooraniOnly,
-    });
-  }, [computedTarget, uniqueNooraniOnly]);
-
-  const [nooraniSystemFilter, setNooraniSystemFilter] = useState<'all' | 'mashriqi' | 'maghribi'>('all');
+  // Noorani combinations classified and merged across Mashriqi and Maghribi systems
+  const [nooraniSystemFilter, setNooraniSystemFilter] = useState<'all' | 'common' | 'mashriqi' | 'maghribi'>('all');
 
   const mergedNooraniFormulas = useMemo(() => {
-    if (!computedTarget) return [];
-    if (computedTarget.isIdentical) {
-      return nooraniFormulasMashriqi.map((item, idx) => ({
-        key: `both_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'both' as const,
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      }));
-    }
-
-    const items: Array<{
-      key: string;
-      formula: string;
-      system: 'mashriqi' | 'maghribi' | 'both';
-      isAuthenticQuranicFawatih: boolean;
-      sum: number;
-      letters: string[];
-      values: number[];
-      description?: string;
-    }> = [];
-
-    nooraniFormulasMashriqi.forEach((item, idx) => {
-      items.push({
-        key: `mash_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'mashriqi',
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      });
-    });
-
-    nooraniFormulasMaghribi.forEach((item, idx) => {
-      items.push({
-        key: `mag_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'maghribi',
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      });
-    });
-
-    return items.sort((a, b) => {
-      if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
-      if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
-      return 0;
-    });
-  }, [computedTarget, nooraniFormulasMashriqi, nooraniFormulasMaghribi]);
+    if (!computedTarget || (computedTarget.targetMashriqi <= 0 && computedTarget.targetMaghribi <= 0)) return [];
+    return classifyAndMergeNooraniFormulas(
+      computedTarget.targetMashriqi,
+      computedTarget.targetMaghribi,
+      {
+        uniqueLettersOnly: uniqueNooraniOnly,
+        maxResults: 100,
+      }
+    );
+  }, [computedTarget, uniqueNooraniOnly]);
 
   const displayedNooraniFormulas = useMemo(() => {
+    if (nooraniSystemFilter === 'common') {
+      return mergedNooraniFormulas.filter((f) => f.system === 'both' || f.system === 'dual_match');
+    }
     if (nooraniSystemFilter === 'mashriqi') {
-      return mergedNooraniFormulas.filter((f) => f.system === 'mashriqi' || f.system === 'both');
+      return mergedNooraniFormulas.filter((f) => f.system === 'mashriqi' || f.system === 'both' || f.system === 'dual_match');
     }
     if (nooraniSystemFilter === 'maghribi') {
-      return mergedNooraniFormulas.filter((f) => f.system === 'maghribi' || f.system === 'both');
+      return mergedNooraniFormulas.filter((f) => f.system === 'maghribi' || f.system === 'both' || f.system === 'dual_match');
     }
     return mergedNooraniFormulas;
   }, [nooraniSystemFilter, mergedNooraniFormulas]);
+
+  const commonCount = useMemo(() => mergedNooraniFormulas.filter((f) => f.system === 'both' || f.system === 'dual_match').length, [mergedNooraniFormulas]);
+  const mashCount = useMemo(() => mergedNooraniFormulas.filter((f) => f.system === 'mashriqi' || f.system === 'both' || f.system === 'dual_match').length, [mergedNooraniFormulas]);
+  const magCount = useMemo(() => mergedNooraniFormulas.filter((f) => f.system === 'maghribi' || f.system === 'both' || f.system === 'dual_match').length, [mergedNooraniFormulas]);
 
   // Record a search item into history
   const recordSearchInHistory = (
@@ -613,16 +558,13 @@ export function QuranicChainMatcher() {
               <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-medium text-stone-900 dark:text-stone-100 font-sans flex items-center gap-1.5">
-                <span>مطابق السلاسل والآيات القرآنية</span>
-                <span className="text-3xs px-1.5 py-0.2 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-normal">
-                  مدمج شرقي وغربي
-                </span>
+              <h2 className="text-xs sm:text-sm font-medium text-stone-900 dark:text-stone-100 font-sans">
+                مطابق السلاسل والآيات القرآنية
               </h2>
             </div>
           </div>
 
-          {/* Display Letter Values Breakdown & Totals in Eastern & Western Colors (Replaces previous banner) */}
+          {/* Display Letter Values Breakdown & Totals in Eastern & Western Colors */}
           {computedTarget ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 dark:bg-stone-850/80 border border-stone-200 dark:border-stone-800 text-3xs font-mono flex-wrap self-start sm:self-auto max-w-full overflow-hidden shadow-2xs">
               {/* Letters breakdown */}
@@ -660,21 +602,28 @@ export function QuranicChainMatcher() {
               {/* Totals in distinct Western (Amber) and Eastern (Sky) and Common (Emerald) colors */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {computedTarget.isIdentical ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-semibold">
-                    <span>المجموع المشترك:</span>
-                    <span className="text-xs font-bold font-mono">{computedTarget.targetMaghribi}</span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold font-mono text-xs shadow-2xs"
+                    title={`المجموع المشترك: ${computedTarget.targetMaghribi}`}
+                  >
+                    {computedTarget.targetMaghribi}
                   </span>
                 ) : (
-                  <>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold">
-                      <span>الغربي:</span>
-                      <span className="text-xs font-bold font-mono">{computedTarget.targetMaghribi}</span>
+                  <div className="flex items-center gap-1 font-mono font-bold text-xs">
+                    <span
+                      className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                      title={`المجموع المغربي: ${computedTarget.targetMaghribi}`}
+                    >
+                      {computedTarget.targetMaghribi}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 font-semibold">
-                      <span>الشرقي:</span>
-                      <span className="text-xs font-bold font-mono">{computedTarget.targetMashriqi}</span>
+                    <span className="text-stone-300">/</span>
+                    <span
+                      className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border border-sky-300 dark:border-sky-700 shadow-2xs"
+                      title={`المجموع المشرقي: ${computedTarget.targetMashriqi}`}
+                    >
+                      {computedTarget.targetMashriqi}
                     </span>
-                  </>
+                  </div>
                 )}
 
                 {computedTarget.alternateTargets && computedTarget.alternateTargets.length > 0 && (
@@ -806,7 +755,7 @@ export function QuranicChainMatcher() {
                   <span>صيغ وتراكيب الأحرف المقطعة ({mergedNooraniFormulas.length})</span>
                 </div>
 
-                {!computedTarget.isIdentical && (
+                {mergedNooraniFormulas.length > 0 && (
                   <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-850 p-0.5 rounded text-3xs font-medium">
                     <button
                       type="button"
@@ -819,6 +768,21 @@ export function QuranicChainMatcher() {
                     >
                       الكل ({mergedNooraniFormulas.length})
                     </button>
+                    {commonCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setNooraniSystemFilter('common')}
+                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-0.5 ${
+                          nooraniSystemFilter === 'common'
+                            ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                            : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                        }`}
+                        title="صيغ مشتركة ومتطابقة في كلا النظامين"
+                      >
+                        <span>مشترك</span>
+                        <span className="font-mono text-3xs">({commonCount})</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setNooraniSystemFilter('mashriqi')}
@@ -827,10 +791,10 @@ export function QuranicChainMatcher() {
                           ? 'bg-sky-600 text-white shadow-2xs font-bold'
                           : 'text-sky-700 dark:text-sky-300 hover:bg-sky-100'
                       }`}
-                      title={`صيغ المشرقي (= ${computedTarget.targetMashriqi})`}
+                      title={`صيغ النظام المشرقي (= ${computedTarget.targetMashriqi})`}
                     >
                       <span>مشرقي</span>
-                      <span className="font-mono text-3xs">({nooraniFormulasMashriqi.length})</span>
+                      <span className="font-mono text-3xs">({mashCount})</span>
                     </button>
                     <button
                       type="button"
@@ -840,10 +804,10 @@ export function QuranicChainMatcher() {
                           ? 'bg-amber-600 text-white shadow-2xs font-bold'
                           : 'text-amber-700 dark:text-amber-300 hover:bg-amber-100'
                       }`}
-                      title={`صيغ المغربي (= ${computedTarget.targetMaghribi})`}
+                      title={`صيغ النظام المغربي (= ${computedTarget.targetMaghribi})`}
                     >
                       <span>مغربي</span>
-                      <span className="font-mono text-3xs">({nooraniFormulasMaghribi.length})</span>
+                      <span className="font-mono text-3xs">({magCount})</span>
                     </button>
                   </div>
                 )}
@@ -866,28 +830,21 @@ export function QuranicChainMatcher() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1 flex-wrap max-h-32 overflow-y-auto pr-0.5">
-              {displayedNooraniFormulas.map((n, i) => {
+            <div className="flex items-center gap-1.5 flex-wrap max-h-36 overflow-y-auto pr-0.5">
+              {displayedNooraniFormulas.map((n) => {
                 const isCopied = copiedFormula === `noorani_${n.key}`;
 
-                let chipStyle = 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border-stone-200 dark:border-stone-700';
-                let badgeText = '';
-                let badgeColor = '';
+                let chipStyle = '';
+                let badgeStyle = '';
 
-                if (n.isAuthenticQuranicFawatih) {
-                  chipStyle = 'bg-emerald-600 text-white hover:bg-emerald-700 ring-1 ring-emerald-400 font-semibold';
+                if (n.system === 'both') {
+                  chipStyle = 'bg-emerald-50/90 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500 hover:bg-emerald-100/70';
+                } else if (n.system === 'dual_match') {
+                  chipStyle = 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500 hover:bg-indigo-100/70';
                 } else if (n.system === 'mashriqi') {
-                  chipStyle = 'bg-sky-50/90 dark:bg-sky-950/60 text-sky-950 dark:text-sky-100 border border-sky-300 dark:border-sky-700 hover:border-sky-500 hover:bg-sky-100';
-                  badgeText = 'شرقي';
-                  badgeColor = 'bg-sky-200 dark:bg-sky-850 text-sky-800 dark:text-sky-200';
-                } else if (n.system === 'maghribi') {
-                  chipStyle = 'bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 hover:border-amber-500 hover:bg-amber-100';
-                  badgeText = 'غربي';
-                  badgeColor = 'bg-amber-200 dark:bg-amber-850 text-amber-800 dark:text-amber-200';
-                } else if (n.system === 'both') {
-                  chipStyle = 'bg-teal-50/90 dark:bg-teal-950/60 text-teal-950 dark:text-teal-100 border border-teal-300 dark:border-teal-700 hover:border-teal-500 hover:bg-teal-100';
-                  badgeText = 'مشترك';
-                  badgeColor = 'bg-teal-200 dark:bg-teal-850 text-teal-800 dark:text-teal-200';
+                  chipStyle = 'bg-sky-50/90 dark:bg-sky-950/70 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:border-sky-500 hover:bg-sky-100/70';
+                } else {
+                  chipStyle = 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:border-amber-500 hover:bg-amber-100/70';
                 }
 
                 return (
@@ -899,18 +856,17 @@ export function QuranicChainMatcher() {
                       setCopiedFormula(`noorani_${n.key}`);
                       setTimeout(() => setCopiedFormula(null), 1800);
                     }}
-                    className={`px-1.5 py-0.5 rounded text-xs font-quran flex items-center gap-1 cursor-pointer transition-all shadow-2xs ${chipStyle}`}
-                    title={`الصيغة: ${n.formula} | النظام: ${n.system === 'mashriqi' ? 'مشرقي' : n.system === 'maghribi' ? 'مغربي' : 'مشترك'} | تفكيك: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} = ${n.sum} ${n.description ? `(${n.description})` : ''} - انقر للنسخ`}
+                    className={`px-2 py-1 rounded-lg border text-xs font-quran flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs ${chipStyle}`}
+                    title={`الصيغة: ${n.formula} | الحساب: ${n.displaySum} | تفكيك الحروف: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} ${n.description ? `| ${n.description}` : ''} - انقر للنسخ`}
                   >
-                    <span className="font-semibold">{n.formula}</span>
-                    {n.isAuthenticQuranicFawatih ? (
-                      <span className="text-3xs" title="فاتحة سورة قرآنية أصيلة">⭐</span>
-                    ) : badgeText ? (
-                      <span className={`text-4xs px-1 rounded font-sans font-medium select-none ${badgeColor}`}>
-                        {badgeText}
-                      </span>
-                    ) : null}
-                    {isCopied && <Check className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
+                    <span className="font-bold">{n.formula}</span>
+                    {n.isAuthenticQuranicFawatih && (
+                      <span className="text-3xs text-amber-500" title="فاتحة سورة أو تركيب قرآني تّام">⭐</span>
+                    )}
+                    <span className="font-mono text-4xs font-semibold opacity-75">
+                      ({n.displaySum})
+                    </span>
+                    {isCopied && <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />}
                   </button>
                 );
               })}

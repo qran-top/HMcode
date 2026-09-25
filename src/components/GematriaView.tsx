@@ -221,7 +221,7 @@ export function GematriaView({ initialText, onNavigateToDual }: GematriaViewProp
   const [arabicLexiconMatches, setArabicLexiconMatches] = useState<any[]>([]);
   const [nonArabicPossibilities, setNonArabicPossibilities] = useState<any[]>([]);
   const [nooraniFormulasMatches, setNooraniFormulasMatches] = useState<NooraniFormulaMatch[]>([]);
-  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(true);
+  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
   const [calcStatusText, setCalcStatusText] = useState<string>('');
   const calcTimerRef = useRef<any>(null);
 

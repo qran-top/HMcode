@@ -51,7 +51,7 @@ export function GematriaResultsCard({
     findQuranicMatches,
   } = useGematria();
 
-  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(true);
+  const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
   const [nooraniSystemFilter, setNooraniSystemFilter] = useState<'all' | 'mashriqi' | 'maghribi'>('all');
   const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'noorani'>('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -255,36 +255,8 @@ export function GematriaResultsCard({
             <Calculator className="w-3.5 h-3.5" />
           </div>
           <h3 className="text-xs font-semibold text-stone-900 dark:text-stone-100 font-sans">
-            الجُمَّل المدمج
+            حساب الجُمَّل
           </h3>
-
-          {/* System Indicator Pill Badges */}
-          <div className="flex items-center gap-1 text-3xs font-medium">
-            <span
-              className="px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-300/80 dark:border-sky-800/80"
-              title="نظام الجُمَّل الشرقي (سعفص)"
-            >
-              مشرقي
-            </span>
-            <span className="text-stone-400 font-sans">+</span>
-            <span
-              className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800/80"
-              title="نظام الجُمَّل المغربي (صعفض)"
-            >
-              مغربي
-            </span>
-
-            {isIdentical ? (
-              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-sans">
-                متطابق
-              </span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 font-sans inline-flex items-center gap-0.5">
-                <ArrowLeftRight className="w-2.5 h-2.5" />
-                <span>متباين</span>
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Action Controls */}
@@ -313,9 +285,9 @@ export function GematriaResultsCard({
                 {tables.map((tbl) => {
                   const shortName =
                     tbl.id === 'mashriqi'
-                      ? 'الشرقي الشائع (سعفص)'
+                      ? 'الشرقي'
                       : tbl.id === 'maghribi'
-                      ? 'المغربي التاريخي (صعفض)'
+                      ? 'المغربي'
                       : tbl.name.replace(/\(.*\)/, '').replace('النموذج', '').trim();
                   return (
                     <button
@@ -359,9 +331,6 @@ export function GematriaResultsCard({
           /* Case A: Identical values between Mashriqi & Maghribi */
           <div className="px-2.5 py-1.5 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-between gap-1.5 flex-wrap text-xs shadow-2xs">
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="px-1.5 py-0.5 rounded text-3xs font-semibold bg-emerald-600 text-white shadow-2xs">
-                متطابق (شرقي وغربي)
-              </span>
               <span className="font-quran font-bold text-xs text-emerald-950 dark:text-emerald-200 shrink-0">
                 {cleanWord}
               </span>
@@ -431,9 +400,6 @@ export function GematriaResultsCard({
             {/* 1. Mashriqi Strip (Sky/Blue Theme) */}
             <div className="px-2.5 py-1.5 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border border-sky-300 dark:border-sky-800/80 flex items-center justify-between gap-1.5 flex-wrap text-xs shadow-2xs">
               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span className="px-1.5 py-0.5 rounded text-3xs font-semibold bg-sky-600 text-white shadow-2xs">
-                  شرقي (سعفص)
-                </span>
                 <span className="font-quran font-bold text-xs text-sky-950 dark:text-sky-200 shrink-0">
                   {cleanWord}
                 </span>
@@ -498,9 +464,6 @@ export function GematriaResultsCard({
             {/* 2. Maghribi Strip (Amber/Orange Theme) */}
             <div className="px-2.5 py-1.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/80 flex items-center justify-between gap-1.5 flex-wrap text-xs shadow-2xs">
               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span className="px-1.5 py-0.5 rounded text-3xs font-semibold bg-amber-600 text-white shadow-2xs">
-                  غربي (صعفض)
-                </span>
                 <span className="font-quran font-bold text-xs text-amber-950 dark:text-amber-200 shrink-0">
                   {cleanWord}
                 </span>
@@ -561,22 +524,6 @@ export function GematriaResultsCard({
                 <ExternalLink className="w-2.5 h-2.5 opacity-80" />
               </button>
             </div>
-
-            {/* Difference Insight Banner */}
-            {differingLetters.size > 0 && (
-              <div className="text-3xs text-stone-600 dark:text-stone-400 px-2 py-0.5 rounded bg-stone-100/70 dark:bg-stone-800/50 flex items-center gap-1 flex-wrap">
-                <span className="font-semibold text-rose-600 dark:text-rose-400">فارق الحساب:</span>
-                <span>الحروف المتباينة في الكلمة:</span>
-                {Array.from(differingLetters).map((char) => (
-                  <span
-                    key={`diff_badge_${char}`}
-                    className="font-bold font-quran px-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-100"
-                  >
-                    ({char}: {char === 'س' ? 'مشرقي 60 / مغربي 300' : char === 'ص' ? 'مشرقي 90 / مغربي 60' : char === 'ض' ? 'مشرقي 800 / مغربي 90' : char === 'ش' ? 'مشرقي 300 / مغربي 1000' : char === 'ظ' ? 'مشرقي 900 / مغربي 800' : 'مشرقي 1000 / مغربي 900'})
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -667,16 +614,10 @@ export function GematriaResultsCard({
                 chipStyle = 'bg-emerald-600 text-white hover:bg-emerald-700 ring-1 ring-emerald-400 font-semibold';
               } else if (n.system === 'mashriqi') {
                 chipStyle = 'bg-sky-50/90 dark:bg-sky-950/60 text-sky-950 dark:text-sky-100 border border-sky-300 dark:border-sky-700 hover:border-sky-500 hover:bg-sky-100';
-                badgeText = 'شرقي';
-                badgeColor = 'bg-sky-200 dark:bg-sky-850 text-sky-800 dark:text-sky-200';
               } else if (n.system === 'maghribi') {
                 chipStyle = 'bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 hover:border-amber-500 hover:bg-amber-100';
-                badgeText = 'غربي';
-                badgeColor = 'bg-amber-200 dark:bg-amber-850 text-amber-800 dark:text-amber-200';
               } else if (n.system === 'both') {
                 chipStyle = 'bg-teal-50/90 dark:bg-teal-950/60 text-teal-950 dark:text-teal-100 border border-teal-300 dark:border-teal-700 hover:border-teal-500 hover:bg-teal-100';
-                badgeText = 'مشترك';
-                badgeColor = 'bg-teal-200 dark:bg-teal-850 text-teal-800 dark:text-teal-200';
               }
 
               return (
@@ -691,16 +632,12 @@ export function GematriaResultsCard({
                     }
                   }}
                   className={`px-1.5 py-0.5 rounded text-xs font-quran flex items-center gap-1 cursor-pointer transition-all shadow-2xs ${chipStyle}`}
-                  title={`الصيغة: ${n.formula} | النظام: ${n.system === 'mashriqi' ? 'مشرقي' : n.system === 'maghribi' ? 'مغربي' : 'مشترك'} | التفكيك: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} = ${n.sum} ${n.description ? `(${n.description})` : ''} - انقر للنسخ أو البحث`}
+                  title={`الصيغة: ${n.formula} | التفكيك: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} = ${n.sum} ${n.description ? `(${n.description})` : ''} - انقر للنسخ أو البحث`}
                 >
                   <span className="font-semibold">{n.formula}</span>
-                  {n.isAuthenticQuranicFawatih ? (
+                  {n.isAuthenticQuranicFawatih && (
                     <span className="text-3xs" title="فاتحة سورة قرآنية أصيلة">⭐</span>
-                  ) : badgeText ? (
-                    <span className={`text-4xs px-1 rounded font-sans font-medium select-none ${badgeColor}`}>
-                      {badgeText}
-                    </span>
-                  ) : null}
+                  )}
                   {isCopied && <Check className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
                 </button>
               );

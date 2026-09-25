@@ -5,6 +5,7 @@ import { DEFAULT_CIPHER_LAYERS, NOORANI_LETTERS_SET, LayerInfo } from '../cipher
 import { quranicDictionary, QuranicWordMeta } from './quranicDictionary';
 import { arabicDictionary } from './arabicDictionary';
 import { checkArabicPhonotactics } from './arabicPhonotactics';
+import { MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/GematriaContext';
 
 export const ABJAD_VALUES: Record<string, number> = {
   'ا': 1, 'أ': 1, 'إ': 1, 'آ': 1, 'ء': 1,
@@ -1290,11 +1291,15 @@ export function findNooraniCombinations(
   const results: NooraniFormulaMatch[] = [];
   const seenMultisets = new Set<string>();
 
+  // Calculate sum of all unique Noorani letters
+  const maxUniqueLettersSum = letterMap.reduce((acc, l) => acc + l.val, 0);
+  const effectiveUniqueOnly = uniqueLettersOnly && targetValue <= maxUniqueLettersSum;
+
   // 1. Direct Authentic Quranic Fawatih check
   for (const f of AUTHENTIC_QURANIC_FAWATIH) {
     const rawLetters = f.letters;
     const hasDup = new Set(rawLetters).size !== rawLetters.length;
-    if (uniqueLettersOnly && hasDup) continue;
+    if (effectiveUniqueOnly && hasDup) continue;
 
     const fSum = rawLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
     if (fSum === targetValue) {
@@ -1336,10 +1341,99 @@ export function findNooraniCombinations(
     }
   }
 
-  // 3. Exhaustive Backtracking Search (Lengths 2 to 7)
+  // 1b. Direct Combinations of Pure Authentic Quranic Fawatih Blocks (up to 8 blocks dynamically)
+  // E.g. "كهيعص كهيعص حم عسق" or "حم حم طس"
+  const quranicBlocks = [
+    { word: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], surahs: ['مريم'] },
+    { word: 'حم عسق', letters: ['ح', 'م', 'ع', 'س', 'ق'], surahs: ['الشورى'] },
+    { word: 'المص', letters: ['ا', 'ل', 'م', 'ص'], surahs: ['الأعراف'] },
+    { word: 'المر', letters: ['ا', 'ل', 'م', 'ر'], surahs: ['الرعد'] },
+    { word: 'طسم', letters: ['ط', 'س', 'م'], surahs: ['الشعراء', 'القصص'] },
+    { word: 'عسق', letters: ['ع', 'س', 'ق'], surahs: ['الشورى'] },
+    { word: 'الم', letters: ['ا', 'ل', 'م'], surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'] },
+    { word: 'الر', letters: ['ا', 'ل', 'ر'], surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'] },
+    { word: 'طه', letters: ['ط', 'ه'], surahs: ['طه'] },
+    { word: 'طس', letters: ['ط', 'س'], surahs: ['النمل'] },
+    { word: 'يس', letters: ['ي', 'س'], surahs: ['يس'] },
+    { word: 'حم', letters: ['ح', 'م'], surahs: ['غافر', 'فصلت', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'] },
+    { word: 'ص', letters: ['ص'], surahs: ['ص'] },
+    { word: 'ق', letters: ['ق'], surahs: ['ق'] },
+    { word: 'ن', letters: ['ن'], surahs: ['القلم'] },
+  ].map((b) => ({
+    ...b,
+    val: b.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0),
+  })).filter((b) => b.val > 0 && b.val <= targetValue);
+
+  // Dynamic max blocks based on target value
+  const minBlocksNeeded = quranicBlocks.length > 0 
+    ? Math.max(2, Math.ceil(targetValue / Math.max(...quranicBlocks.map(b => b.val))))
+    : 2;
+  const maxSearchBlocks = Math.max(6, Math.min(10, minBlocksNeeded + 3));
+
+  // Search combinations of pure blocks
+  const searchPureBlocks = (
+    startIndex: number,
+    chosen: typeof quranicBlocks,
+    currentSum: number
+  ) => {
+    if (results.length >= maxResults * 1.5) return;
+
+    if (currentSum === targetValue && chosen.length >= 2) {
+      const allLetters = chosen.flatMap((b) => b.letters);
+      const hasDup = new Set(allLetters).size !== allLetters.length;
+      if (effectiveUniqueOnly && hasDup) return;
+
+      const multisetKey = [...allLetters].sort().join('');
+      if (!seenMultisets.has(multisetKey)) {
+        seenMultisets.add(multisetKey);
+        const formulaStr = chosen.map((b) => b.word).join(' ');
+        const allSurahs = Array.from(new Set(chosen.flatMap((b) => b.surahs)));
+        results.push({
+          formula: formulaStr,
+          letters: allLetters,
+          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          sum: currentSum,
+          isAuthenticQuranicFawatih: true,
+          surahs: allSurahs,
+          description: `تركيب من فواتح قرآنية تامة (${chosen.map((b) => b.word).join(' + ')})`,
+          matchScore: 90000 - chosen.length * 1000,
+          hasDuplicates: hasDup,
+        });
+      }
+      return;
+    }
+
+    if (currentSum >= targetValue || chosen.length >= maxSearchBlocks) return;
+
+    for (let i = startIndex; i < quranicBlocks.length; i++) {
+      const block = quranicBlocks[i];
+      if (currentSum + block.val > targetValue) continue;
+
+      if (effectiveUniqueOnly) {
+        const currentLettersSet = new Set(chosen.flatMap((b) => b.letters));
+        if (block.letters.some((c) => currentLettersSet.has(c))) continue;
+        searchPureBlocks(i + 1, [...chosen, block], currentSum + block.val);
+      } else {
+        const count = chosen.filter((b) => b.word === block.word).length;
+        const maxRepForBlock = Math.max(3, Math.min(8, Math.ceil(targetValue / block.val)));
+        if (count >= maxRepForBlock) continue;
+        searchPureBlocks(i, [...chosen, block], currentSum + block.val);
+      }
+    }
+  };
+
+  searchPureBlocks(0, [], 0);
+
+  // 3. Dynamic Exhaustive Backtracking Search (Lengths adapted to target value, supports > 1000)
   // Sort letters descending by value for optimal Branch-and-Bound pruning
   const sortedLetters = [...letterMap].sort((a, b) => b.val - a.val);
   const n = sortedLetters.length;
+  const maxLetterVal = sortedLetters[0]?.val || 200;
+
+  // Calculate minimum letters mathematically required to reach targetValue
+  const minLettersRequired = Math.max(2, Math.ceil(targetValue / maxLetterVal));
+  // Allow exploration up to minLettersRequired + 6 (max 20 letters)
+  const maxSearchLen = Math.max(8, Math.min(22, minLettersRequired + 6));
 
   const collectedCombos: { chars: string[]; sum: number; hasDup: boolean }[] = [];
 
@@ -1349,11 +1443,13 @@ export function findNooraniCombinations(
     currentSum: number,
     maxLen: number
   ) => {
+    if (collectedCombos.length >= maxResults * 2) return;
+
     if (currentSum === targetValue) {
       if (currentLetters.length >= 2) {
         const chars = currentLetters.map((l) => l.char);
         const hasDup = new Set(chars).size !== chars.length;
-        if (uniqueLettersOnly && hasDup) return;
+        if (effectiveUniqueOnly && hasDup) return;
 
         const multisetKey = [...chars].sort().join('');
         if (!seenMultisets.has(multisetKey)) {
@@ -1379,21 +1475,20 @@ export function findNooraniCombinations(
       const item = sortedLetters[i];
       if (currentSum + item.val > targetValue) continue;
 
-      if (uniqueLettersOnly) {
-        // If unique letters only, cannot pick the same letter index or character again
+      if (effectiveUniqueOnly) {
         if (currentLetters.some((l) => l.char === item.char)) continue;
         dfs(i + 1, [...currentLetters, item], currentSum + item.val, maxLen);
       } else {
-        // Limit repetition of the same character to max 3 times
         const currentCount = currentLetters.filter((l) => l.char === item.char).length;
-        if (currentCount >= 3) continue;
+        const maxRepPerChar = Math.max(4, Math.min(10, Math.ceil(targetValue / item.val)));
+        if (currentCount >= maxRepPerChar) continue;
         dfs(i, [...currentLetters, item], currentSum + item.val, maxLen);
       }
     }
   };
 
-  // Search lengths up to 7
-  dfs(0, [], 0, 7);
+  // Search with dynamic length
+  dfs(0, [], 0, maxSearchLen);
 
   // Order all collected combinations into Quranic Fawatih words with spaces
   for (const combo of collectedCombos) {
@@ -1483,3 +1578,158 @@ export function synthesizeValidWordsFromNumber(
 
   return finalResults.slice(0, maxResults);
 }
+
+/**
+ * Merged & Classified Noorani Formula Item with full system metadata
+ */
+export interface MergedNooraniFormulaItem {
+  key: string;
+  formula: string;
+  letters: string[];
+  values: number[];
+  sumMashriqi: number;
+  sumMaghribi: number;
+  displaySum: string;
+  system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
+  systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
+  isAuthenticQuranicFawatih: boolean;
+  surahs?: string[];
+  description?: string;
+  hasDuplicates?: boolean;
+}
+
+/**
+ * Rigorous Multi-System Noorani Formula Classifier & Merger
+ * Classifies every formula strictly by its real letter calculations:
+ * - 'both' (مشترك): Letter values are identical in both systems and equal the target.
+ * - 'dual_match' (مطابق للنظامين): Unique formula whose Mashriqi value satisfies targetMashriqi AND Maghribi value satisfies targetMaghribi (e.g. كهيعص for 195/165).
+ * - 'mashriqi' (شرقي): Satisfies target only in Mashriqi (contains س or ص).
+ * - 'maghribi' (غربي): Satisfies target only in Maghribi (contains س or ص).
+ */
+export function classifyAndMergeNooraniFormulas(
+  targetMashriqi: number,
+  targetMaghribi: number,
+  options: {
+    uniqueLettersOnly?: boolean;
+    maxResults?: number;
+  } = {}
+): MergedNooraniFormulaItem[] {
+  const { uniqueLettersOnly = false, maxResults = 80 } = options;
+
+  // Search Mashriqi formulas for targetMashriqi
+  const mashList = targetMashriqi > 0 ? findNooraniCombinations(targetMashriqi, MASHRIQI_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+  }) : [];
+
+  // Search Maghribi formulas for targetMaghribi
+  const magList = targetMaghribi > 0 ? findNooraniCombinations(targetMaghribi, MAGHRIBI_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+  }) : [];
+
+  // Map to deduplicate by formula string
+  const formulaMap = new Map<string, {
+    formula: string;
+    letters: string[];
+    isAuthenticQuranicFawatih: boolean;
+    surahs?: string[];
+    description?: string;
+    hasDuplicates?: boolean;
+    matchScore: number;
+  }>();
+
+  for (const m of [...mashList, ...magList]) {
+    const existing = formulaMap.get(m.formula);
+    if (!existing) {
+      formulaMap.set(m.formula, {
+        formula: m.formula,
+        letters: m.letters,
+        isAuthenticQuranicFawatih: m.isAuthenticQuranicFawatih,
+        surahs: m.surahs,
+        description: m.description,
+        hasDuplicates: m.hasDuplicates,
+        matchScore: m.matchScore,
+      });
+    } else {
+      if (m.isAuthenticQuranicFawatih) existing.isAuthenticQuranicFawatih = true;
+      if (m.surahs && m.surahs.length > 0) existing.surahs = m.surahs;
+      if (m.matchScore > existing.matchScore) existing.matchScore = m.matchScore;
+    }
+  }
+
+  const mergedItems: MergedNooraniFormulaItem[] = [];
+
+  for (const [formulaStr, item] of formulaMap.entries()) {
+    // Calculate exact sum in Mashriqi
+    const sumMash = item.letters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
+    // Calculate exact sum in Maghribi
+    const sumMag = item.letters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
+
+    const matchesMash = (targetMashriqi > 0 && sumMash === targetMashriqi);
+    const matchesMag = (targetMaghribi > 0 && sumMag === targetMaghribi);
+
+    if (!matchesMash && !matchesMag) continue;
+
+    let system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
+    let systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
+    let displaySum: string;
+
+    if (matchesMash && matchesMag) {
+      if (sumMash === sumMag) {
+        // True common formula (e.g. لا تحتوي على س أو ص أو توازنت قيمتهما)
+        system = 'both';
+        systemLabel = 'مشترك';
+        displaySum = `${sumMash}`;
+      } else {
+        // Dual match (e.g. كهيعص حيث توافق المشرقي 195 بقيمتها المشرقية، وتوافق المغربي 165 بقيمتها المغربية)
+        system = 'dual_match';
+        systemLabel = 'مطابق للنظامين';
+        displaySum = `شرقي: ${sumMash} / غربي: ${sumMag}`;
+      }
+    } else if (matchesMash) {
+      system = 'mashriqi';
+      systemLabel = 'شرقي';
+      displaySum = `${sumMash}`;
+    } else {
+      system = 'maghribi';
+      systemLabel = 'غربي';
+      displaySum = `${sumMag}`;
+    }
+
+    const values = item.letters.map((c) => (system === 'maghribi' ? MAGHRIBI_VALUES[c] : MASHRIQI_VALUES[c]) ?? 0);
+
+    mergedItems.push({
+      key: `formula_${formulaStr}_${system}`,
+      formula: formulaStr,
+      letters: item.letters,
+      values,
+      sumMashriqi: sumMash,
+      sumMaghribi: sumMag,
+      displaySum,
+      system,
+      systemLabel,
+      isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
+      surahs: item.surahs,
+      description: item.description,
+      hasDuplicates: item.hasDuplicates,
+    });
+  }
+
+  // Sort merged items:
+  // 1. Authentic Quranic Fawatih / pure combinations first
+  // 2. Dual match & Both first
+  // 3. Shortest letters length
+  mergedItems.sort((a, b) => {
+    if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
+    if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
+    const sysPriority = (s: string) => (s === 'dual_match' ? 3 : s === 'both' ? 2 : 1);
+    if (sysPriority(b.system) !== sysPriority(a.system)) {
+      return sysPriority(b.system) - sysPriority(a.system);
+    }
+    return a.letters.length - b.letters.length;
+  });
+
+  return mergedItems.slice(0, maxResults);
+}
+
