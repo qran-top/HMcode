@@ -40,6 +40,90 @@ export const SURAH_NAMES: string[] = [
 ];
 
 /**
+ * 29 Quranic Surahs that open with Disconnected Letters (الأحرف المقطعة في فواتح السور الـ 29)
+ */
+export const SURAH_MUQATTAAT_MAP: Record<number, string> = {
+  2: 'الم',
+  3: 'الم',
+  7: 'المص',
+  10: 'الر',
+  11: 'الر',
+  12: 'الر',
+  13: 'المر',
+  14: 'الر',
+  15: 'الر',
+  19: 'كهيعص',
+  20: 'طه',
+  26: 'طسم',
+  27: 'طس',
+  28: 'طسم',
+  29: 'الم',
+  30: 'الم',
+  31: 'الم',
+  32: 'الم',
+  36: 'يس',
+  38: 'ص',
+  40: 'حم',
+  41: 'حم',
+  42: 'حم عسق',
+  43: 'حم',
+  44: 'حم',
+  45: 'حم',
+  46: 'حم',
+  50: 'ق',
+  68: 'ن',
+};
+
+export const SURAH_NAME_MUQATTAAT_MAP: Record<string, string> = {
+  'البقرة': 'الم',
+  'آل عمران': 'الم',
+  'ال عمران': 'الم',
+  'الأعراف': 'المص',
+  'الاعراف': 'المص',
+  'يونس': 'الر',
+  'هود': 'الر',
+  'يوسف': 'الر',
+  'الرعد': 'المر',
+  'إبراهيم': 'الر',
+  'ابراهيم': 'الر',
+  'الحجر': 'الر',
+  'مريم': 'كهيعص',
+  'طه': 'طه',
+  'الشعراء': 'طسم',
+  'النمل': 'طس',
+  'القصص': 'طسم',
+  'العنكبوت': 'الم',
+  'الروم': 'الم',
+  'لقمان': 'الم',
+  'السجدة': 'الم',
+  'يس': 'يس',
+  'ص': 'ص',
+  'غافر': 'حم',
+  'فصلت': 'حم',
+  'الشورى': 'حم عسق',
+  'الزخرف': 'حم',
+  'الدخان': 'حم',
+  'الجاثية': 'حم',
+  'الأحقاف': 'حم',
+  'الاحقاف': 'حم',
+  'ق': 'ق',
+  'القلم': 'ن',
+};
+
+export function getSurahMuqattaat(surahNumber?: number, surahName?: string): string | null {
+  if (surahNumber && SURAH_MUQATTAAT_MAP[surahNumber]) {
+    return SURAH_MUQATTAAT_MAP[surahNumber];
+  }
+  if (surahName) {
+    const clean = surahName.replace(/^سورة\s+/, '').trim();
+    if (SURAH_NAME_MUQATTAAT_MAP[clean]) {
+      return SURAH_NAME_MUQATTAAT_MAP[clean];
+    }
+  }
+  return null;
+}
+
+/**
  * Returns the 1-114 Surah index number
  */
 export function getSurahNumber(nameOrNum: string | number): number {

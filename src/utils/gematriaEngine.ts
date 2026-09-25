@@ -64,6 +64,12 @@ export interface GematriaCalculationOptions {
   definiteArticleMode: 'include_all' | 'strip_al';
   /** الرسم القرآني العثماني مقابل الرسم الإملائي القياسي */
   orthographyMode: 'uthmani' | 'standard';
+  /** الواو غير المقروءة في أولو، أولئك، أولات (رسم = 6 / لفظ مهمل = 0) */
+  silentWawMode?: 'count_as_6' | 'ignore_0';
+  /** واو رسم المصحف في الصلوة والزكوة والحيوة والربوا (كواو 6 / كألف 1) */
+  uthmaniWawMode?: 'as_waw_6' | 'as_alif_1';
+  /** ألف التفريق الزائدة بعد واو الجماعة مثل قالوا، آمنوا (رسم = 1 / لفظ مهمل = 0) */
+  silentAlifMode?: 'count_as_1' | 'ignore_0';
 }
 
 export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
@@ -74,6 +80,9 @@ export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
   shaddahMode: 'single_1x',
   definiteArticleMode: 'include_all',
   orthographyMode: 'uthmani',
+  silentWawMode: 'count_as_6',
+  uthmaniWawMode: 'as_waw_6',
+  silentAlifMode: 'count_as_1',
 };
 
 /**
@@ -170,11 +179,19 @@ export function calculateGematriaWithOptions(
     if (rawMatches) {
       daggerAlifCount = rawMatches.length;
     } else if (opts.orthographyMode === 'uthmani') {
-      // In Uthmani Quranic script, prominent words with implicit dagger alif:
-      const uthmaniImplicitAlifWords = ['الرحمن', 'رحمن', 'هذا', 'هذه', 'هؤلاء', 'ذلك', 'ذلكم', 'إبراهيم', 'إسماعيل', 'إسحاق', 'هارون', 'سليمان', 'السموات', 'سموات', 'صلوة', 'زكوة', 'حيوة'];
+      // In Uthmani Quranic script, words with implicit dagger alif (الرسم العثماني يثبت الألف خنجرية):
       const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
-      if (uthmaniImplicitAlifWords.includes(cleanWord)) {
+      const uthmaniImplicitAlifSingleWords = [
+        'الرحمن', 'رحمن', 'هذا', 'هذه', 'هؤلاء', 'ذلك', 'ذلكم', 'ذانك',
+        'إله', 'إلهكم', 'إلهنا', 'إلهين', 'إلهان', 'إلهي', 'آلهة', 'آلهتنا', 'آلهتهم',
+        'أولئك', 'إبراهيم', 'إسماعيل', 'إسحاق', 'هارون', 'سليمان', 'داوود',
+        'يحيى', 'عيسى', 'موسى', 'طغيانهم', 'سبحان', 'لقمان', 'عمران',
+        'رضوان', 'سلطان', 'برهان', 'ميثاق'
+      ];
+      if (uthmaniImplicitAlifSingleWords.includes(cleanWord)) {
         daggerAlifCount = 1;
+      } else if (cleanWord === 'السموات' || cleanWord === 'سموات' || cleanWord === 'السموت') {
+        daggerAlifCount = 2; // سَمَٰوَٰت تحوي ألفين خنجريتين
       }
     }
   }
@@ -233,7 +250,32 @@ export function calculateGematriaWithOptions(
     sum += charVal * multiplier;
   }
 
-  return sum;
+  // 4. Handle Silent Waw (الواو غير المقروءة في أولو، أولئك، أولات)
+  if (opts.silentWawMode === 'ignore_0') {
+    const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
+    if (/^(أولو|أولي|أولئك|أولات|عمرو|أولاء)$/.test(cleanWord)) {
+      sum -= (tableValues['و'] || 6);
+    }
+  }
+
+  // 5. Handle Uthmani Waw (واو الصلوة والزكوة والحيوة والربوا كألف)
+  if (opts.uthmaniWawMode === 'as_alif_1') {
+    const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
+    if (/^(الصلوة|صلوة|الزكوة|زكوة|الحيوة|حيوة|الربوا|ربوا|مشكوة|النجوة|الغدوة)$/.test(cleanWord)) {
+      // Waw is counted as 1 (Alif) instead of 6 (Waw), so delta = -5
+      sum -= ((tableValues['و'] || 6) - (tableValues['ا'] || 1));
+    }
+  }
+
+  // 6. Handle Silent Alif (ألف التفريق بعد واو الجماعة مثل قالوا، آمنوا)
+  if (opts.silentAlifMode === 'ignore_0') {
+    const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
+    if (cleanWord.length >= 4 && cleanWord.endsWith('وا') && !/^(عفوا|دعوا|شكوا)$/.test(cleanWord)) {
+      sum -= (tableValues['ا'] || 1);
+    }
+  }
+
+  return Math.max(0, sum);
 }
 
 /**

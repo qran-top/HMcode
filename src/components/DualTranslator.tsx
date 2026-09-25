@@ -102,17 +102,19 @@ export function DualTranslator({
 
   const { activeTable, activeTableId, tables, setActiveTableId, calculateWordGematria } = useGematria();
 
-  const [internalInputText, setInternalInputText] = useState(externalInputText || '');
-  const inputText = externalInputText !== undefined ? externalInputText : internalInputText;
-  const setInputText = (val: string | ((prev: string) => string)) => {
-    const nextVal = typeof val === 'function' ? val(inputText) : val;
-    setInternalInputText(nextVal);
-    if (onInputTextChange) {
-      onInputTextChange(nextVal);
-    }
-  };
+  const [inputText, setInputText] = useState(externalInputText || '');
   const [submittedText, setSubmittedText] = useState(externalInputText || '');
   const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt' | 'gematria'>(mode || 'decrypt');
+
+  // Track externalInputText updates from parent (e.g. clicking links or tab transfers)
+  const prevExternalRef = React.useRef(externalInputText);
+  useEffect(() => {
+    if (externalInputText !== undefined && externalInputText !== prevExternalRef.current) {
+      prevExternalRef.current = externalInputText;
+      setInputText(externalInputText);
+      setSubmittedText(externalInputText);
+    }
+  }, [externalInputText]);
 
   // Sync mode if changed from parent
   useEffect(() => {
@@ -120,14 +122,6 @@ export function DualTranslator({
       setViewMode(mode);
     }
   }, [mode]);
-
-  // Sync externalInputText if changed from parent
-  useEffect(() => {
-    if (externalInputText !== undefined && externalInputText !== inputText) {
-      setInternalInputText(externalInputText);
-      setSubmittedText(externalInputText);
-    }
-  }, [externalInputText]);
 
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showMultiSystemScanner, setShowMultiSystemScanner] = useState(false);
@@ -597,7 +591,7 @@ export function DualTranslator({
   // Construct ultra-short, highly readable share URL and sync with browser address bar/history
   const buildShortShareUrl = (pushHistory = false): string => {
     const url = new URL(window.location.origin + window.location.pathname);
-    const text = inputText.trim() || submittedText.trim();
+    const text = submittedText.trim();
     if (text) {
       url.searchParams.set('q', text);
     }
@@ -690,7 +684,7 @@ export function DualTranslator({
   // Generate a rich, compact result summary string optimized for WhatsApp / Telegram
   const generateShareSummaryText = (): string => {
     const shortUrl = buildShortShareUrl();
-    const word = inputText.trim() || submittedText.trim();
+    const word = submittedText.trim();
     if (!word) {
       return `🔐 التشفير العربي | نظام الطبقات السبع المتناظرة\n🔗 ${shortUrl}`;
     }
@@ -762,6 +756,10 @@ export function DualTranslator({
       setInputText(targetText);
       addToHistory(targetText);
       buildShortShareUrl(true);
+      if (onInputTextChange) {
+        prevExternalRef.current = targetText;
+        onInputTextChange(targetText);
+      }
     }
   };
 
@@ -772,6 +770,10 @@ export function DualTranslator({
       setInputText(targetText);
       addToHistory(targetText);
       buildShortShareUrl(true);
+      if (onInputTextChange) {
+        prevExternalRef.current = targetText;
+        onInputTextChange(targetText);
+      }
     }
     setMultiScannerTrigger(Date.now());
     setShowMultiSystemScanner(true);
@@ -786,6 +788,10 @@ export function DualTranslator({
     setSubmittedText(trimmed);
     addToHistory(trimmed);
     buildShortShareUrl(true);
+    if (onInputTextChange) {
+      prevExternalRef.current = trimmed;
+      onInputTextChange(trimmed);
+    }
   };
 
   const handleGenerate = handleNormalSearchClick;
@@ -800,6 +806,10 @@ export function DualTranslator({
       addToHistory(term);
       setShowMultiSystemScanner(false);
       buildShortShareUrl(true);
+      if (onInputTextChange) {
+        prevExternalRef.current = term;
+        onInputTextChange(term);
+      }
     }
   };
 
@@ -843,11 +853,11 @@ export function DualTranslator({
   };
 
   // ------------------- NOORANI / ALPHABET SMART DETECTION -------------------
-  // Analyzes the letters in the active input (or submitted text) to provide smart operational guidance
+  // Analyzes the letters in the submitted search text (only upon Enter / Search button) to ensure zero lag while typing
   const activeLetters = useMemo(() => {
-    const raw = (inputText || submittedText || '').trim();
+    const raw = (submittedText || '').trim();
     return raw.replace(/[^ء-ي]/g, '').split('');
-  }, [inputText, submittedText]);
+  }, [submittedText]);
 
   const nooraniAnalysis = useMemo(() => {
     if (activeLetters.length === 0) return null;
@@ -1076,9 +1086,9 @@ export function DualTranslator({
     return rawCombinations.filter(w => w.includes(search));
   }, [rawCombinations, permutationSearch]);
 
-  // Active layers in current input (strictly reactive to inputText so clearing text immediately turns all layers off)
+  // Active layers in submitted search text (only calculated on Enter or Search button)
   const activeLayersNumbers = useMemo(() => {
-    const textToAnalyze = inputText.trim();
+    const textToAnalyze = submittedText.trim();
     if (!textToAnalyze) return [];
 
     const chars = Array.from(cleanText(textToAnalyze)).filter((c) => c && c.trim() !== '');
@@ -1112,7 +1122,7 @@ export function DualTranslator({
     });
 
     return Array.from(set);
-  }, [inputText, effectiveLayers]);
+  }, [submittedText, effectiveLayers]);
 
   // Dynamic page title and OpenGraph metadata synchronization + Browser URL Address Bar Sync
   useEffect(() => {
@@ -1431,12 +1441,8 @@ export function DualTranslator({
                   }
                 }
               }}
-              placeholder="اكتب كلمة عربية أو شفرة (طسم، كهيعص، بقرة)..."
-              className={`w-full text-sm sm:text-base font-medium py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border focus:outline-none focus:ring-2 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner ${
-                nooraniAnalysis?.isPureNoorani
-                  ? 'border-amber-400/90 dark:border-amber-600/80 focus:ring-amber-500 bg-amber-50/20'
-                  : 'border-stone-300 dark:border-stone-700 focus:ring-amber-500'
-              }`}
+              placeholder="اكتب كلمة أو شفرة ثم اضغط Enter أو زر البحث..."
+              className="w-full text-sm sm:text-base font-medium py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner"
             />
             
             {/* Quick Action Controls Inside Input (Left Side in RTL) */}
@@ -1452,6 +1458,10 @@ export function DualTranslator({
                       setInputText(cleaned);
                       setSubmittedText(cleaned);
                       addToHistory(cleaned);
+                      if (onInputTextChange) {
+                        prevExternalRef.current = cleaned;
+                        onInputTextChange(cleaned);
+                      }
                     }
                   } catch (err) {
                     console.warn('Clipboard read error:', err);
@@ -1470,6 +1480,10 @@ export function DualTranslator({
                   onClick={() => {
                     setInputText('');
                     setSubmittedText('');
+                    if (onInputTextChange) {
+                      prevExternalRef.current = '';
+                      onInputTextChange('');
+                    }
                   }}
                   className="p-1 rounded-md text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                   title="مسح النص"

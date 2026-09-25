@@ -70,6 +70,7 @@ export interface ScannerOptions {
   onlyNoorani?: boolean;
   maxResults?: number;
   maxPhraseLength?: number;
+  alternateTargets?: number[];
   onProgress?: (progress: ScannerProgress) => void;
   onMatch?: (match: InverseQuranicMatch) => void;
   onComplete?: (matches: InverseQuranicMatch[], cancelled: boolean) => void;
@@ -226,12 +227,17 @@ export class InverseQuranicScanner {
       calcOptions = DEFAULT_GEMATRIA_OPTIONS,
       scope = 'all',
       onlyNoorani = false,
-      maxResults = 1000,
-      maxPhraseLength = 12,
+      maxResults = 2500,
+      maxPhraseLength = 16,
+      alternateTargets = [],
       onProgress,
       onMatch,
       onComplete,
     } = options;
+
+    const magTargetsSet = new Set<number>([targetMaghribi, ...alternateTargets]);
+    const mashTargetsSet = new Set<number>([targetMashriqi, ...alternateTargets]);
+    const maxTarget = Math.max(targetMaghribi, targetMashriqi, ...alternateTargets);
 
     if (onProgress) {
       onProgress({
@@ -300,11 +306,12 @@ export class InverseQuranicScanner {
             if (rawTokens.length === 0) continue;
 
             // Calculate clean words and word values in BOTH Maghribi and Mashriqi
+            // CRITICAL FIX: Pass rawTokens (not cleanTokens) so dagger alifs (\u0670), shaddahs, and Uthmani orthography are preserved!
             const cleanTokens = rawTokens.map((w) => cleanArabicTextForGematria(w));
-            const magWordVals = cleanTokens.map((w) =>
+            const magWordVals = rawTokens.map((w) =>
               calculateGematriaWithOptions(w, calcOptions, MAGHRIBI_VALUES)
             );
-            const mashWordVals = cleanTokens.map((w) =>
+            const mashWordVals = rawTokens.map((w) =>
               calculateGematriaWithOptions(w, calcOptions, MASHRIQI_VALUES)
             );
 
@@ -324,8 +331,8 @@ export class InverseQuranicScanner {
                 if (phraseLength >= minWords && phraseLength <= maxWords) {
                   totalCombinationsScanned++;
 
-                  const isMaghribiMatch = currentMagSum === targetMaghribi;
-                  const isMashriqiMatch = currentMashSum === targetMashriqi;
+                  const isMaghribiMatch = magTargetsSet.has(currentMagSum);
+                  const isMashriqiMatch = mashTargetsSet.has(currentMashSum);
                   const isIntrinsicCommon = currentMagSum === currentMashSum;
 
                   if (isMaghribiMatch || isMashriqiMatch) {
@@ -433,8 +440,98 @@ export class InverseQuranicScanner {
                   }
                 }
 
-                if (currentMagSum > targetMaghribi && currentMashSum > targetMashriqi) {
-                  break; // Pruning: sums only increase
+                  if (currentMagSum > maxTarget && currentMashSum > maxTarget) {
+                    break; // Pruning: sums only increase
+                  }
+                }
+              }
+
+              // Full-Ayah check if verse exceeds maxWords (e.g. longer verses like Ayat Al-Kursi)
+              if (n > maxWords && (scope === 'all' || scope === 'verses_and_chains')) {
+              let fullMagSum = 0;
+              let fullMashSum = 0;
+              for (let k = 0; k < n; k++) {
+                fullMagSum += magWordVals[k];
+                fullMashSum += mashWordVals[k];
+              }
+
+              const isMagMatch = magTargetsSet.has(fullMagSum);
+              const isMashMatch = mashTargetsSet.has(fullMashSum);
+
+              if (isMagMatch || isMashMatch) {
+                totalCombinationsScanned++;
+                const cleanPhrase = cleanTokens.join(' ');
+                let allowNoorani = true;
+                if (onlyNoorani) {
+                  const allChars = cleanPhrase.replace(/\s+/g, '').split('');
+                  allowNoorani = allChars.every(
+                    (c) => NOORANI_LETTERS_SET.has(c) || NOORANI_LETTERS_SET.has(normalizeAbjadChar(c))
+                  );
+                }
+
+                if (allowNoorani) {
+                  let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'maghribi';
+                  let systemLabel = 'غربي';
+                  const isIntrinsicCommon = fullMagSum === fullMashSum;
+
+                  if (isMagMatch && isMashMatch) {
+                    systemOrigin = 'common';
+                    systemLabel = 'مشترك';
+                  } else if (isMagMatch) {
+                    systemOrigin = isIntrinsicCommon ? 'common' : 'maghribi';
+                    systemLabel = isIntrinsicCommon ? 'مشترك' : 'غربي';
+                  } else {
+                    systemOrigin = isIntrinsicCommon ? 'common' : 'mashriqi';
+                    systemLabel = isIntrinsicCommon ? 'مشترك' : 'شرقي';
+                  }
+
+                  const dedupKey = `${sNum}:${ayah.a}:${cleanPhrase}:${systemOrigin}`;
+                  if (!seenMatches.has(dedupKey)) {
+                    seenMatches.add(dedupKey);
+
+                    const isPureNoorani = cleanPhrase
+                      .replace(/\s+/g, '')
+                      .split('')
+                      .every((c) => NOORANI_LETTERS_SET.has(c) || NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+
+                    const breakdown = rawTokens.map((pw, pidx) => ({
+                      word: pw,
+                      value: isMagMatch ? magWordVals[pidx] : mashWordVals[pidx],
+                      magVal: magWordVals[pidx],
+                      mashVal: mashWordVals[pidx],
+                      letters: cleanTokens[pidx].split('').map((c) => ({
+                        char: c,
+                        magVal: MAGHRIBI_VALUES[c] ?? MAGHRIBI_VALUES[normalizeAbjadChar(c)] ?? 0,
+                        mashVal: MASHRIQI_VALUES[c] ?? MASHRIQI_VALUES[normalizeAbjadChar(c)] ?? 0,
+                      })),
+                    }));
+
+                    const matchObj: InverseQuranicMatch = {
+                      id: `match_${sNum}_${ayah.a}_full_${systemOrigin}_${Date.now()}`,
+                      phrase: ayah.t,
+                      cleanPhrase,
+                      value: isMagMatch ? fullMagSum : fullMashSum,
+                      maghribiValue: fullMagSum,
+                      mashriqiValue: fullMashSum,
+                      systemOrigin,
+                      systemLabel,
+                      isIntrinsicCommon,
+                      wordCount: n,
+                      letterCount: cleanPhrase.replace(/\s+/g, '').length,
+                      surahName,
+                      surahNumber: sNum,
+                      ayahNumber: ayah.a,
+                      fullAyahText: ayah.t,
+                      matchType: 'full_ayah',
+                      matchTypeLabel: 'آية كريمة كاملة',
+                      isPureNoorani,
+                      breakdown,
+                      quranUrl: getQuranTopSearchUrl(ayah.t),
+                    };
+
+                    matches.push(matchObj);
+                    if (onMatch) onMatch(matchObj);
+                  }
                 }
               }
             }
