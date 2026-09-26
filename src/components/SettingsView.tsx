@@ -138,17 +138,33 @@ export function SettingsView() {
 
     let suggested = '';
     if (type === 'sky') {
-      const topChars = (topLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
-      const bottomChars = (bottomLayer?.cipherLetters || []).filter((c) => c && c.trim() !== '');
-      const first = topChars[0] || 'ن';
-      const last = bottomChars[bottomChars.length - 1] || 'ر';
-      suggested = `${first} - ${last}`;
+      const allSkyChars = [...layers]
+        .sort((a, b) => a.layer - b.layer)
+        .flatMap((l) => (l.cipherLetters || []).filter((c) => c && c.trim() !== ''));
+      const firstFour = allSkyChars.slice(0, 4).join('');
+      const lastFour = allSkyChars.slice(-4).join('');
+      if (firstFour && lastFour) {
+        suggested = `${firstFour} - ${lastFour}`;
+      } else {
+        const first = allSkyChars[0] || 'ن';
+        const last = allSkyChars[allSkyChars.length - 1] || 'ر';
+        suggested = `${first} - ${last}`;
+      }
     } else {
-      const topChars = (topLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
-      const bottomChars = (bottomLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
-      const firstTwo = topChars.slice(0, 2).join('') || 'اب';
-      const lastTwo = bottomChars.slice(-2).join('') || 'وي';
-      suggested = `${firstTwo} - ${lastTwo}`;
+      const allEarthChars = [...layers]
+        .sort((a, b) => a.layer - b.layer)
+        .flatMap((l) => (l.arabicLetters || []).filter((c) => c && c.trim() !== ''));
+      const firstFour = allEarthChars.slice(0, 4).join('');
+      const lastFour = allEarthChars.slice(-4).join('');
+      if (firstFour && lastFour) {
+        suggested = `${firstFour} - ${lastFour}`;
+      } else {
+        const topChars = (topLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
+        const bottomChars = (bottomLayer?.arabicLetters || []).filter((c) => c && c.trim() !== '');
+        const firstTwo = topChars.slice(0, 2).join('') || 'اب';
+        const lastTwo = bottomChars.slice(-2).join('') || 'وي';
+        suggested = `${firstTwo} - ${lastTwo}`;
+      }
     }
 
     setSaveName(suggested);

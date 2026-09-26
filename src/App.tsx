@@ -70,12 +70,16 @@ export function App() {
               setSharedText(text);
               setActiveTab('gematria');
             }}
+            onNavigateToMatcher={(text) => {
+              setSharedText(text);
+              setActiveTab('matcher');
+            }}
           />
         </div>
 
         {/* Tab 2: Matcher View (مطابق السلاسل والقرآن الكريم) */}
         <div className={activeTab === 'matcher' ? 'block' : 'hidden'}>
-          <QuranicChainMatcher />
+          <QuranicChainMatcher initialQuery={sharedText} />
         </div>
 
         {/* Tab 3: Advanced Gematria Engine (محرك الجُمَّل الموسع والحاسبة) */}

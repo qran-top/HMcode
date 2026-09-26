@@ -60,6 +60,7 @@ interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
   onNavigateToDecrypt?: (text: string) => void;
   onNavigateToGematria?: (text: string) => void;
+  onNavigateToMatcher?: (text: string) => void;
   mode?: 'decrypt' | 'encrypt' | 'both';
   inputText?: string;
   onInputTextChange?: (text: string) => void;
@@ -72,6 +73,7 @@ export function DualTranslator({
   onNavigateToEncrypt,
   onNavigateToDecrypt,
   onNavigateToGematria,
+  onNavigateToMatcher,
   mode = 'both',
   inputText: externalInputText,
   onInputTextChange,
@@ -2174,6 +2176,7 @@ export function DualTranslator({
               <GematriaResultsCard
                 query={submittedText}
                 onNavigateToGematria={onNavigateToGematria}
+                onNavigateToMatcher={onNavigateToMatcher}
                 onSelectWord={(w) => {
                   setInputText(w);
                   setSubmittedText(w);

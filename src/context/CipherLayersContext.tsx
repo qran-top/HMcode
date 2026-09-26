@@ -686,10 +686,10 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [savedNooraniPresets, setSavedNooraniPresets] = useState<SavedNooraniPreset[]>(loadInitialNooraniPresets);
   const [activeTableName, setActiveTableName] = useState<string | null>(BENCHMARK_TABLE_NAME);
   const [activeArabicPresetName, setActiveArabicPresetName] = useState<string | null>(
-    ARABIC_PRESETS.arabic_abjad_sheen?.name || 'اب - ظغ'
+    ARABIC_PRESETS.arabic_1_az?.name || 'أبجد - ذضظغ'
   );
   const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<string | null>(
-    NOORANI_PRESETS.noorani_an?.name || 'ا - ن'
+    NOORANI_PRESETS.noorani_1_nl?.name || 'نصحك - لهسر'
   );
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
 
