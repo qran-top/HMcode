@@ -964,11 +964,11 @@ export function DecryptView({
                           </a>
                         ) : (
                           <a
-                            href={getQuranTopAyahUrl(quranicMeta.surahNumber || quranicMeta.surahName, quranicMeta.ayahNum)}
+                            href={getQuranTopSearchUrl(quranicMeta.originalQuranicWord || item.word)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 hover:underline hover:text-amber-950 dark:hover:text-amber-200 transition-colors group/link"
-                            title={`فتح وتلاوة الآية ${quranicMeta.ayahNum} من سورة ${quranicMeta.surahName} على موقع قرآن توب`}
+                            title={`بحث عن "${quranicMeta.originalQuranicWord || item.word}" في سورة ${quranicMeta.surahName} والمصحف الشريف بموقع قرآن توب`}
                           >
                             <BookOpen className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400 shrink-0" />
                             <span>سورة {quranicMeta.surahName} (آية {quranicMeta.ayahNum})</span>

@@ -1007,21 +1007,21 @@ export function findQuranicWordsByGematria(
  * Authentic 14 Quranic Opening Formulas (الفواتح النورانية الـ 14 في 29 سورة)
  */
 export const AUTHENTIC_QURANIC_FAWATIH = [
-  { formula: 'الم', letters: ['ا', 'ل', 'م'], surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'], description: 'فاتحة 6 سور في القرآن الكريم' },
-  { formula: 'المص', letters: ['ا', 'ل', 'م', 'ص'], surahs: ['الأعراف'], description: 'فاتحة سورة الأعراف' },
-  { formula: 'الر', letters: ['ا', 'ل', 'ر'], surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'], description: 'فاتحة 5 سور في القرآن الكريم' },
-  { formula: 'المر', letters: ['ا', 'ل', 'م', 'ر'], surahs: ['الرعد'], description: 'فاتحة سورة الرعد' },
-  { formula: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], surahs: ['مريم'], description: 'فاتحة سورة مريم (الخماسية النورانية)' },
-  { formula: 'طه', letters: ['ط', 'ه'], surahs: ['طه'], description: 'فاتحة سورة طه' },
-  { formula: 'طسم', letters: ['ط', 'س', 'م'], surahs: ['الشعراء', 'القصص'], description: 'فاتحة سورتي الشعراء والقصص' },
-  { formula: 'طس', letters: ['ط', 'س'], surahs: ['النمل'], description: 'فاتحة سورة النمل' },
-  { formula: 'يس', letters: ['ي', 'س'], surahs: ['يس'], description: 'فاتحة سورة يس (قلب القرآن)' },
-  { formula: 'ص', letters: ['ص'], surahs: ['ص'], description: 'فاتحة سورة ص' },
-  { formula: 'حم', letters: ['ح', 'م'], surahs: ['غافر', 'فصلت', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'], description: 'الحواميم السبعة' },
-  { formula: 'عسق', letters: ['ع', 'س', 'ق'], surahs: ['الشورى (الآية 2)'], description: 'فواتح سورة الشورى' },
-  { formula: 'حم عسق', letters: ['ح', 'م', 'ع', 'س', 'ق'], surahs: ['الشورى'], description: 'فاتحة سورة الشورى المزدوجة' },
-  { formula: 'ق', letters: ['ق'], surahs: ['ق'], description: 'فاتحة سورة ق والقرآن المجيد' },
-  { formula: 'ن', letters: ['ن'], surahs: ['القلم'], description: 'فاتحة سورة القلم (ن والقلم)' }
+  { formula: 'الم', letters: ['ا', 'ل', 'م'], surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'], surahOrders: [1, 2, 15, 16, 17, 18], description: 'فاتحة 6 سور في القرآن الكريم' },
+  { formula: 'المص', letters: ['ا', 'ل', 'م', 'ص'], surahs: ['الأعراف'], surahOrders: [3], description: 'فاتحة سورة الأعراف' },
+  { formula: 'الر', letters: ['ا', 'ل', 'ر'], surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'], surahOrders: [4, 5, 6, 7, 8], description: 'فاتحة 5 سور في القرآن الكريم' },
+  { formula: 'المر', letters: ['ا', 'ل', 'م', 'ر'], surahs: ['الرعد'], surahOrders: [9], description: 'فاتحة سورة الرعد' },
+  { formula: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], surahs: ['مريم'], surahOrders: [10], description: 'فاتحة سورة مريم (الخماسية النورانية)' },
+  { formula: 'طه', letters: ['ط', 'ه'], surahs: ['طه'], surahOrders: [11], description: 'فاتحة سورة طه' },
+  { formula: 'طسم', letters: ['ط', 'س', 'م'], surahs: ['الشعراء', 'القصص'], surahOrders: [12, 14], description: 'فاتحة سورتي الشعراء والقصص' },
+  { formula: 'طس', letters: ['ط', 'س'], surahs: ['النمل'], surahOrders: [13], description: 'فاتحة سورة النمل' },
+  { formula: 'يس', letters: ['ي', 'س'], surahs: ['يس'], surahOrders: [19], description: 'فاتحة سورة يس (قلب القرآن)' },
+  { formula: 'ص', letters: ['ص'], surahs: ['ص'], surahOrders: [20], description: 'فاتحة سورة ص' },
+  { formula: 'حم', letters: ['ح', 'م'], surahs: ['غافر', 'فصلت', 'الشورى (آية 1)', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'], surahOrders: [21, 22, 23, 24, 25, 26, 27], description: 'الحواميم السبعة (7 سور متتالية تبدأ بـ حم)' },
+  { formula: 'عسق', letters: ['ع', 'س', 'ق'], surahs: ['الشورى (الآية 2)'], surahOrders: [23], description: 'الآية الثانية المستقلة من فواتح سورة الشورى' },
+  { formula: 'حم عسق', letters: ['ح', 'م', 'ع', 'س', 'ق'], surahs: ['الشورى (الآيتان 1 و 2)'], surahOrders: [23], description: 'فواتح سورة الشورى بمجموع آيتيها' },
+  { formula: 'ق', letters: ['ق'], surahs: ['ق'], surahOrders: [28], description: 'فاتحة سورة ق والقرآن المجيد' },
+  { formula: 'ن', letters: ['ن'], surahs: ['القلم'], surahOrders: [29], description: 'فاتحة سورة القلم (ن والقلم)' }
 ];
 
 /**
@@ -1034,13 +1034,13 @@ export const QURANIC_FAWATIH_WORD_BLOCKS = [
   { word: 'المص', letters: ['ا', 'ل', 'م', 'ص'], weight: 35000, surahOrder: 7, surahs: ['الأعراف'] },
   { word: 'المر', letters: ['ا', 'ل', 'م', 'ر'], weight: 35000, surahOrder: 13, surahs: ['الرعد'] },
   { word: 'طسم', letters: ['ط', 'س', 'م'], weight: 25000, surahOrder: 26, surahs: ['الشعراء', 'القصص'] },
-  { word: 'عسق', letters: ['ع', 'س', 'ق'], weight: 25000, surahOrder: 42, surahs: ['الشورى'] },
+  { word: 'عسق', letters: ['ع', 'س', 'ق'], weight: 25000, surahOrder: 42, surahs: ['الشورى (آية 2)'] },
   { word: 'الم', letters: ['ا', 'ل', 'م'], weight: 20000, surahOrder: 2, surahs: ['البقرة', 'آل عمران', 'العنكبوت', 'الروم', 'لقمان', 'السجدة'] },
   { word: 'الر', letters: ['ا', 'ل', 'ر'], weight: 20000, surahOrder: 10, surahs: ['يونس', 'هود', 'يوسف', 'إبراهيم', 'الحجر'] },
   { word: 'طه', letters: ['ط', 'ه'], weight: 15000, surahOrder: 20, surahs: ['طه'] },
   { word: 'طس', letters: ['ط', 'س'], weight: 15000, surahOrder: 27, surahs: ['النمل'] },
   { word: 'يس', letters: ['ي', 'س'], weight: 15000, surahOrder: 36, surahs: ['يس'] },
-  { word: 'حم', letters: ['ح', 'م'], weight: 15000, surahOrder: 40, surahs: ['غافر', 'فصلت', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'] },
+  { word: 'حم', letters: ['ح', 'م'], weight: 15000, surahOrder: 40, surahs: ['غافر', 'فصلت', 'الشورى', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف'] },
   { word: 'ص', letters: ['ص'], weight: 5000, surahOrder: 38, surahs: ['ص'] },
   { word: 'ق', letters: ['ق'], weight: 5000, surahOrder: 50, surahs: ['ق'] },
   { word: 'ن', letters: ['ن'], weight: 5000, surahOrder: 68, surahs: ['القلم'] },
@@ -1076,6 +1076,7 @@ export interface NooraniFormulaMatch {
   sum: number;
   isAuthenticQuranicFawatih: boolean;
   surahs?: string[];
+  surahOrders?: number[];
   description?: string;
   matchScore: number;
   hasDuplicates?: boolean;
@@ -1599,41 +1600,1074 @@ export interface MergedNooraniFormulaItem {
 }
 
 /**
- * Rigorous Multi-System Noorani Formula Classifier & Merger
- * Classifies every formula strictly by its real letter calculations:
- * - 'both' (مشترك): Letter values are identical in both systems and equal the target.
- * - 'dual_match' (مطابق للنظامين): Unique formula whose Mashriqi value satisfies targetMashriqi AND Maghribi value satisfies targetMaghribi (e.g. كهيعص for 195/165).
- * - 'mashriqi' (شرقي): Satisfies target only in Mashriqi (contains س or ص).
- * - 'maghribi' (غربي): Satisfies target only in Maghribi (contains س or ص).
+ * 5 Distinct Specialized Algorithms for Quranic Fawatih & Noorani Combinations
  */
-export function classifyAndMergeNooraniFormulas(
+export type NooraniAlgorithmId = 1 | 2 | 3 | 4 | 5;
+
+export interface NooraniAlgorithmMeta {
+  id: NooraniAlgorithmId;
+  name: string;
+  badge: string;
+  description: string;
+}
+
+export const NOORANI_ALGORITHMS: NooraniAlgorithmMeta[] = [
+  {
+    id: 1,
+    name: 'تجزئة مقطعية',
+    badge: '1. تجزئة مقطعية',
+    description: 'تفكيك الذكر إلى مقاطعه الطبيعية ومطابقة كل مقطع بفواتحه كـ (لا إله إلا الله = كهيعص)',
+  },
+  {
+    id: 2,
+    name: 'برمجة ديناميكية DP',
+    badge: '2. برمجة ديناميكية DP',
+    description: 'توليد شامل لكافة التراكيب الممكنة عبر جدول DP للفواتح والأحرف النورانية بسرعة فائقة',
+  },
+  {
+    id: 3,
+    name: 'فواتح عظمى (أقل عدداً)',
+    badge: '3. فواتح عظمى (أقل عدداً)',
+    description: 'اختيار أرقى وأقصر التراكيب بتفضيل الفواتح الكبرى كـ كهيعص وحم عسق بأقل عدد من الكتل',
+  },
+  {
+    id: 4,
+    name: 'تناغم قرآني (A*)',
+    badge: '4. تناغم قرآني (A*)',
+    description: 'توليد تراكيب متناغمة تجمع عائلات السور المتشابهة (الحواميم، الطواسين، الم، الر) بتدرج جمالي',
+  },
+  {
+    id: 5,
+    name: 'فواتح تامة (دون تكرار)',
+    badge: '5. فواتح تامة (دون تكرار)',
+    description: 'حصر التراكيب حصراً على كتل الفواتح الـ 14 التامة دون تكرار أي فاتحة نهائياً',
+  },
+];
+
+/**
+ * Canonical 29 Quranic Surah Openings in exact Mushaf order with their divine frequencies
+ * فواتح سور القرآن الـ 29 بترتيب ورودها في المصحف الشريف وتردداتها الربانية
+ */
+export interface QuranicSurahFatihah {
+  surahNumber: number;
+  surahName: string;
+  orderInFawatih: number; // 1 to 29
+  formula: string;
+  letters: string[];
+  subFormulas?: string[]; // E.g. ['حم', 'عسق'] for Surah Ash-Shura (Ayah 1 + Ayah 2)
+  family: 'alif_lam_mim_1' | 'alif_lam_ra' | 'tawasin' | 'alif_lam_mim_2' | 'hawamim' | 'individual';
+  familyLabel: string;
+}
+
+export const QURANIC_29_SURAH_FAWATIH: QuranicSurahFatihah[] = [
+  { surahNumber: 2, surahName: 'البقرة', orderInFawatih: 1, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_1', familyLabel: 'الم الأولى' },
+  { surahNumber: 3, surahName: 'آل عمران', orderInFawatih: 2, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_1', familyLabel: 'الم الأولى' },
+  { surahNumber: 7, surahName: 'الأعراف', orderInFawatih: 3, formula: 'المص', letters: ['ا', 'ل', 'م', 'ص'], family: 'individual', familyLabel: 'الأعراف' },
+  { surahNumber: 10, surahName: 'يونس', orderInFawatih: 4, formula: 'الر', letters: ['ا', 'ل', 'ر'], family: 'alif_lam_ra', familyLabel: 'الر الخماسية' },
+  { surahNumber: 11, surahName: 'هود', orderInFawatih: 5, formula: 'الر', letters: ['ا', 'ل', 'ر'], family: 'alif_lam_ra', familyLabel: 'الر الخماسية' },
+  { surahNumber: 12, surahName: 'يوسف', orderInFawatih: 6, formula: 'الر', letters: ['ا', 'ل', 'ر'], family: 'alif_lam_ra', familyLabel: 'الر الخماسية' },
+  { surahNumber: 13, surahName: 'الرعد', orderInFawatih: 7, formula: 'المر', letters: ['ا', 'ل', 'م', 'ر'], family: 'alif_lam_ra', familyLabel: 'الرعد' },
+  { surahNumber: 14, surahName: 'إبراهيم', orderInFawatih: 8, formula: 'الر', letters: ['ا', 'ل', 'ر'], family: 'alif_lam_ra', familyLabel: 'الر الخماسية' },
+  { surahNumber: 15, surahName: 'الحجر', orderInFawatih: 9, formula: 'الر', letters: ['ا', 'ل', 'ر'], family: 'alif_lam_ra', familyLabel: 'الر الخماسية' },
+  { surahNumber: 19, surahName: 'مريم', orderInFawatih: 10, formula: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'], family: 'individual', familyLabel: 'مريم (الخماسية)' },
+  { surahNumber: 20, surahName: 'طه', orderInFawatih: 11, formula: 'طه', letters: ['ط', 'ه'], family: 'individual', familyLabel: 'طه' },
+  { surahNumber: 26, surahName: 'الشعراء', orderInFawatih: 12, formula: 'طسم', letters: ['ط', 'س', 'م'], family: 'tawasin', familyLabel: 'الطواسين' },
+  { surahNumber: 27, surahName: 'النمل', orderInFawatih: 13, formula: 'طس', letters: ['ط', 'س'], family: 'tawasin', familyLabel: 'الطواسين' },
+  { surahNumber: 28, surahName: 'القصص', orderInFawatih: 14, formula: 'طسم', letters: ['ط', 'س', 'م'], family: 'tawasin', familyLabel: 'الطواسين' },
+  { surahNumber: 29, surahName: 'العنكبوت', orderInFawatih: 15, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_2', familyLabel: 'الم الرباعية' },
+  { surahNumber: 30, surahName: 'الروم', orderInFawatih: 16, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_2', familyLabel: 'الم الرباعية' },
+  { surahNumber: 31, surahName: 'لقمان', orderInFawatih: 17, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_2', familyLabel: 'الم الرباعية' },
+  { surahNumber: 32, surahName: 'السجدة', orderInFawatih: 18, formula: 'الم', letters: ['ا', 'ل', 'م'], family: 'alif_lam_mim_2', familyLabel: 'الم الرباعية' },
+  { surahNumber: 36, surahName: 'يس', orderInFawatih: 19, formula: 'يس', letters: ['ي', 'س'], family: 'individual', familyLabel: 'يس' },
+  { surahNumber: 38, surahName: 'ص', orderInFawatih: 20, formula: 'ص', letters: ['ص'], family: 'individual', familyLabel: 'ص' },
+  { surahNumber: 40, surahName: 'غافر', orderInFawatih: 21, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 41, surahName: 'فصلت', orderInFawatih: 22, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 42, surahName: 'الشورى', orderInFawatih: 23, formula: 'حم عسق', subFormulas: ['حم', 'عسق'], letters: ['ح', 'م', 'ع', 'س', 'ق'], family: 'hawamim', familyLabel: 'الشورى (حم آية 1 • عسق آية 2)' },
+  { surahNumber: 43, surahName: 'الزخرف', orderInFawatih: 24, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 44, surahName: 'الدخان', orderInFawatih: 25, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 45, surahName: 'الجاثية', orderInFawatih: 26, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 46, surahName: 'الأحقاف', orderInFawatih: 27, formula: 'حم', letters: ['ح', 'م'], family: 'hawamim', familyLabel: 'الحواميم السبع' },
+  { surahNumber: 50, surahName: 'ق', orderInFawatih: 28, formula: 'ق', letters: ['ق'], family: 'individual', familyLabel: 'ق' },
+  { surahNumber: 68, surahName: 'القلم', orderInFawatih: 29, formula: 'ن', letters: ['ن'], family: 'individual', familyLabel: 'ن والقلم' },
+];
+
+/**
+ * Frequency limits of each unique opening formula in the Quran (29 total surahs, 30 distinct opening ayahs)
+ * سقف ترددات كل فاتحة في القرآن الكريم (حم تتكرر 7 مرات كاملة في الحواميم السبع بما فيها الشورى)
+ */
+export const QURANIC_FAWATIH_OCCURRENCE_CAPS: Record<string, number> = {
+  'الم': 6,
+  'الر': 5,
+  'حم': 7, // الحواميم السبع كاملة (غافر، فصلت، الشورى آية 1، الزخرف، الدخان، الجاثية، الأحقاف)
+  'طسم': 2,
+  'عسق': 1, // فواتح سورة الشورى (الآية 2 المستقلة)
+  'حم عسق': 1, // فواتح سورة الشورى بمجموع آيتيها
+  'كهيعص': 1,
+  'المص': 1,
+  'المر': 1,
+  'طه': 1,
+  'طس': 1,
+  'يس': 1,
+  'ص': 1,
+  'ق': 1,
+  'ن': 1,
+};
+
+/**
+ * Helper to get prepared 29 Quranic Surah openings with calculated values
+ * Supports both whole-surah and constituent sub-ayah openings (e.g. حم + عسق in Ash-Shura)
+ */
+export function getPrepared29QuranicSurahs(tableValues: Record<string, number>) {
+  return QURANIC_29_SURAH_FAWATIH.map((s) => {
+    const val = s.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+    const subUnits = s.subFormulas
+      ? s.subFormulas.map((sub, idx) => {
+          const subLetters = sub.split('');
+          const subVal = subLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+          return {
+            formula: sub,
+            letters: subLetters,
+            val: subVal,
+            ayahInSurah: idx + 1,
+            label: idx === 0 ? 'الآية الأولى' : 'الآية الثانية',
+          };
+        })
+      : [];
+    return {
+      ...s,
+      val,
+      subUnits,
+    };
+  });
+}
+
+/**
+ * The 30 canonical opening Ayahs of disconnected letters in exact Quranic sequence
+ * (الآيات الـ 30 لفواتح السور في المصحف الشريف - حم سبع مرات وعسق آية مستقلة)
+ */
+export function getPrepared30QuranicAyahs(tableValues: Record<string, number>) {
+  const list: {
+    surahNumber: number;
+    surahName: string;
+    orderInFawatih: number;
+    ayahNumber: number;
+    formula: string;
+    letters: string[];
+    family: QuranicSurahFatihah['family'];
+    familyLabel: string;
+    val: number;
+  }[] = [];
+
+  for (const s of QURANIC_29_SURAH_FAWATIH) {
+    if (s.subFormulas && s.subFormulas.length > 1) {
+      // Split Surah 42 (Ash-Shura) into its two distinct consecutive Ayat
+      s.subFormulas.forEach((sub, idx) => {
+        const subLetters = sub.split('');
+        const val = subLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+        list.push({
+          surahNumber: s.surahNumber,
+          surahName: s.surahName,
+          orderInFawatih: s.orderInFawatih,
+          ayahNumber: idx + 1,
+          formula: sub,
+          letters: subLetters,
+          family: s.family,
+          familyLabel: `${s.surahName} (${sub} - آية ${idx + 1})`,
+          val,
+        });
+      });
+    } else {
+      const val = s.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+      list.push({
+        surahNumber: s.surahNumber,
+        surahName: s.surahName,
+        orderInFawatih: s.orderInFawatih,
+        ayahNumber: 1,
+        formula: s.formula,
+        letters: s.letters,
+        family: s.family,
+        familyLabel: s.familyLabel,
+        val,
+      });
+    }
+  }
+  return list;
+}
+
+/**
+ * Splits text into natural dhikr clauses based on linguistic/dhikr markers
+ */
+export function partitionTextIntoDhikrClauses(text: string): string[] {
+  if (!text) return [];
+  const clean = text.trim();
+
+  // 1. Punctuation split if present
+  if (/[,،؛.\-]/.test(clean)) {
+    const parts = clean.split(/[,،؛.\-]+/).map((s) => s.trim()).filter((s) => s.length > 0);
+    if (parts.length > 1) return parts;
+  }
+
+  // 2. Specialized Quranic Fawatih tokens check (e.g. repeated "حم" or "الم" or "الر" or "عسق")
+  const tokens = clean.split(/\s+/).filter(Boolean);
+  if (tokens.length <= 1) return [clean];
+
+  const KNOWN_FAWATIH_TOKENS = new Set([
+    'حم', 'الم', 'الر', 'طسم', 'طس', 'طه', 'يس', 'ص', 'ق', 'ن', 'عسق', 'كهيعص', 'المص', 'المر', 'حم_عسق'
+  ]);
+  if (tokens.every((t) => KNOWN_FAWATIH_TOKENS.has(t) || t === 'حم')) {
+    return tokens;
+  }
+
+  // 3. Dhikr-specific phrase boundaries
+  if (tokens.length <= 3) return [clean];
+
+  const clauses: string[] = [];
+  let cur: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const w = tokens[i];
+    const nextW = tokens[i + 1] || '';
+
+    let isBoundary = false;
+
+    // Trigger on "وحده"
+    if (w === 'وحده' && cur.length >= 2) {
+      isBoundary = true;
+    }
+    // Trigger on "له الملك" or "وله الملك"
+    else if ((w === 'له' || w === 'وله') && nextW === 'الملك' && cur.length >= 2) {
+      isBoundary = true;
+    }
+    // Trigger on "وله الحمد" or "والحمد"
+    else if ((w === 'وله' || w === 'له' || w === 'والحمد') && (nextW === 'الحمد' || w === 'والحمد') && cur.length >= 2) {
+      isBoundary = true;
+    }
+    // Trigger on "وهو على" or conjunctions after decent length
+    else if (w.startsWith('و') && w.length >= 2 && cur.length >= 3 && ['وهو', 'وعلى', 'وبحمده', 'ولا'].includes(w)) {
+      isBoundary = true;
+    } else if (w.startsWith('و') && w !== 'و' && cur.length >= 4) {
+      isBoundary = true;
+    }
+
+    if (isBoundary && cur.length > 0) {
+      clauses.push(cur.join(' '));
+      cur = [w];
+    } else {
+      cur.push(w);
+    }
+  }
+
+  if (cur.length > 0) {
+    clauses.push(cur.join(' '));
+  }
+
+  return clauses.length > 1 ? clauses : [clean];
+}
+
+/**
+ * Calculates bonus for contiguous runs in the 29 Surahs / 30 Ayahs (e.g. 21 to 27 in Hawamim)
+ */
+function evaluateQuranicSequenceScore(
+  selectedSurahs: { orderInFawatih: number; surahNumber: number; surahName: string; family: string }[]
+): {
+  score: number;
+  contiguousClusters: string[];
+} {
+  if (selectedSurahs.length <= 1) return { score: 10000, contiguousClusters: [] };
+
+  let score = 5000;
+  const contiguousClusters: string[] = [];
+  let currentRun: string[] = [selectedSurahs[0].surahName];
+
+  for (let i = 1; i < selectedSurahs.length; i++) {
+    const prev = selectedSurahs[i - 1];
+    const curr = selectedSurahs[i];
+
+    // Check if directly contiguous in the 29 Surahs or consecutive Ayahs of the same Surah
+    const isContiguous =
+      curr.orderInFawatih === prev.orderInFawatih + 1 ||
+      (curr.orderInFawatih === prev.orderInFawatih && curr.surahNumber === prev.surahNumber);
+
+    if (isContiguous) {
+      score += 15000; // Big bonus for contiguous Quranic order!
+      currentRun.push(curr.surahName);
+    } else {
+      if (currentRun.length >= 2) {
+        contiguousClusters.push(currentRun.join(' ← '));
+      }
+      currentRun = [curr.surahName];
+    }
+
+    // Family harmony bonus
+    if (curr.family === prev.family && curr.family !== 'individual') {
+      score += 8000;
+    }
+  }
+
+  if (currentRun.length >= 2) {
+    contiguousClusters.push(currentRun.join(' ← '));
+  }
+
+  return { score, contiguousClusters };
+}
+
+/**
+ * ALGORITHM 1: Semantic Dhikr Phrase Partitioning with 29-Surah Quranic Alignment
+ * Splits a complex dhikr into clauses, matches each to authentic Surah openings,
+ * and sorts all terms in strict Quranic Mushaf sequence.
+ */
+export function findNooraniByPhrasePartitioning(
+  queryText: string,
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; uniqueLettersOnly?: boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 80, uniqueLettersOnly = false } = options;
+  const ayahs30 = getPrepared30QuranicAyahs(tableValues);
+  const surahs29 = getPrepared29QuranicSurahs(tableValues);
+  const results: NooraniFormulaMatch[] = [];
+  const seenKeys = new Set<string>();
+
+  const clauses = partitionTextIntoDhikrClauses(queryText);
+
+  // 1. Direct Multi-Token Quranic Fawatih Matching (e.g. "حم حم حم حم حم حم حم" or "حم عسق")
+  const KNOWN_FAWATIH_TOKENS = new Set([
+    'حم', 'الم', 'الر', 'طسم', 'طس', 'طه', 'يس', 'ص', 'ق', 'ن', 'عسق', 'كهيعص', 'المص', 'المر'
+  ]);
+  const isAllFawatihTokens = clauses.length >= 2 && clauses.every((c) => KNOWN_FAWATIH_TOKENS.has(c));
+
+  if (isAllFawatihTokens) {
+    const usedIndices = new Set<number>();
+    const matchedAyahs: typeof ayahs30 = [];
+
+    for (const token of clauses) {
+      const idx = ayahs30.findIndex((a, i) => !usedIndices.has(i) && a.formula === token);
+      if (idx !== -1) {
+        usedIndices.add(idx);
+        matchedAyahs.push(ayahs30[idx]);
+      }
+    }
+
+    if (matchedAyahs.length === clauses.length) {
+      const sumTotal = matchedAyahs.reduce((acc, a) => acc + a.val, 0);
+      if (sumTotal === targetValue) {
+        const formulaStr = matchedAyahs.map((a) => a.formula).join(' ');
+        const allLetters = matchedAyahs.flatMap((a) => a.letters);
+        const hasDup = new Set(allLetters).size !== allLetters.length;
+
+        if (!seenKeys.has(formulaStr) && (!uniqueLettersOnly || !hasDup)) {
+          seenKeys.add(formulaStr);
+          const seq = evaluateQuranicSequenceScore(matchedAyahs);
+          const surahOrders = Array.from(new Set(matchedAyahs.map((a) => a.orderInFawatih))).sort((a, b) => a - b);
+          const isHawamim7 = matchedAyahs.length === 7 && matchedAyahs.every((a) => a.formula === 'حم');
+          const description = isHawamim7
+            ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+            : `تسلسل فواتح قرآنية متتالية (${matchedAyahs.length} سور): ${matchedAyahs.map((a) => `${a.formula} (${a.surahName})`).join(' ← ')}`;
+
+          results.push({
+            formula: formulaStr,
+            letters: allLetters,
+            values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+            sum: sumTotal,
+            isAuthenticQuranicFawatih: true,
+            surahs: matchedAyahs.map(
+              (a) => `${a.formula} (${a.surahName} ${a.surahNumber}${a.ayahNumber > 1 || (a.surahNumber === 42 && a.formula === 'حم') ? ` آية ${a.ayahNumber}` : ''})`
+            ),
+            surahOrders,
+            description,
+            matchScore: 500000 + seq.score,
+            hasDuplicates: hasDup,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Semantic Dhikr Clause Partitioning for General Phrases
+  if (!isAllFawatihTokens && clauses.length >= 2) {
+    const clauseMatches: { clause: string; val: number; surah: (typeof ayahs30)[0] | null }[] = [];
+    let sumTotal = 0;
+    const usedAyahIndices = new Set<number>();
+
+    for (const c of clauses) {
+      const val = calculateGematriaWithOptions(c, {}, tableValues);
+      sumTotal += val;
+      const matchIdx = ayahs30.findIndex((a, idx) => !usedAyahIndices.has(idx) && a.val === val);
+      if (matchIdx !== -1) {
+        usedAyahIndices.add(matchIdx);
+        clauseMatches.push({ clause: c, val, surah: ayahs30[matchIdx] });
+      } else {
+        clauseMatches.push({ clause: c, val, surah: null });
+      }
+    }
+
+    if (sumTotal === targetValue && clauseMatches.every((cm) => cm.surah !== null)) {
+      const matchedAyahs = clauseMatches.map((cm) => cm.surah!);
+      matchedAyahs.sort((a, b) => a.orderInFawatih - b.orderInFawatih || a.ayahNumber - b.ayahNumber);
+
+      const allLetters = matchedAyahs.flatMap((s) => s.letters);
+      const formulaStr = matchedAyahs.map((s) => s.formula).join(' ');
+      const hasDup = new Set(allLetters).size !== allLetters.length;
+
+      if (!seenKeys.has(formulaStr) && (!uniqueLettersOnly || !hasDup)) {
+        seenKeys.add(formulaStr);
+        const seq = evaluateQuranicSequenceScore(matchedAyahs);
+        const surahLabels = matchedAyahs.map((s) => `${s.formula} (${s.surahName} ${s.surahNumber})`);
+        const breakdown = clauseMatches.map((cm) => `[${cm.clause} = ${cm.surah!.formula} (${cm.surah!.surahName})]`).join(' + ');
+
+        results.push({
+          formula: formulaStr,
+          letters: allLetters,
+          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          sum: targetValue,
+          isAuthenticQuranicFawatih: true,
+          surahs: surahLabels,
+          surahOrders: Array.from(new Set(matchedAyahs.map((s) => s.orderInFawatih))).sort((a, b) => a - b),
+          description: `تجزئة مقطعية بالترتيب المصحفي: ${breakdown}`,
+          matchScore: 100000 + seq.score,
+          hasDuplicates: hasDup,
+        });
+      }
+    }
+  }
+
+  // 3. Single Surah / Ayah Match
+  for (let i = 0; i < ayahs30.length; i++) {
+    const a1 = ayahs30[i];
+    if (a1.val === targetValue) {
+      if (!seenKeys.has(a1.formula)) {
+        seenKeys.add(a1.formula);
+        const isHamim = a1.formula === 'حم';
+        const surahOrders = isHamim ? [21, 22, 23, 24, 25, 26, 27] : [a1.orderInFawatih];
+        const surahLabels = isHamim
+          ? [
+              'حم (غافر 40)',
+              'حم (فصلت 41)',
+              'حم (الشورى 42 - آية 1)',
+              'حم (الزخرف 43)',
+              'حم (الدخان 44)',
+              'حم (الجاثية 45)',
+              'حم (الأحقاف 46)',
+            ]
+          : [`${a1.formula} (${a1.surahName} ${a1.surahNumber})`];
+
+        results.push({
+          formula: a1.formula,
+          letters: a1.letters,
+          values: a1.letters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          sum: targetValue,
+          isAuthenticQuranicFawatih: true,
+          surahs: surahLabels,
+          surahOrders,
+          description: isHamim
+            ? 'الحواميم السبعة (7 سور متتالية تبدأ بـ حم، ومنها الشورى آية 1)'
+            : `فاتحة سورة ${a1.surahName} (رقم ${a1.surahNumber}) - ترتيب ${a1.orderInFawatih} في فواتح القرآن`,
+          matchScore: 99999,
+          hasDuplicates: new Set(a1.letters).size !== a1.letters.length,
+        });
+      }
+    }
+  }
+
+  // Also check Surah 42 combined whole-surah value (278)
+  for (const s of surahs29) {
+    if (s.orderInFawatih === 23 && s.val === targetValue && !seenKeys.has(s.formula)) {
+      seenKeys.add(s.formula);
+      results.push({
+        formula: s.formula,
+        letters: s.letters,
+        values: s.letters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+        sum: targetValue,
+        isAuthenticQuranicFawatih: true,
+        surahs: [`${s.formula} (${s.surahName} ${s.surahNumber})`],
+        surahOrders: [s.orderInFawatih],
+        description: `فواتح سورة الشورى (الآيتان 1 و 2: حم عسق)`,
+        matchScore: 99999,
+        hasDuplicates: new Set(s.letters).size !== s.letters.length,
+      });
+    }
+  }
+
+  // 4. Pair / Multi Combinations from the 30 Ayahs in strict sequential order
+  for (let i = 0; i < ayahs30.length; i++) {
+    const a1 = ayahs30[i];
+    if (a1.val < targetValue) {
+      for (let j = i + 1; j < ayahs30.length; j++) {
+        const a2 = ayahs30[j];
+        if (a1.val + a2.val === targetValue) {
+          const formulaStr = `${a1.formula} ${a2.formula}`;
+          const allLetters = [...a1.letters, ...a2.letters];
+          const hasDup = new Set(allLetters).size !== allLetters.length;
+
+          if (!seenKeys.has(formulaStr) && (!uniqueLettersOnly || !hasDup)) {
+            seenKeys.add(formulaStr);
+            const isContiguous =
+              a2.orderInFawatih === a1.orderInFawatih + 1 ||
+              (a2.orderInFawatih === a1.orderInFawatih && a2.surahNumber === a1.surahNumber);
+
+            results.push({
+              formula: formulaStr,
+              letters: allLetters,
+              values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+              sum: targetValue,
+              isAuthenticQuranicFawatih: true,
+              surahs: [
+                `${a1.formula} (${a1.surahName} ${a1.surahNumber})`,
+                `${a2.formula} (${a2.surahName} ${a2.surahNumber})`,
+              ],
+              surahOrders: Array.from(new Set([a1.orderInFawatih, a2.orderInFawatih])).sort((a, b) => a - b),
+              description: `ترتيب مصحفي: [${a1.surahName} (${a1.surahNumber})] ← [${a2.surahName} (${a2.surahNumber})] ${isContiguous ? '⭐ (متتاليتان)' : ''}`,
+              matchScore: 95000 + (isContiguous ? 20000 : 0),
+              hasDuplicates: hasDup,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Supplement with DP solutions over 30 Ayahs
+  const fallback = findNooraniByDPKnapsack(targetValue, tableValues, { maxResults: maxResults - results.length });
+  for (const f of fallback) {
+    if (!seenKeys.has(f.formula)) {
+      seenKeys.add(f.formula);
+      results.push(f);
+    }
+  }
+
+  return results.slice(0, maxResults);
+}
+
+/**
+ * ALGORITHM 2: Comprehensive DP Knapsack across the 29 Quranic Surahs
+ * Finds all combinations of the 29 Surahs in strict Mushaf order, strictly observing repetition limits.
+ */
+export function findNooraniByDPKnapsack(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; uniqueLettersOnly?: boolean; shouldAbort?: () => boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 80, uniqueLettersOnly = false, shouldAbort } = options;
+  if (!targetValue || targetValue <= 0) return [];
+  if (shouldAbort && shouldAbort()) return [];
+
+  const ayahs30 = getPrepared30QuranicAyahs(tableValues);
+  const totalSum = ayahs30.reduce((acc, s) => acc + s.val, 0);
+
+  if (targetValue > totalSum) return [];
+
+  interface DPSurahPath {
+    surahs: (typeof ayahs30)[0][];
+    sum: number;
+    score: number;
+  }
+
+  const dp: DPSurahPath[][] = Array.from({ length: targetValue + 1 }, () => []);
+  dp[0] = [{ surahs: [], sum: 0, score: 0 }];
+
+  for (let sIdx = 0; sIdx < ayahs30.length; sIdx++) {
+    if (shouldAbort && shouldAbort()) return [];
+    const s = ayahs30[sIdx];
+    if (s.val > targetValue) continue;
+
+    for (let v = targetValue; v >= s.val; v--) {
+      const prevList = dp[v - s.val];
+      if (!prevList || prevList.length === 0) continue;
+
+      for (const prev of prevList) {
+        if (dp[v].length >= 15) break;
+
+        if (uniqueLettersOnly) {
+          const usedLetters = new Set(prev.surahs.flatMap((x) => x.letters));
+          if (s.letters.some((c) => usedLetters.has(c))) continue;
+        }
+
+        const nextSurahs = [...prev.surahs, s];
+        const seq = evaluateQuranicSequenceScore(nextSurahs);
+
+        dp[v].push({
+          surahs: nextSurahs,
+          sum: v,
+          score: prev.score + seq.score,
+        });
+      }
+    }
+  }
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenFormulas = new Set<string>();
+
+  const candidates = [...dp[targetValue]].sort((a, b) => b.score - a.score);
+
+  for (const item of candidates) {
+    if (item.surahs.length === 0) continue;
+    const formulaStr = item.surahs.map((s) => s.formula).join(' ');
+    if (seenFormulas.has(formulaStr)) continue;
+    seenFormulas.add(formulaStr);
+
+    const allLetters = item.surahs.flatMap((s) => s.letters);
+    const hasDup = new Set(allLetters).size !== allLetters.length;
+    const surahList = item.surahs.map(
+      (s) => `${s.formula} (${s.surahName} ${s.surahNumber}${s.ayahNumber > 1 || (s.surahNumber === 42 && s.formula === 'حم') ? ` آية ${s.ayahNumber}` : ''})`
+    );
+    const seq = evaluateQuranicSequenceScore(item.surahs);
+    const isHawamim7 = item.surahs.length === 7 && item.surahs.every((s) => s.formula === 'حم');
+    const contiguousText = seq.contiguousClusters.length > 0 ? ` [متتالية: ${seq.contiguousClusters.join('، ')}]` : '';
+    const description = isHawamim7
+      ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+      : `تسلسل مصحفي (${item.surahs.length} سور): ${item.surahs.map((s) => `${s.surahName} (${s.surahNumber})`).join(' ← ')}${contiguousText}`;
+
+    results.push({
+      formula: formulaStr,
+      letters: allLetters,
+      values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+      sum: targetValue,
+      isAuthenticQuranicFawatih: true,
+      surahs: surahList,
+      surahOrders: Array.from(new Set(item.surahs.map((s) => s.orderInFawatih))).sort((a, b) => a - b),
+      description,
+      matchScore: (isHawamim7 ? 500000 : 90000) + seq.score,
+      hasDuplicates: hasDup,
+    });
+  }
+
+  return results.slice(0, maxResults);
+}
+
+/**
+ * ALGORITHM 3: Min-Surahs Greedy Optimization
+ * Finds combinations of the 30 Ayahs using the absolute minimum count of Surahs, in Quranic order.
+ */
+export function findNooraniByMinBlocksGreedy(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; uniqueLettersOnly?: boolean; shouldAbort?: () => boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 80, uniqueLettersOnly = false, shouldAbort } = options;
+  if (!targetValue || targetValue <= 0) return [];
+  if (shouldAbort && shouldAbort()) return [];
+
+  const ayahs30 = getPrepared30QuranicAyahs(tableValues);
+  const totalSum = ayahs30.reduce((acc, s) => acc + s.val, 0);
+  if (targetValue > totalSum) return [];
+
+  const maxVal = Math.max(...ayahs30.map((s) => s.val));
+  const minK = Math.max(1, Math.ceil(targetValue / maxVal));
+  if (minK > ayahs30.length) return [];
+  const maxK = Math.min(ayahs30.length, minK + 4);
+
+  const suffixSum = new Array(ayahs30.length + 1).fill(0);
+  for (let i = ayahs30.length - 1; i >= 0; i--) {
+    suffixSum[i] = suffixSum[i + 1] + ayahs30[i].val;
+  }
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenFormulas = new Set<string>();
+
+  for (let k = minK; k <= maxK; k++) {
+    if (results.length >= maxResults) break;
+    if (shouldAbort && shouldAbort()) break;
+
+    const dfs = (startIndex: number, chosen: typeof ayahs30, currentSum: number) => {
+      if (shouldAbort && shouldAbort()) return;
+      if (results.length >= maxResults * 1.5) return;
+      if (chosen.length === k) {
+        if (currentSum === targetValue) {
+          const allLetters = chosen.flatMap((s) => s.letters);
+          const hasDup = new Set(allLetters).size !== allLetters.length;
+          if (uniqueLettersOnly && hasDup) return;
+
+          const formulaStr = chosen.map((s) => s.formula).join(' ');
+          if (!seenFormulas.has(formulaStr)) {
+            seenFormulas.add(formulaStr);
+            const surahList = chosen.map(
+              (s) => `${s.formula} (${s.surahName} ${s.surahNumber}${s.ayahNumber > 1 || (s.surahNumber === 42 && s.formula === 'حم') ? ` آية ${s.ayahNumber}` : ''})`
+            );
+            const seq = evaluateQuranicSequenceScore(chosen);
+            const isHawamim7 = chosen.length === 7 && chosen.every((s) => s.formula === 'حم');
+            const contiguousText = seq.contiguousClusters.length > 0 ? ` [متتالية: ${seq.contiguousClusters.join('، ')}]` : '';
+            const description = isHawamim7
+              ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+              : `فواتح عظمى مختزلة (${chosen.length} سور مصحفية): ${chosen.map((s) => `${s.surahName} (${s.surahNumber})`).join(' ← ')}${contiguousText}`;
+
+            results.push({
+              formula: formulaStr,
+              letters: allLetters,
+              values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+              sum: currentSum,
+              isAuthenticQuranicFawatih: true,
+              surahs: surahList,
+              surahOrders: Array.from(new Set(chosen.map((s) => s.orderInFawatih))).sort((a, b) => a - b),
+              description,
+              matchScore: (isHawamim7 ? 500000 : 99000) - chosen.length * 2000 + seq.score,
+              hasDuplicates: hasDup,
+            });
+          }
+        }
+        return;
+      }
+
+      const remainingSlots = k - chosen.length;
+      if (currentSum + remainingSlots * maxVal < targetValue) return;
+      if (startIndex < ayahs30.length && currentSum + suffixSum[startIndex] < targetValue) return;
+
+      for (let i = startIndex; i < ayahs30.length; i++) {
+        const s = ayahs30[i];
+        if (currentSum + s.val > targetValue) continue;
+
+        if (uniqueLettersOnly) {
+          const used = new Set(chosen.flatMap((x) => x.letters));
+          if (s.letters.some((c) => used.has(c))) continue;
+        }
+
+        dfs(i + 1, [...chosen, s], currentSum + s.val);
+      }
+    };
+
+    dfs(0, [], 0);
+  }
+
+  return results.slice(0, maxResults);
+}
+
+/**
+ * ALGORITHM 4: Quranic Harmonic A* Search (Contiguous Surah Chains)
+ * Heavily rewards consecutive Surah runs (e.g. 7 Hawamim, 5 Alif-Lam-Ra, 4 Alif-Lam-Mim)
+ */
+export function findNooraniByHarmonicSearch(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; uniqueLettersOnly?: boolean; shouldAbort?: () => boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 80, uniqueLettersOnly = false, shouldAbort } = options;
+  if (!targetValue || targetValue <= 0) return [];
+  if (shouldAbort && shouldAbort()) return [];
+
+  const ayahs30 = getPrepared30QuranicAyahs(tableValues).filter((s) => s.val <= targetValue);
+  const totalSum = ayahs30.reduce((acc, s) => acc + s.val, 0);
+  if (targetValue > totalSum) return [];
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenFormulas = new Set<string>();
+
+  interface AStarSurahNode {
+    chosen: typeof ayahs30;
+    lastIndex: number;
+    sum: number;
+    harmonyScore: number;
+  }
+
+  const queue: AStarSurahNode[] = [{ chosen: [], lastIndex: -1, sum: 0, harmonyScore: 0 }];
+  let steps = 0;
+
+  while (queue.length > 0 && results.length < maxResults * 1.5 && steps < 1200) {
+    steps++;
+    if (steps % 50 === 0 && shouldAbort && shouldAbort()) break;
+
+    queue.sort((a, b) => {
+      const remA = targetValue - a.sum;
+      const remB = targetValue - b.sum;
+      if (remA === 0 && remB !== 0) return -1;
+      if (remB === 0 && remA !== 0) return 1;
+      return b.harmonyScore - a.harmonyScore || remA - remB;
+    });
+
+    const curr = queue.shift()!;
+
+    if (curr.sum === targetValue && curr.chosen.length > 0) {
+      const allLetters = curr.chosen.flatMap((s) => s.letters);
+      const hasDup = new Set(allLetters).size !== allLetters.length;
+      if (uniqueLettersOnly && hasDup) continue;
+
+      const formulaStr = curr.chosen.map((s) => s.formula).join(' ');
+      if (!seenFormulas.has(formulaStr)) {
+        seenFormulas.add(formulaStr);
+        const seq = evaluateQuranicSequenceScore(curr.chosen);
+        const surahList = curr.chosen.map(
+          (s) => `${s.formula} (${s.surahName} ${s.surahNumber}${s.ayahNumber > 1 || (s.surahNumber === 42 && s.formula === 'حم') ? ` آية ${s.ayahNumber}` : ''})`
+        );
+        const isHawamim7 = curr.chosen.length === 7 && curr.chosen.every((s) => s.formula === 'حم');
+        const clusters = seq.contiguousClusters.length > 0 ? ` (سلسلة متصلة: ${seq.contiguousClusters.join('، ')})` : '';
+        const description = isHawamim7
+          ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+          : `تناغم قرآني مصحفي: ${curr.chosen.map((s) => `${s.surahName} (${s.surahNumber})`).join(' ← ')}${clusters}`;
+
+        results.push({
+          formula: formulaStr,
+          letters: allLetters,
+          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          sum: curr.sum,
+          isAuthenticQuranicFawatih: true,
+          surahs: surahList,
+          surahOrders: Array.from(new Set(curr.chosen.map((s) => s.orderInFawatih))).sort((a, b) => a - b),
+          description,
+          matchScore: (isHawamim7 ? 500000 : 95000) + curr.harmonyScore,
+          hasDuplicates: hasDup,
+        });
+      }
+      continue;
+    }
+
+    if (curr.chosen.length >= 8) continue;
+
+    for (let i = curr.lastIndex + 1; i < ayahs30.length; i++) {
+      const s = ayahs30[i];
+      if (curr.sum + s.val > targetValue) continue;
+
+      let bonus = 0;
+      if (curr.chosen.length > 0 && i === curr.lastIndex + 1) {
+        bonus += 20000;
+      }
+      if (curr.chosen.some((prev) => prev.family === s.family)) {
+        bonus += 8000;
+      }
+
+      if (uniqueLettersOnly) {
+        const used = new Set(curr.chosen.flatMap((x) => x.letters));
+        if (s.letters.some((c) => used.has(c))) continue;
+      }
+
+      queue.push({
+        chosen: [...curr.chosen, s],
+        lastIndex: i,
+        sum: curr.sum + s.val,
+        harmonyScore: curr.harmonyScore + bonus,
+      });
+    }
+
+    if (queue.length > 250) {
+      queue.splice(250);
+    }
+  }
+
+  return results.slice(0, maxResults);
+}
+
+/**
+ * ALGORITHM 5: Strict Sequential 30-Ayah Subset Sum
+ * Strict 0/1 selection across the 30 Ayahs in unchangeable Mushaf order.
+ * Highly optimized with mathematical suffix sum branch-and-bound pruning.
+ */
+export function findNooraniByStrictUniqueFawatih(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; uniqueLettersOnly?: boolean; shouldAbort?: () => boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 80, uniqueLettersOnly = false, shouldAbort } = options;
+  if (!targetValue || targetValue <= 0) return [];
+  if (shouldAbort && shouldAbort()) return [];
+
+  const ayahs30 = getPrepared30QuranicAyahs(tableValues).filter((s) => s.val <= targetValue);
+  const totalSum = ayahs30.reduce((acc, s) => acc + s.val, 0);
+
+  if (targetValue > totalSum) return [];
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenFormulas = new Set<string>();
+
+  const suffixSum = new Array(ayahs30.length + 1).fill(0);
+  for (let i = ayahs30.length - 1; i >= 0; i--) {
+    suffixSum[i] = suffixSum[i + 1] + ayahs30[i].val;
+  }
+
+  const chosenStack: (typeof ayahs30)[0][] = [];
+  let visits = 0;
+
+  const search01 = (startIndex: number, currentSum: number) => {
+    visits++;
+    if (visits % 500 === 0 && shouldAbort && shouldAbort()) return;
+    if (results.length >= maxResults * 1.5) return;
+
+    if (currentSum === targetValue && chosenStack.length > 0) {
+      const allLetters = chosenStack.flatMap((s) => s.letters);
+      const hasDup = new Set(allLetters).size !== allLetters.length;
+      if (uniqueLettersOnly && hasDup) return;
+
+      const formulaStr = chosenStack.map((s) => s.formula).join(' ');
+      if (!seenFormulas.has(formulaStr)) {
+        seenFormulas.add(formulaStr);
+        const seq = evaluateQuranicSequenceScore(chosenStack);
+        const surahList = chosenStack.map(
+          (s) => `${s.formula} (${s.surahName} ${s.surahNumber}${s.ayahNumber > 1 || (s.surahNumber === 42 && s.formula === 'حم') ? ` آية ${s.ayahNumber}` : ''})`
+        );
+        const isHawamim7 = chosenStack.length === 7 && chosenStack.every((s) => s.formula === 'حم');
+        const clusters = seq.contiguousClusters.length > 0 ? ` [متتالية: ${seq.contiguousClusters.join('، ')}]` : '';
+        const description = isHawamim7
+          ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+          : `تسلسل مصحفي حقيقي (${chosenStack.length} سور): ${chosenStack.map((s) => `${s.surahName} (${s.surahNumber})`).join(' ← ')}${clusters}`;
+
+        results.push({
+          formula: formulaStr,
+          letters: allLetters,
+          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          sum: currentSum,
+          isAuthenticQuranicFawatih: true,
+          surahs: surahList,
+          surahOrders: Array.from(new Set(chosenStack.map((s) => s.orderInFawatih))).sort((a, b) => a - b),
+          description,
+          matchScore: (isHawamim7 ? 500000 : 99999) + seq.score,
+          hasDuplicates: hasDup,
+        });
+      }
+      return;
+    }
+
+    if (currentSum >= targetValue) return;
+    if (startIndex >= ayahs30.length || currentSum + suffixSum[startIndex] < targetValue) return;
+
+    for (let i = startIndex; i < ayahs30.length; i++) {
+      if (currentSum + ayahs30[i].val > targetValue) continue;
+      if (currentSum + suffixSum[i] < targetValue) break;
+
+      chosenStack.push(ayahs30[i]);
+      search01(i + 1, currentSum + ayahs30[i].val);
+      chosenStack.pop();
+
+      if (results.length >= maxResults * 1.5) break;
+    }
+  };
+
+  search01(0, 0);
+  return results.slice(0, maxResults);
+}
+
+/**
+ * Dispatcher for the 5 Noorani Algorithms
+ */
+export function findNooraniCombinationsByAlgorithm(
+  algorithmId: NooraniAlgorithmId,
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: {
+    maxResults?: number;
+    uniqueLettersOnly?: boolean;
+    queryText?: string;
+    shouldAbort?: () => boolean;
+  } = {}
+): NooraniFormulaMatch[] {
+  if (!targetValue || targetValue <= 0) return [];
+  if (options.shouldAbort && options.shouldAbort()) return [];
+
+  switch (algorithmId) {
+    case 1:
+      return findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
+    case 2:
+      return findNooraniByDPKnapsack(targetValue, tableValues, options);
+    case 3:
+      return findNooraniByMinBlocksGreedy(targetValue, tableValues, options);
+    case 4:
+      return findNooraniByHarmonicSearch(targetValue, tableValues, options);
+    case 5:
+      return findNooraniByStrictUniqueFawatih(targetValue, tableValues, options);
+    default:
+      return findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
+  }
+}
+
+/**
+ * Infers surah orders (1 to 29) from a formula string if not explicitly given
+ */
+export function inferSurahOrdersFromFormula(formulaStr: string): number[] {
+  if (!formulaStr) return [];
+  const trimmed = formulaStr.trim();
+
+  // 1. Direct match with standard authentic formulas (e.g. 'حم' -> all 7 Hawamim, 'الم' -> all 6)
+  const auth = AUTHENTIC_QURANIC_FAWATIH.find((f) => f.formula === trimmed);
+  if (auth && auth.surahOrders && auth.surahOrders.length > 0) {
+    return [...auth.surahOrders];
+  }
+
+  // 2. Tokenized multi-formula matching (e.g. "حم حم حم حم حم حم حم" or "حم حم حم عسق حم حم حم حم")
+  const normalized = trimmed.replace(/حم\s+عسق/g, 'حم_عسق');
+  const tokens = normalized.split(/\s+/).filter(Boolean).map((t) => t.replace(/حم_عسق/g, 'حم عسق'));
+  const matchedOrders: number[] = [];
+  const usedIndices = new Set<number>();
+  const shuraConsumedSubs = new Set<string>(); // Tracks distinct sub-Ayat for Surah 42 (Index 22: حم آية 1, عسق آية 2)
+
+  for (const t of tokens) {
+    // Special handling for Surah 42 (Ash-Shura - Order 23 / Index 22)
+    if (t === 'عسق' && !shuraConsumedSubs.has('عسق')) {
+      shuraConsumedSubs.add('عسق');
+      matchedOrders.push(23);
+      if (shuraConsumedSubs.has('حم')) {
+        usedIndices.add(22);
+      }
+      continue;
+    }
+
+    // General matching in QURANIC_29_SURAH_FAWATIH
+    const foundIdx = QURANIC_29_SURAH_FAWATIH.findIndex((s, idx) => {
+      if (usedIndices.has(idx)) return false;
+      if (s.formula === t) return true;
+      if (idx === 22 && s.subFormulas && s.subFormulas.includes(t) && !shuraConsumedSubs.has(t)) {
+        return true;
+      }
+      return false;
+    });
+
+    if (foundIdx !== -1) {
+      if (foundIdx === 22) {
+        shuraConsumedSubs.add(t);
+        if (shuraConsumedSubs.size >= 2 || t === 'حم عسق') {
+          usedIndices.add(22);
+        }
+      } else {
+        usedIndices.add(foundIdx);
+      }
+      matchedOrders.push(QURANIC_29_SURAH_FAWATIH[foundIdx].orderInFawatih);
+    }
+  }
+
+  return Array.from(new Set(matchedOrders)).sort((a, b) => a - b);
+}
+
+/**
+ * Merged & Classified Noorani Formula Item with full system metadata
+ */
+export interface MergedNooraniFormulaItem {
+  key: string;
+  formula: string;
+  letters: string[];
+  values: number[];
+  sumMashriqi: number;
+  sumMaghribi: number;
+  displaySum: string;
+  system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
+  systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
+  isAuthenticQuranicFawatih: boolean;
+  surahs?: string[];
+  surahOrders?: number[];
+  description?: string;
+  hasDuplicates?: boolean;
+}
+
+/**
+ * Progress payload for asynchronous Noorani processing
+ */
+export interface ClassifyProgressUpdate {
+  percent: number;
+  stage: 'idle' | 'mashriqi' | 'maghribi' | 'merging' | 'completed' | 'cancelled';
+  message: string;
+  foundCount: number;
+}
+
+/**
+ * Helper to build merged items from raw mashriqi and maghribi matches
+ */
+function buildMergedNooraniItems(
+  mashList: NooraniFormulaMatch[],
+  magList: NooraniFormulaMatch[],
   targetMashriqi: number,
   targetMaghribi: number,
-  options: {
-    uniqueLettersOnly?: boolean;
-    maxResults?: number;
-  } = {}
+  maxResults: number,
+  queryText: string = ''
 ): MergedNooraniFormulaItem[] {
-  const { uniqueLettersOnly = false, maxResults = 80 } = options;
-
-  // Search Mashriqi formulas for targetMashriqi
-  const mashList = targetMashriqi > 0 ? findNooraniCombinations(targetMashriqi, MASHRIQI_VALUES, {
-    maxResults: 70,
-    uniqueLettersOnly,
-  }) : [];
-
-  // Search Maghribi formulas for targetMaghribi
-  const magList = targetMaghribi > 0 ? findNooraniCombinations(targetMaghribi, MAGHRIBI_VALUES, {
-    maxResults: 70,
-    uniqueLettersOnly,
-  }) : [];
-
-  // Map to deduplicate by formula string
   const formulaMap = new Map<string, {
     formula: string;
     letters: string[];
     isAuthenticQuranicFawatih: boolean;
     surahs?: string[];
+    surahOrders?: number[];
     description?: string;
     hasDuplicates?: boolean;
     matchScore: number;
@@ -1647,6 +2681,7 @@ export function classifyAndMergeNooraniFormulas(
         letters: m.letters,
         isAuthenticQuranicFawatih: m.isAuthenticQuranicFawatih,
         surahs: m.surahs,
+        surahOrders: m.surahOrders,
         description: m.description,
         hasDuplicates: m.hasDuplicates,
         matchScore: m.matchScore,
@@ -1654,16 +2689,115 @@ export function classifyAndMergeNooraniFormulas(
     } else {
       if (m.isAuthenticQuranicFawatih) existing.isAuthenticQuranicFawatih = true;
       if (m.surahs && m.surahs.length > 0) existing.surahs = m.surahs;
+      if (m.surahOrders && m.surahOrders.length > 0) existing.surahOrders = m.surahOrders;
       if (m.matchScore > existing.matchScore) existing.matchScore = m.matchScore;
+      if (m.description && (!existing.description || existing.description.length < m.description.length)) {
+        existing.description = m.description;
+      }
+    }
+  }
+
+  // 1. Guaranteed Inclusion: 7 Hawamim when target is 336 (7 * 48 = 336 in both systems)
+  if (targetMashriqi === 336 || targetMaghribi === 336) {
+    const f7 = 'حم حم حم حم حم حم حم';
+    formulaMap.set(f7, {
+      formula: f7,
+      letters: ['ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م'],
+      isAuthenticQuranicFawatih: true,
+      surahs: [
+        'حم (غافر 40)',
+        'حم (فصلت 41)',
+        'حم (الشورى 42 - آية 1)',
+        'حم (الزخرف 43)',
+        'حم (الدخان 44)',
+        'حم (الجاثية 45)',
+        'حم (الأحقاف 46)',
+      ],
+      surahOrders: [21, 22, 23, 24, 25, 26, 27],
+      description: 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)',
+      matchScore: 1000000,
+      hasDuplicates: true,
+    });
+  }
+
+  // 2. Guaranteed Inclusion: 7 Hawamim + Ayn-Sin-Qaf when target is 566 (336 + 230 = 566)
+  if (targetMashriqi === 566 || targetMaghribi === 566) {
+    const f8 = 'حم حم حم عسق حم حم حم حم';
+    formulaMap.set(f8, {
+      formula: f8,
+      letters: ['ح', 'م', 'ح', 'م', 'ح', 'م', 'ع', 'س', 'ق', 'ح', 'م', 'ح', 'م', 'ح', 'م', 'ح', 'م'],
+      isAuthenticQuranicFawatih: true,
+      surahs: [
+        'حم (غافر 40)',
+        'حم (فصلت 41)',
+        'حم عسق (الشورى 42 - آية 1 و 2)',
+        'حم (الزخرف 43)',
+        'حم (الدخان 44)',
+        'حم (الجاثية 45)',
+        'حم (الأحقاف 46)',
+      ],
+      surahOrders: [21, 22, 23, 24, 25, 26, 27],
+      description: 'آيات فواتح الحواميم الثمانية كاملة بترتيب المصحف الشريف (7 سور تشمل آيتي الشورى 1 و 2)',
+      matchScore: 1000000,
+      hasDuplicates: true,
+    });
+  }
+
+  // 3. Guaranteed Inclusion: Single Hamim (48) with all 7 Hawamim surahs
+  if (targetMashriqi === 48 || targetMaghribi === 48) {
+    const f1 = 'حم';
+    formulaMap.set(f1, {
+      formula: f1,
+      letters: ['ح', 'م'],
+      isAuthenticQuranicFawatih: true,
+      surahs: [
+        'حم (غافر 40)',
+        'حم (فصلت 41)',
+        'حم (الشورى 42 - آية 1)',
+        'حم (الزخرف 43)',
+        'حم (الدخان 44)',
+        'حم (الجاثية 45)',
+        'حم (الأحقاف 46)',
+      ],
+      surahOrders: [21, 22, 23, 24, 25, 26, 27],
+      description: 'الحواميم السبعة (7 سور متتالية في المصحف الشريف تبدأ بـ حم، ومنها الشورى آية 1)',
+      matchScore: 1000000,
+      hasDuplicates: false,
+    });
+  }
+
+  // 4. If queryText is composed of fawatih tokens, guarantee it as an authentic entry
+  if (queryText && queryText.trim()) {
+    const qTrim = queryText.trim();
+    const qTokens = qTrim.split(/\s+/).filter(Boolean);
+    const KNOWN_FAWATIH_TOKENS = new Set([
+      'حم', 'الم', 'الر', 'طسم', 'طس', 'طه', 'يس', 'ص', 'ق', 'ن', 'عسق', 'كهيعص', 'المص', 'المر', 'حم_عسق'
+    ]);
+    if (qTokens.length > 0 && qTokens.every((t) => KNOWN_FAWATIH_TOKENS.has(t) || t === 'حم')) {
+      const qLetters = qTrim.replace(/\s+/g, '').split('');
+      const qSumMash = qLetters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
+      const qSumMag = qLetters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
+      if ((targetMashriqi > 0 && qSumMash === targetMashriqi) || (targetMaghribi > 0 && qSumMag === targetMaghribi)) {
+        const qOrders = inferSurahOrdersFromFormula(qTrim);
+        formulaMap.set(qTrim, {
+          formula: qTrim,
+          letters: qLetters,
+          isAuthenticQuranicFawatih: true,
+          surahOrders: qOrders,
+          description: qTrim === 'حم حم حم حم حم حم حم'
+            ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+            : `تركيبة فواتح قرآنية مطابقة لعبارة البحث [${qTrim}] (${qOrders.length} سور)`,
+          matchScore: 1000000,
+          hasDuplicates: new Set(qLetters).size !== qLetters.length,
+        });
+      }
     }
   }
 
   const mergedItems: MergedNooraniFormulaItem[] = [];
 
   for (const [formulaStr, item] of formulaMap.entries()) {
-    // Calculate exact sum in Mashriqi
     const sumMash = item.letters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
-    // Calculate exact sum in Maghribi
     const sumMag = item.letters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
 
     const matchesMash = (targetMashriqi > 0 && sumMash === targetMashriqi);
@@ -1677,12 +2811,10 @@ export function classifyAndMergeNooraniFormulas(
 
     if (matchesMash && matchesMag) {
       if (sumMash === sumMag) {
-        // True common formula (e.g. لا تحتوي على س أو ص أو توازنت قيمتهما)
         system = 'both';
         systemLabel = 'مشترك';
         displaySum = `${sumMash}`;
       } else {
-        // Dual match (e.g. كهيعص حيث توافق المشرقي 195 بقيمتها المشرقية، وتوافق المغربي 165 بقيمتها المغربية)
         system = 'dual_match';
         systemLabel = 'مطابق للنظامين';
         displaySum = `شرقي: ${sumMash} / غربي: ${sumMag}`;
@@ -1698,6 +2830,9 @@ export function classifyAndMergeNooraniFormulas(
     }
 
     const values = item.letters.map((c) => (system === 'maghribi' ? MAGHRIBI_VALUES[c] : MASHRIQI_VALUES[c]) ?? 0);
+    const surahOrders = item.surahOrders && item.surahOrders.length > 0
+      ? item.surahOrders
+      : inferSurahOrdersFromFormula(formulaStr);
 
     mergedItems.push({
       key: `formula_${formulaStr}_${system}`,
@@ -1711,18 +2846,22 @@ export function classifyAndMergeNooraniFormulas(
       systemLabel,
       isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
       surahs: item.surahs,
+      surahOrders,
       description: item.description,
       hasDuplicates: item.hasDuplicates,
     });
   }
 
-  // Sort merged items:
-  // 1. Authentic Quranic Fawatih / pure combinations first
-  // 2. Dual match & Both first
-  // 3. Shortest letters length
+  // Sort merged items: Exact query match or authentic combinations with highest matchScore first
+  const cleanQ = queryText.trim();
   mergedItems.sort((a, b) => {
+    if (cleanQ && a.formula === cleanQ) return -1;
+    if (cleanQ && b.formula === cleanQ) return 1;
     if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
     if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
+    const countA = a.surahOrders?.length || 0;
+    const countB = b.surahOrders?.length || 0;
+    if (countA !== countB) return countB - countA;
     const sysPriority = (s: string) => (s === 'dual_match' ? 3 : s === 'both' ? 2 : 1);
     if (sysPriority(b.system) !== sysPriority(a.system)) {
       return sysPriority(b.system) - sysPriority(a.system);
@@ -1731,5 +2870,143 @@ export function classifyAndMergeNooraniFormulas(
   });
 
   return mergedItems.slice(0, maxResults);
+}
+
+/**
+ * Rigorous Multi-System Noorani Formula Classifier & Merger (Synchronous)
+ */
+export function classifyAndMergeNooraniFormulas(
+  targetMashriqi: number,
+  targetMaghribi: number,
+  options: {
+    uniqueLettersOnly?: boolean;
+    maxResults?: number;
+    algorithmId?: NooraniAlgorithmId;
+    queryText?: string;
+    shouldAbort?: () => boolean;
+  } = {}
+): MergedNooraniFormulaItem[] {
+  const { uniqueLettersOnly = false, maxResults = 80, algorithmId = 1, queryText = '', shouldAbort } = options;
+
+  if (shouldAbort && shouldAbort()) return [];
+
+  // Search Mashriqi formulas for targetMashriqi
+  const mashList = targetMashriqi > 0 ? findNooraniCombinationsByAlgorithm(algorithmId, targetMashriqi, MASHRIQI_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+    queryText,
+    shouldAbort,
+  }) : [];
+
+  if (shouldAbort && shouldAbort()) return [];
+
+  // Search Maghribi formulas for targetMaghribi
+  const magList = targetMaghribi > 0 ? findNooraniCombinationsByAlgorithm(algorithmId, targetMaghribi, MAGHRIBI_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+    queryText,
+    shouldAbort,
+  }) : [];
+
+  return buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText);
+}
+
+/**
+ * Non-Blocking Asynchronous Multi-System Noorani Formula Classifier
+ * Yields periodically to the browser's event loop with progress reporting and cancellation support.
+ * Guarantees 60fps UI responsiveness without ever triggering browser "Page Unresponsive" dialogs.
+ */
+export async function classifyAndMergeNooraniFormulasAsync(
+  targetMashriqi: number,
+  targetMaghribi: number,
+  options: {
+    uniqueLettersOnly?: boolean;
+    maxResults?: number;
+    algorithmId?: NooraniAlgorithmId;
+    queryText?: string;
+    onProgress?: (progress: ClassifyProgressUpdate) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<MergedNooraniFormulaItem[]> {
+  const {
+    uniqueLettersOnly = false,
+    maxResults = 80,
+    algorithmId = 1,
+    queryText = '',
+    onProgress,
+    signal,
+  } = options;
+
+  if (signal?.aborted) return [];
+  if (targetMashriqi <= 0 && targetMaghribi <= 0) return [];
+
+  // Phase 1: Initializing
+  onProgress?.({
+    percent: 15,
+    stage: 'mashriqi',
+    message: 'جاري فحص توافقات النظام المشرقي...',
+    foundCount: 0,
+  });
+
+  // Cooperative yield so the browser paints the progress bar
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  if (signal?.aborted) return [];
+
+  // Phase 2: Mashriqi Search
+  const mashList = targetMashriqi > 0
+    ? findNooraniCombinationsByAlgorithm(algorithmId, targetMashriqi, MASHRIQI_VALUES, {
+        maxResults: 70,
+        uniqueLettersOnly,
+        queryText,
+        shouldAbort: () => !!signal?.aborted,
+      })
+    : [];
+
+  if (signal?.aborted) return [];
+
+  // Phase 3: Maghribi Search
+  onProgress?.({
+    percent: 55,
+    stage: 'maghribi',
+    message: 'جاري فحص توافقات النظام المغربي...',
+    foundCount: mashList.length,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  if (signal?.aborted) return [];
+
+  const magList = targetMaghribi > 0
+    ? findNooraniCombinationsByAlgorithm(algorithmId, targetMaghribi, MAGHRIBI_VALUES, {
+        maxResults: 70,
+        uniqueLettersOnly,
+        queryText,
+        shouldAbort: () => !!signal?.aborted,
+      })
+    : [];
+
+  if (signal?.aborted) return [];
+
+  // Phase 4: Merging and sequence analysis
+  onProgress?.({
+    percent: 85,
+    stage: 'merging',
+    message: 'مطابقة التراكيب المشتركة وترتيب السور المصحفية...',
+    foundCount: mashList.length + magList.length,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  if (signal?.aborted) return [];
+
+  const merged = buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText);
+
+  // Phase 5: Completed
+  onProgress?.({
+    percent: 100,
+    stage: 'completed',
+    message: `اكتملت المعالجة بنجاح (تم العثور على ${merged.length} تركيبة)`,
+    foundCount: merged.length,
+  });
+
+  return merged;
 }
 

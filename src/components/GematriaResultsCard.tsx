@@ -3,7 +3,15 @@ import { useGematria, MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/Gematr
 import { getQuranTopWordUrl } from '../utils/quranicDictionary';
 import { AddToNotebookButton } from './AddToNotebookButton';
 import { findLayerForChar, LAYER_RAINBOW_COLORS } from '../cipherData';
-import { findNooraniCombinations } from '../utils/gematriaEngine';
+import {
+  findNooraniCombinations,
+  classifyAndMergeNooraniFormulas,
+  NOORANI_ALGORITHMS,
+  NooraniAlgorithmId,
+  QURANIC_29_SURAH_FAWATIH,
+} from '../utils/gematriaEngine';
+import { useNooraniClassifier } from '../hooks/useNooraniClassifier';
+import { NooraniProcessingBar } from './NooraniProcessingBar';
 import {
   Calculator,
   BookOpen,
@@ -15,6 +23,8 @@ import {
   Repeat,
   Layers,
   ArrowLeftRight,
+  Star,
+  Loader2,
 } from 'lucide-react';
 
 interface GematriaResultsCardProps {
@@ -52,7 +62,11 @@ export function GematriaResultsCard({
   } = useGematria();
 
   const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<NooraniAlgorithmId>(1);
   const [nooraniSystemFilter, setNooraniSystemFilter] = useState<'all' | 'mashriqi' | 'maghribi'>('all');
+  const [selectedFormulaKey, setSelectedFormulaKey] = useState<string | null>(null);
+  const [filterSurahOrder, setFilterSurahOrder] = useState<number | null>(null);
+  const [sortByQuranicMatch, setSortByQuranicMatch] = useState<boolean>(true);
   const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'noorani'>('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
@@ -99,87 +113,60 @@ export function GematriaResultsCard({
     return diff;
   }, [isIdentical, isDirectNumber, cleanWord, breakdownMashriqi, breakdownMaghribi]);
 
-  // 2. Noorani Combinations (صيغ الحروف المقطعة) for both Mashriqi and Maghribi
-  const nooraniFormulasMashriqi = useMemo(() => {
-    if (!mashriqiValue || mashriqiValue <= 0) return [];
-    return findNooraniCombinations(mashriqiValue, MASHRIQI_VALUES, {
-      maxResults: 60,
-      uniqueLettersOnly: uniqueNooraniOnly,
-    });
-  }, [mashriqiValue, uniqueNooraniOnly]);
+  // 2. Noorani Combinations across 5 Specialized Algorithms & Classifications (Non-blocking & Cancellable)
+  const {
+    mergedNooraniFormulas,
+    isCalculating: isNooraniCalculating,
+    progress: nooraniProgress,
+    progressMessage: nooraniProgressMessage,
+    wasCancelled: isNooraniCancelled,
+    currentAlgorithm: activeNooraniAlgorithmMeta,
+    cancelCalculation: cancelNooraniCalculation,
+    retryCalculation: retryNooraniCalculation,
+  } = useNooraniClassifier({
+    targetMashriqi: mashriqiValue,
+    targetMaghribi: maghribiValue,
+    algorithmId: selectedAlgorithm,
+    uniqueNooraniOnly,
+    queryText: cleanWord,
+    maxResults: 60,
+  });
 
-  const nooraniFormulasMaghribi = useMemo(() => {
-    if (!maghribiValue || maghribiValue <= 0) return [];
-    if (isIdentical) return [];
-    return findNooraniCombinations(maghribiValue, MAGHRIBI_VALUES, {
-      maxResults: 60,
-      uniqueLettersOnly: uniqueNooraniOnly,
-    });
-  }, [maghribiValue, isIdentical, uniqueNooraniOnly]);
-
-  // 3. Merged Noorani Formulas with distinct color metadata
-  const mergedNooraniFormulas = useMemo(() => {
-    if (isIdentical) {
-      return nooraniFormulasMashriqi.map((item, idx) => ({
-        key: `both_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'both' as const,
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      }));
-    }
-
-    const items: MergedNooraniFormulaItem[] = [];
-    const seenMash = new Set<string>();
-
-    nooraniFormulasMashriqi.forEach((item, idx) => {
-      seenMash.add(item.formula);
-      items.push({
-        key: `mash_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'mashriqi',
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      });
-    });
-
-    nooraniFormulasMaghribi.forEach((item, idx) => {
-      items.push({
-        key: `mag_${idx}_${item.formula}`,
-        formula: item.formula,
-        system: 'maghribi',
-        isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
-        sum: item.sum,
-        letters: item.letters,
-        values: item.values,
-        description: item.description,
-      });
-    });
-
-    // Sort authentic fawatih first
-    return items.sort((a, b) => {
-      if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
-      if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
-      return 0;
-    });
-  }, [isIdentical, nooraniFormulasMashriqi, nooraniFormulasMaghribi]);
-
-  // Filtered Noorani formulas based on system selection
+  // Filtered Noorani formulas based on system selection, surah filter, and Quranic match sort
   const displayedNooraniFormulas = useMemo(() => {
+    let list = [...mergedNooraniFormulas];
     if (nooraniSystemFilter === 'mashriqi') {
-      return mergedNooraniFormulas.filter((f) => f.system === 'mashriqi' || f.system === 'both');
+      list = list.filter((f) => f.system === 'mashriqi' || f.system === 'both');
+    } else if (nooraniSystemFilter === 'maghribi') {
+      list = list.filter((f) => f.system === 'maghribi' || f.system === 'both');
     }
-    if (nooraniSystemFilter === 'maghribi') {
-      return mergedNooraniFormulas.filter((f) => f.system === 'maghribi' || f.system === 'both');
+    if (filterSurahOrder !== null) {
+      list = list.filter((f) => f.surahOrders?.includes(filterSurahOrder));
     }
-    return mergedNooraniFormulas;
-  }, [nooraniSystemFilter, mergedNooraniFormulas]);
+    if (sortByQuranicMatch) {
+      list.sort((a, b) => {
+        const countA = a.surahOrders?.length || 0;
+        const countB = b.surahOrders?.length || 0;
+        if (countA !== countB) return countB - countA;
+        if (a.isAuthenticQuranicFawatih && !b.isAuthenticQuranicFawatih) return -1;
+        if (!a.isAuthenticQuranicFawatih && b.isAuthenticQuranicFawatih) return 1;
+        return a.letters.length - b.letters.length;
+      });
+    }
+    return list;
+  }, [nooraniSystemFilter, mergedNooraniFormulas, filterSurahOrder, sortByQuranicMatch]);
+
+  // Active formula: activates solely on click so cards do not shift or jump under the mouse
+  const activeFormula = useMemo(() => {
+    if (selectedFormulaKey) {
+      return mergedNooraniFormulas.find((f) => f.key === selectedFormulaKey) || null;
+    }
+    return null;
+  }, [selectedFormulaKey, mergedNooraniFormulas]);
+
+  const activeSurahOrdersSet = useMemo(() => {
+    return new Set<number>(activeFormula?.surahOrders || []);
+  }, [activeFormula]);
 
   // 4. Quranic Words Matches
   const matchesMashriqi = useMemo(() => {
@@ -240,8 +227,8 @@ export function GematriaResultsCard({
   }
 
   // Count formulas for badges
-  const mashCount = isIdentical ? mergedNooraniFormulas.length : nooraniFormulasMashriqi.length;
-  const magCount = isIdentical ? mergedNooraniFormulas.length : nooraniFormulasMaghribi.length;
+  const mashCount = mergedNooraniFormulas.filter((f) => f.system === 'mashriqi' || f.system === 'both' || f.system === 'dual_match').length;
+  const magCount = mergedNooraniFormulas.filter((f) => f.system === 'maghribi' || f.system === 'both' || f.system === 'dual_match').length;
 
   return (
     <div
@@ -529,7 +516,7 @@ export function GematriaResultsCard({
       </div>
 
       {/* 3. Merged & Colorized Noorani Formulas Preview Row (صيغ الأحرف المقطعة) */}
-      {mergedNooraniFormulas.length > 0 && (
+      {(mergedNooraniFormulas.length > 0 || isNooraniCalculating || isNooraniCancelled) && (
         <div className="p-2 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/25 border border-emerald-200/70 dark:border-emerald-800/70 space-y-1.5 shadow-2xs">
           <div className="flex items-center justify-between flex-wrap gap-1 text-2xs font-normal">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -600,24 +587,187 @@ export function GematriaResultsCard({
             </div>
           </div>
 
+          {/* 5 Specialized Algorithm Selector Buttons & Quranic Sort */}
+          <div className="flex items-center justify-between gap-1 flex-wrap py-1 border-y border-emerald-200/60 dark:border-emerald-800/60 bg-emerald-100/30 dark:bg-emerald-950/20 px-1 rounded-md">
+            <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5">
+              <span className="text-3xs text-stone-500 dark:text-stone-400 font-sans font-medium shrink-0 ml-1">
+                الخوارزمية:
+              </span>
+              {NOORANI_ALGORITHMS.map((algo) => {
+                const isSelected = selectedAlgorithm === algo.id;
+                return (
+                  <button
+                    key={algo.id}
+                    type="button"
+                    onClick={() => setSelectedAlgorithm(algo.id)}
+                    className={`px-2 py-0.5 rounded-md text-3xs font-medium cursor-pointer transition-all border flex items-center gap-1 shrink-0 ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs font-bold'
+                        : 'bg-white dark:bg-stone-850 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                    }`}
+                    title={algo.description}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center font-mono text-[9px] font-bold ${
+                        isSelected
+                          ? 'bg-white text-emerald-800'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
+                      }`}
+                    >
+                      {isSelected && isNooraniCalculating ? (
+                        <Loader2 className="w-2.5 h-2.5 animate-spin text-emerald-800" />
+                      ) : (
+                        algo.id
+                      )}
+                    </span>
+                    <span>{algo.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSortByQuranicMatch(!sortByQuranicMatch)}
+              className={`px-2 py-0.5 rounded-md text-3xs font-medium cursor-pointer transition-all border flex items-center gap-1 shrink-0 ${
+                sortByQuranicMatch
+                  ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-2xs font-bold'
+                  : 'bg-white dark:bg-stone-850 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:bg-stone-50'
+              }`}
+              title="ترتيب النتائج بحسب الأكثر تطابقاً مع سور المصحف الشريف"
+            >
+              <Star className="w-2.5 h-2.5 fill-current" />
+              <span>الأكثر مطابقة للمصحف</span>
+            </button>
+          </div>
+
+          {/* Real-time Progress & Cancellation Bar */}
+          <NooraniProcessingBar
+            isCalculating={isNooraniCalculating}
+            progress={nooraniProgress}
+            statusMessage={nooraniProgressMessage}
+            currentAlgorithm={activeNooraniAlgorithmMeta}
+            onCancel={cancelNooraniCalculation}
+            onRetry={retryNooraniCalculation}
+            wasCancelled={isNooraniCancelled}
+            resultCount={mergedNooraniFormulas.length}
+          />
+
+          {/* 29 Quranic Surah Openings Sequence Strip */}
+          <div className="p-2 rounded-lg bg-stone-50/90 dark:bg-stone-900/80 border border-stone-200/90 dark:border-stone-800 space-y-1.5 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-1 text-3xs font-medium">
+              <div className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300 flex-wrap">
+                <span className="font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                  <span>مصحف السور الـ 29</span>
+                  <span className="text-4xs font-mono px-1 py-0.2 rounded bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                    (بالترتيب والتكرار القرآني)
+                  </span>
+                </span>
+                {activeFormula ? (
+                  <span className="text-stone-700 dark:text-stone-200 flex items-center gap-1.5 font-sans">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">
+                      • المطابقة: {activeSurahOrdersSet.size} من 29 سورة
+                    </span>
+                    <span className="font-quran font-bold text-emerald-800 dark:text-emerald-300">
+                      «{activeFormula.formula}»
+                    </span>
+                    {selectedFormulaKey === activeFormula.key && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFormulaKey(null)}
+                        className="text-4xs px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-750 text-stone-700 dark:text-stone-300 hover:bg-stone-300 cursor-pointer"
+                        title="إلغاء التثبيت"
+                      >
+                        إلغاء التثبيت ✕
+                      </button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-stone-400 text-3xs font-sans">
+                    (انقر على أي تركيبة أدناه لتلوين سورها في المصحف فوراً - النقر مجدداً يلغي التحديد)
+                  </span>
+                )}
+              </div>
+
+              {filterSurahOrder !== null && (
+                <button
+                  type="button"
+                  onClick={() => setFilterSurahOrder(null)}
+                  className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 cursor-pointer font-sans font-medium flex items-center gap-1 text-4xs"
+                >
+                  <span>تصفية سورة #{filterSurahOrder}</span>
+                  <span>✕</span>
+                </button>
+              )}
+            </div>
+
+            {/* The 29 Gray / Glowing Squares Track */}
+            <div className="flex items-center gap-1 overflow-x-auto py-1 px-0.5 [scrollbar-width:thin] border border-stone-200/60 dark:border-stone-800 rounded bg-white dark:bg-stone-950/40">
+              {QURANIC_29_SURAH_FAWATIH.map((surah) => {
+                const isMatched = activeSurahOrdersSet.has(surah.orderInFawatih);
+                const isFiltered = filterSurahOrder === surah.orderInFawatih;
+
+                return (
+                  <button
+                    key={surah.orderInFawatih}
+                    type="button"
+                    onClick={() => setFilterSurahOrder(isFiltered ? null : surah.orderInFawatih)}
+                    className={`relative shrink-0 flex flex-col items-center justify-center p-1 rounded transition-colors duration-150 cursor-pointer min-w-[50px] text-center border ${
+                      isMatched
+                        ? 'bg-emerald-600 dark:bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400/80 z-10 font-bold opacity-100'
+                        : 'bg-stone-100 dark:bg-stone-850/80 border-stone-200 dark:border-stone-750 text-stone-500 dark:text-stone-400 hover:bg-stone-200/80 dark:hover:bg-stone-800 opacity-60 hover:opacity-100'
+                    } ${isFiltered ? 'ring-2 ring-amber-500 border-amber-500 bg-amber-50 dark:bg-amber-950/60 opacity-100' : ''}`}
+                    title={`#${surah.orderInFawatih}: سورة ${surah.surahName} (${surah.surahNumber}) - الفاتحة: ${surah.formula} - ${surah.familyLabel} ${
+                      isMatched ? '⭐ متطابقة مع التركيبة المحددة!' : ''
+                    } - انقر للتصفية`}
+                  >
+                    <div className="flex items-center justify-between w-full text-[8px] font-mono leading-none mb-0.5 px-0.5">
+                      <span className={isMatched ? 'text-emerald-100' : 'text-stone-400 dark:text-stone-500'}>
+                        #{surah.orderInFawatih}
+                      </span>
+                      <span className={isMatched ? 'text-amber-200 font-bold' : 'text-stone-400 dark:text-stone-500'}>
+                        {surah.surahNumber}
+                      </span>
+                    </div>
+
+                    <div className="text-xs font-quran font-bold leading-tight">
+                      {surah.formula}
+                    </div>
+
+                    <div className={`text-[8.5px] truncate max-w-[46px] font-sans mt-0.5 ${isMatched ? 'text-white' : 'text-stone-600 dark:text-stone-400'}`}>
+                      {surah.surahName}
+                    </div>
+
+                    {isMatched && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Formulas Chips Grid with Color Coding */}
-          <div className="flex items-center gap-1 flex-wrap max-h-36 overflow-y-auto pr-0.5">
-            {displayedNooraniFormulas.map((n, i) => {
+          <div className="flex items-center gap-1.5 flex-wrap max-h-36 overflow-y-auto pr-0.5">
+            {displayedNooraniFormulas.map((n) => {
               const isCopied = copiedText === `noorani_${n.key}`;
+              const isActive = activeFormula?.key === n.key;
 
               // Determine visual styling based on system and authenticity
-              let chipStyle = 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border-stone-200 dark:border-stone-700';
-              let badgeText = '';
-              let badgeColor = '';
+              let chipStyle = '';
 
-              if (n.isAuthenticQuranicFawatih) {
-                chipStyle = 'bg-emerald-600 text-white hover:bg-emerald-700 ring-1 ring-emerald-400 font-semibold';
+              if (n.system === 'both') {
+                chipStyle = 'bg-emerald-50/90 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500 hover:bg-emerald-100/70';
+              } else if (n.system === 'dual_match') {
+                chipStyle = 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500 hover:bg-indigo-100/70';
               } else if (n.system === 'mashriqi') {
-                chipStyle = 'bg-sky-50/90 dark:bg-sky-950/60 text-sky-950 dark:text-sky-100 border border-sky-300 dark:border-sky-700 hover:border-sky-500 hover:bg-sky-100';
-              } else if (n.system === 'maghribi') {
-                chipStyle = 'bg-amber-50/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 hover:border-amber-500 hover:bg-amber-100';
-              } else if (n.system === 'both') {
-                chipStyle = 'bg-teal-50/90 dark:bg-teal-950/60 text-teal-950 dark:text-teal-100 border border-teal-300 dark:border-teal-700 hover:border-teal-500 hover:bg-teal-100';
+                chipStyle = 'bg-sky-50/90 dark:bg-sky-950/70 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:border-sky-500 hover:bg-sky-100/70';
+              } else {
+                chipStyle = 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:border-amber-500 hover:bg-amber-100/70';
+              }
+
+              if (isActive) {
+                chipStyle += ' ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-sm font-bold bg-emerald-100 dark:bg-emerald-900/60 border-emerald-500 dark:border-emerald-400';
               }
 
               return (
@@ -625,20 +775,29 @@ export function GematriaResultsCard({
                   key={n.key}
                   type="button"
                   onClick={() => {
+                    setSelectedFormulaKey(selectedFormulaKey === n.key ? null : n.key);
                     if (onSelectWord) {
                       onSelectWord(n.formula);
                     } else {
                       handleCopy(n.formula, `noorani_${n.key}`);
                     }
                   }}
-                  className={`px-1.5 py-0.5 rounded text-xs font-quran flex items-center gap-1 cursor-pointer transition-all shadow-2xs ${chipStyle}`}
-                  title={`الصيغة: ${n.formula} | التفكيك: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} = ${n.sum} ${n.description ? `(${n.description})` : ''} - انقر للنسخ أو البحث`}
+                  className={`px-2 py-1 rounded-lg border text-xs font-quran flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs ${chipStyle}`}
+                  title={`الصيغة: ${n.formula} | الحساب: ${n.displaySum} | تفكيك الحروف: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} ${n.description ? `| ${n.description}` : ''} - انقر لتلوين السور المطابقة في شريط المصحف ونسخ التركيبة`}
                 >
-                  <span className="font-semibold">{n.formula}</span>
+                  <span className="font-bold">{n.formula}</span>
                   {n.isAuthenticQuranicFawatih && (
-                    <span className="text-3xs" title="فاتحة سورة قرآنية أصيلة">⭐</span>
+                    <span className="text-3xs text-amber-500" title="فاتحة سورة قرآنية أصيلة">⭐</span>
                   )}
-                  {isCopied && <Check className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
+                  <span className="font-mono text-4xs font-semibold opacity-75">
+                    ({n.displaySum})
+                  </span>
+                  {n.surahOrders && n.surahOrders.length > 0 && (
+                    <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 text-stone-600 dark:text-stone-300 font-bold" title="عدد السور المطابقة في فواتح المصحف الـ 29">
+                      {n.surahOrders.length} سورة
+                    </span>
+                  )}
+                  {isCopied && <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />}
                 </button>
               );
             })}
@@ -747,6 +906,19 @@ export function GematriaResultsCard({
                     >
                       {item.text}
                     </a>
+
+                    {/* Surah Name link that searches for the word in the Quran */}
+                    {qMeta?.surahName && (
+                      <a
+                        href={quranUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-4xs px-1 rounded font-sans text-stone-500 dark:text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline inline-flex items-center gap-0.5"
+                        title={`البحث عن «${item.text}» في سورة ${qMeta.surahName} والمصحف الشريف (qran-top)`}
+                      >
+                        <span>({qMeta.surahName}{qMeta.ayahNum ? `:${qMeta.ayahNum}` : ''})</span>
+                      </a>
+                    )}
 
                     {/* Small System Origin Tag if different */}
                     {!isIdentical && (

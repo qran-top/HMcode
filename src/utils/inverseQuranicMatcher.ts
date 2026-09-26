@@ -394,7 +394,24 @@ export class InverseQuranicScanner {
                       let matchType: InverseQuranicMatch['matchType'] = 'verse_chain';
                       let matchTypeLabel = `سلسلة قرآنية (${phraseLength} كلمات)`;
 
-                      if (phraseLength === 1) {
+                      const isFatihahAyah =
+                        (ayah.a === 1 &&
+                          [2, 3, 7, 10, 11, 12, 13, 14, 15, 19, 20, 26, 27, 28, 29, 30, 31, 32, 36, 38, 40, 41, 42, 43, 44, 45, 46, 50, 68].includes(sNum)) ||
+                        (sNum === 42 && ayah.a === 2);
+
+                      if (
+                        isFatihahAyah &&
+                        (phraseLength === n ||
+                          ['حم', 'عسق', 'الم', 'الر', 'طسم', 'طس', 'طه', 'يس', 'ص', 'ق', 'ن', 'كهيعص', 'المص', 'المر'].includes(cleanPhrase))
+                      ) {
+                        matchType = 'fawatih';
+                        matchTypeLabel =
+                          sNum === 42 && ayah.a === 2
+                            ? 'فاتحة سورة الشورى (الآية 2: عسق)'
+                            : sNum === 42 && ayah.a === 1
+                            ? 'فاتحة سورة الشورى (الآية 1: حم)'
+                            : `فاتحة سورة قرآنية (${cleanPhrase})`;
+                      } else if (phraseLength === 1) {
                         matchType = 'single_word';
                         matchTypeLabel = 'مفردة قرآنية';
                       } else if (phraseLength === n) {

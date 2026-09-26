@@ -223,11 +223,11 @@ export function QuranicCombinationsLexicon({
                               </a>
                             ) : (
                               <a
-                                href={getQuranTopAyahUrl(meta.surahNumber || meta.surahName, meta.ayahNum)}
+                                href={getQuranTopSearchUrl(meta.originalQuranicWord || combo)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-300 hover:underline mt-0.5 inline-flex items-center gap-1 group/link"
-                                title={`فتح الآية ${meta.ayahNum} من سورة ${meta.surahName} على موقع قرآن توب (qran-top)`}
+                                title={`البحث عن "${meta.originalQuranicWord || combo}" في سورة ${meta.surahName} بالمصحف الشريف بموقع (qran-top)`}
                               >
                                 <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400 group-hover/link:text-amber-900 transition-colors" />
                                 <span>سورة {meta.surahName} - الآية {meta.ayahNum}</span>

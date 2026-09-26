@@ -176,14 +176,12 @@ export function getArabicDictSearchUrl(word: string): string {
  */
 export function getQuranTopWordUrl(
   word: string,
-  surah: string | number,
-  ayah: number = 1,
-  occurrences: number = 1
+  _surah?: string | number,
+  _ayah: number = 1,
+  _occurrences: number = 1
 ): string {
-  if (occurrences > 1) {
-    return getQuranTopSearchUrl(word);
-  }
-  return getQuranTopAyahUrl(surah, ayah);
+  // Always search for the word in the Quran on qran-top as requested
+  return getQuranTopSearchUrl(word);
 }
 
 // Built-in immediate core set of prominent Quranic vocabulary (instant 0ms availability)
