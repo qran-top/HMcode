@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   cleanText,
   VALID_CIPHER_LETTERS,
+  segmentIntoQuranicWords,
   LAYER_RAINBOW_COLORS,
   getLayerColor,
 } from '../cipherData';
@@ -288,6 +289,16 @@ export function DecryptView({
     }
     return list;
   }, [generatedList]);
+
+  // Count combinations matching multi-letter Quranic opening letters (فواتح السور)
+  const nooraniMatchesCount = useMemo(() => {
+    let count = 0;
+    for (const item of processedCombinations) {
+      const seg = segmentIntoQuranicWords(item.word);
+      if (seg.multiWordCount > 0) count++;
+    }
+    return count;
+  }, [processedCombinations]);
 
   // Dictionary check map for high performance
   const dictionaryStatus = useMemo(() => {
@@ -595,7 +606,7 @@ export function DecryptView({
         <ResultsSummaryBox
           exactQuranicList={exactQuranicList}
           exactDictList={exactDictList}
-          nooraniMatchesCount={0}
+          nooraniMatchesCount={nooraniMatchesCount}
           nearestQuranicList={nearestQuranicList}
           isGenerating={isGenerating}
           hasGenerated={hasGenerated || meaningfulLettersCount <= 2}

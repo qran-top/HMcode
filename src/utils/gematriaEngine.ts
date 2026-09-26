@@ -1595,8 +1595,72 @@ export interface MergedNooraniFormulaItem {
   systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
   isAuthenticQuranicFawatih: boolean;
   surahs?: string[];
+  surahOrders?: number[];
   description?: string;
   hasDuplicates?: boolean;
+  maxRepeatCount?: number;
+  repeatSummary?: string;
+  repeatTokens?: { token: string; count: number }[];
+}
+
+/**
+ * Computes repetition details of tokens and letters in a Noorani formula
+ * (e.g. "طه طه حم ه ي" -> maxRepeatCount: 2, summary: "طه ×2", tokens: [{ token: 'طه', count: 2 }])
+ * (e.g. "حم حم حم حم حم حم حم" -> maxRepeatCount: 7, summary: "حم ×7", tokens: [{ token: 'حم', count: 7 }])
+ */
+export function getFormulaRepetitionDetails(formula: string, letters: string[]): {
+  hasRepeats: boolean;
+  maxRepeatCount: number;
+  repeatSummary: string;
+  repeatTokens: { token: string; count: number }[];
+} {
+  if (!formula) {
+    return { hasRepeats: false, maxRepeatCount: 1, repeatSummary: '', repeatTokens: [] };
+  }
+
+  const normalized = formula.trim().replace(/حم\s+عسق/g, 'حم_عسق');
+  const tokens = normalized.split(/\s+/).filter(Boolean).map((t) => t.replace(/حم_عسق/g, 'حم عسق'));
+
+  const tokenCounts: Record<string, number> = {};
+  for (const t of tokens) {
+    tokenCounts[t] = (tokenCounts[t] || 0) + 1;
+  }
+
+  const letterCounts: Record<string, number> = {};
+  for (const ch of letters) {
+    letterCounts[ch] = (letterCounts[ch] || 0) + 1;
+  }
+
+  const repeatTokens: { token: string; count: number }[] = [];
+  let maxCount = 1;
+
+  for (const [tok, count] of Object.entries(tokenCounts)) {
+    if (count > 1) {
+      repeatTokens.push({ token: tok, count });
+      if (count > maxCount) maxCount = count;
+    }
+  }
+
+  // If no multi-token repeat is found, check if single letters repeat
+  if (repeatTokens.length === 0) {
+    for (const [ch, count] of Object.entries(letterCounts)) {
+      if (count > 1) {
+        repeatTokens.push({ token: ch, count });
+        if (count > maxCount) maxCount = count;
+      }
+    }
+  }
+
+  repeatTokens.sort((a, b) => b.count - a.count);
+  const hasRepeats = repeatTokens.length > 0;
+  const repeatSummary = repeatTokens.map((r) => `${r.token} ×${r.count}`).join('، ');
+
+  return {
+    hasRepeats,
+    maxRepeatCount: maxCount,
+    repeatSummary,
+    repeatTokens,
+  };
 }
 
 /**
@@ -2542,26 +2606,54 @@ export function findNooraniCombinationsByAlgorithm(
     maxResults?: number;
     uniqueLettersOnly?: boolean;
     queryText?: string;
+    excludedLetters?: string[];
+    onlyRepeated?: boolean;
     shouldAbort?: () => boolean;
   } = {}
 ): NooraniFormulaMatch[] {
   if (!targetValue || targetValue <= 0) return [];
   if (options.shouldAbort && options.shouldAbort()) return [];
 
+  let list: NooraniFormulaMatch[] = [];
+
   switch (algorithmId) {
     case 1:
-      return findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
+      list = findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
+      break;
     case 2:
-      return findNooraniByDPKnapsack(targetValue, tableValues, options);
+      list = findNooraniByDPKnapsack(targetValue, tableValues, options);
+      break;
     case 3:
-      return findNooraniByMinBlocksGreedy(targetValue, tableValues, options);
+      list = findNooraniByMinBlocksGreedy(targetValue, tableValues, options);
+      break;
     case 4:
-      return findNooraniByHarmonicSearch(targetValue, tableValues, options);
+      list = findNooraniByHarmonicSearch(targetValue, tableValues, options);
+      break;
     case 5:
-      return findNooraniByStrictUniqueFawatih(targetValue, tableValues, options);
+      list = findNooraniByStrictUniqueFawatih(targetValue, tableValues, options);
+      break;
     default:
-      return findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
+      list = findNooraniByPhrasePartitioning(options.queryText || '', targetValue, tableValues, options);
   }
+
+  // If whole-surah Fawatih algorithms found 0 results for this value (e.g. 91, which cannot be formed
+  // solely by summing complete full-surah opening blocks), supplement gracefully with the exhaustive Noorani letter combination engine
+  if (list.length === 0 && algorithmId !== 5) {
+    list = findNooraniCombinations(targetValue, tableValues, options);
+  }
+
+  // Apply excluded letters filter if specified
+  if (options.excludedLetters && options.excludedLetters.length > 0) {
+    const exclSet = new Set(options.excludedLetters);
+    list = list.filter((m) => !m.letters.some((c) => exclSet.has(c)));
+  }
+
+  // Apply onlyRepeated filter if specified
+  if (options.onlyRepeated) {
+    list = list.filter((m) => m.hasDuplicates);
+  }
+
+  return list;
 }
 
 /**
@@ -2660,8 +2752,15 @@ function buildMergedNooraniItems(
   targetMashriqi: number,
   targetMaghribi: number,
   maxResults: number,
-  queryText: string = ''
+  queryText: string = '',
+  options: {
+    excludedLetters?: string[];
+    onlyRepeated?: boolean;
+  } = {}
 ): MergedNooraniFormulaItem[] {
+  const { excludedLetters = [], onlyRepeated = false } = options;
+  const excludedSet = new Set(excludedLetters.filter(Boolean));
+
   const formulaMap = new Map<string, {
     formula: string;
     letters: string[];
@@ -2674,6 +2773,11 @@ function buildMergedNooraniItems(
   }>();
 
   for (const m of [...mashList, ...magList]) {
+    // Check excluded letters
+    if (excludedSet.size > 0 && m.letters.some((c) => excludedSet.has(c))) {
+      continue;
+    }
+
     const existing = formulaMap.get(m.formula);
     if (!existing) {
       formulaMap.set(m.formula, {
@@ -2698,7 +2802,7 @@ function buildMergedNooraniItems(
   }
 
   // 1. Guaranteed Inclusion: 7 Hawamim when target is 336 (7 * 48 = 336 in both systems)
-  if (targetMashriqi === 336 || targetMaghribi === 336) {
+  if ((targetMashriqi === 336 || targetMaghribi === 336) && !excludedSet.has('ح') && !excludedSet.has('م')) {
     const f7 = 'حم حم حم حم حم حم حم';
     formulaMap.set(f7, {
       formula: f7,
@@ -2721,7 +2825,7 @@ function buildMergedNooraniItems(
   }
 
   // 2. Guaranteed Inclusion: 7 Hawamim + Ayn-Sin-Qaf when target is 566 (336 + 230 = 566)
-  if (targetMashriqi === 566 || targetMaghribi === 566) {
+  if ((targetMashriqi === 566 || targetMaghribi === 566) && !['ح', 'م', 'ع', 'س', 'ق'].some((c) => excludedSet.has(c))) {
     const f8 = 'حم حم حم عسق حم حم حم حم';
     formulaMap.set(f8, {
       formula: f8,
@@ -2744,7 +2848,7 @@ function buildMergedNooraniItems(
   }
 
   // 3. Guaranteed Inclusion: Single Hamim (48) with all 7 Hawamim surahs
-  if (targetMashriqi === 48 || targetMaghribi === 48) {
+  if ((targetMashriqi === 48 || targetMaghribi === 48) && !excludedSet.has('ح') && !excludedSet.has('م')) {
     const f1 = 'حم';
     formulaMap.set(f1, {
       formula: f1,
@@ -2775,21 +2879,23 @@ function buildMergedNooraniItems(
     ]);
     if (qTokens.length > 0 && qTokens.every((t) => KNOWN_FAWATIH_TOKENS.has(t) || t === 'حم')) {
       const qLetters = qTrim.replace(/\s+/g, '').split('');
-      const qSumMash = qLetters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
-      const qSumMag = qLetters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
-      if ((targetMashriqi > 0 && qSumMash === targetMashriqi) || (targetMaghribi > 0 && qSumMag === targetMaghribi)) {
-        const qOrders = inferSurahOrdersFromFormula(qTrim);
-        formulaMap.set(qTrim, {
-          formula: qTrim,
-          letters: qLetters,
-          isAuthenticQuranicFawatih: true,
-          surahOrders: qOrders,
-          description: qTrim === 'حم حم حم حم حم حم حم'
-            ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
-            : `تركيبة فواتح قرآنية مطابقة لعبارة البحث [${qTrim}] (${qOrders.length} سور)`,
-          matchScore: 1000000,
-          hasDuplicates: new Set(qLetters).size !== qLetters.length,
-        });
+      if (!qLetters.some((c) => excludedSet.has(c))) {
+        const qSumMash = qLetters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
+        const qSumMag = qLetters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
+        if ((targetMashriqi > 0 && qSumMash === targetMashriqi) || (targetMaghribi > 0 && qSumMag === targetMaghribi)) {
+          const qOrders = inferSurahOrdersFromFormula(qTrim);
+          formulaMap.set(qTrim, {
+            formula: qTrim,
+            letters: qLetters,
+            isAuthenticQuranicFawatih: true,
+            surahOrders: qOrders,
+            description: qTrim === 'حم حم حم حم حم حم حم'
+              ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+              : `تركيبة فواتح قرآنية مطابقة لعبارة البحث [${qTrim}] (${qOrders.length} سور)`,
+            matchScore: 1000000,
+            hasDuplicates: new Set(qLetters).size !== qLetters.length,
+          });
+        }
       }
     }
   }
@@ -2797,6 +2903,10 @@ function buildMergedNooraniItems(
   const mergedItems: MergedNooraniFormulaItem[] = [];
 
   for (const [formulaStr, item] of formulaMap.entries()) {
+    if (excludedSet.size > 0 && item.letters.some((c) => excludedSet.has(c))) {
+      continue;
+    }
+
     const sumMash = item.letters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
     const sumMag = item.letters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
 
@@ -2804,6 +2914,11 @@ function buildMergedNooraniItems(
     const matchesMag = (targetMaghribi > 0 && sumMag === targetMaghribi);
 
     if (!matchesMash && !matchesMag) continue;
+
+    const rep = getFormulaRepetitionDetails(formulaStr, item.letters);
+    if (onlyRepeated && !rep.hasRepeats) {
+      continue;
+    }
 
     let system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
     let systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
@@ -2849,10 +2964,13 @@ function buildMergedNooraniItems(
       surahOrders,
       description: item.description,
       hasDuplicates: item.hasDuplicates,
+      maxRepeatCount: rep.maxRepeatCount,
+      repeatSummary: rep.repeatSummary,
+      repeatTokens: rep.repeatTokens,
     });
   }
 
-  // Sort merged items: Exact query match or authentic combinations with highest matchScore first
+  // Sort merged items: Exact query match or authentic combinations with highest matchScore / repeat counts first
   const cleanQ = queryText.trim();
   mergedItems.sort((a, b) => {
     if (cleanQ && a.formula === cleanQ) return -1;
@@ -2883,10 +3001,20 @@ export function classifyAndMergeNooraniFormulas(
     maxResults?: number;
     algorithmId?: NooraniAlgorithmId;
     queryText?: string;
+    excludedLetters?: string[];
+    onlyRepeated?: boolean;
     shouldAbort?: () => boolean;
   } = {}
 ): MergedNooraniFormulaItem[] {
-  const { uniqueLettersOnly = false, maxResults = 80, algorithmId = 1, queryText = '', shouldAbort } = options;
+  const {
+    uniqueLettersOnly = false,
+    maxResults = 80,
+    algorithmId = 1,
+    queryText = '',
+    excludedLetters = [],
+    onlyRepeated = false,
+    shouldAbort,
+  } = options;
 
   if (shouldAbort && shouldAbort()) return [];
 
@@ -2895,6 +3023,8 @@ export function classifyAndMergeNooraniFormulas(
     maxResults: 70,
     uniqueLettersOnly,
     queryText,
+    excludedLetters,
+    onlyRepeated,
     shouldAbort,
   }) : [];
 
@@ -2905,10 +3035,15 @@ export function classifyAndMergeNooraniFormulas(
     maxResults: 70,
     uniqueLettersOnly,
     queryText,
+    excludedLetters,
+    onlyRepeated,
     shouldAbort,
   }) : [];
 
-  return buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText);
+  return buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText, {
+    excludedLetters,
+    onlyRepeated,
+  });
 }
 
 /**
@@ -2924,6 +3059,8 @@ export async function classifyAndMergeNooraniFormulasAsync(
     maxResults?: number;
     algorithmId?: NooraniAlgorithmId;
     queryText?: string;
+    excludedLetters?: string[];
+    onlyRepeated?: boolean;
     onProgress?: (progress: ClassifyProgressUpdate) => void;
     signal?: AbortSignal;
   } = {}
@@ -2933,6 +3070,8 @@ export async function classifyAndMergeNooraniFormulasAsync(
     maxResults = 80,
     algorithmId = 1,
     queryText = '',
+    excludedLetters = [],
+    onlyRepeated = false,
     onProgress,
     signal,
   } = options;
@@ -2958,6 +3097,8 @@ export async function classifyAndMergeNooraniFormulasAsync(
         maxResults: 70,
         uniqueLettersOnly,
         queryText,
+        excludedLetters,
+        onlyRepeated,
         shouldAbort: () => !!signal?.aborted,
       })
     : [];
@@ -2980,6 +3121,8 @@ export async function classifyAndMergeNooraniFormulasAsync(
         maxResults: 70,
         uniqueLettersOnly,
         queryText,
+        excludedLetters,
+        onlyRepeated,
         shouldAbort: () => !!signal?.aborted,
       })
     : [];
@@ -2997,7 +3140,10 @@ export async function classifyAndMergeNooraniFormulasAsync(
   await new Promise((resolve) => setTimeout(resolve, 10));
   if (signal?.aborted) return [];
 
-  const merged = buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText);
+  const merged = buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText, {
+    excludedLetters,
+    onlyRepeated,
+  });
 
   // Phase 5: Completed
   onProgress?.({

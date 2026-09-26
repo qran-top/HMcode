@@ -14,6 +14,8 @@ interface UseNooraniClassifierOptions {
   uniqueNooraniOnly: boolean;
   queryText?: string;
   maxResults?: number;
+  excludedLetters?: string[];
+  onlyRepeated?: boolean;
 }
 
 export interface UseNooraniClassifierReturn {
@@ -37,6 +39,8 @@ export function useNooraniClassifier({
   uniqueNooraniOnly,
   queryText = '',
   maxResults = 80,
+  excludedLetters,
+  onlyRepeated = false,
 }: UseNooraniClassifierOptions): UseNooraniClassifierReturn {
   const [mergedNooraniFormulas, setMergedNooraniFormulas] = useState<MergedNooraniFormulaItem[]>([]);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
@@ -62,6 +66,15 @@ export function useNooraniClassifier({
     setProgressMessage('تم إلغاء المعالجة بناءً على طلبك لتوفير موارد المتصفح');
   }, []);
 
+  // Stable serialized representation of excluded letters
+  const excludedKey = (excludedLetters && excludedLetters.length > 0)
+    ? [...excludedLetters].sort().join(',')
+    : '';
+
+  const stableExcludedLetters = useMemo(() => {
+    return excludedKey ? excludedKey.split(',') : [];
+  }, [excludedKey]);
+
   const executeClassification = useCallback(
     async (forceBypassCache: boolean = false) => {
       // Abort any ongoing calculation
@@ -79,7 +92,8 @@ export function useNooraniClassifier({
         return;
       }
 
-      const cacheKey = `${targetMashriqi}_${targetMaghribi}_${algorithmId}_${uniqueNooraniOnly}_${queryText.trim()}_${maxResults}`;
+      const cleanQuery = (queryText || '').trim();
+      const cacheKey = `${targetMashriqi}_${targetMaghribi}_${algorithmId}_${uniqueNooraniOnly}_${excludedKey}_${onlyRepeated}_${cleanQuery}_${maxResults}`;
 
       if (!forceBypassCache && formulaCache.has(cacheKey)) {
         const cached = formulaCache.get(cacheKey)!;
@@ -108,7 +122,9 @@ export function useNooraniClassifier({
             uniqueLettersOnly: uniqueNooraniOnly,
             maxResults,
             algorithmId,
-            queryText,
+            queryText: cleanQuery,
+            excludedLetters: stableExcludedLetters,
+            onlyRepeated,
             signal: controller.signal,
             onProgress: (update: ClassifyProgressUpdate) => {
               if (runCountRef.current === currentRunId && !controller.signal.aborted) {
@@ -147,7 +163,7 @@ export function useNooraniClassifier({
         }
       }
     },
-    [targetMashriqi, targetMaghribi, algorithmId, uniqueNooraniOnly, queryText, maxResults, currentAlgorithm.name]
+    [targetMashriqi, targetMaghribi, algorithmId, uniqueNooraniOnly, excludedKey, stableExcludedLetters, onlyRepeated, queryText, maxResults, currentAlgorithm]
   );
 
   const retryCalculation = useCallback(() => {

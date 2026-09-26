@@ -61,6 +61,8 @@ export function GematriaResultsCard({
     findQuranicMatches,
   } = useGematria();
 
+  const NOORANI_14_LETTERS = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن'];
+
   const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<NooraniAlgorithmId>(1);
   const [nooraniSystemFilter, setNooraniSystemFilter] = useState<'all' | 'mashriqi' | 'maghribi'>('all');
@@ -70,6 +72,21 @@ export function GematriaResultsCard({
   const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'noorani'>('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
+
+  // Excluded letters filter state (e.g. exclude 'ن' or 'ح')
+  const [excludedLetters, setExcludedLetters] = useState<string[]>([]);
+  // Repetition mode filter state ('all' | 'repeated_only' | 'highest_repeats' | 'unique_only')
+  const [repeatFilterMode, setRepeatFilterMode] = useState<'all' | 'repeated_only' | 'highest_repeats' | 'unique_only'>('all');
+
+  const toggleExcludedLetter = (letter: string) => {
+    setExcludedLetters((prev) =>
+      prev.includes(letter) ? prev.filter((l) => l !== letter) : [...prev, letter]
+    );
+  };
+
+  const clearExcludedLetters = () => {
+    setExcludedLetters([]);
+  };
 
   const cleanWord = useMemo(() => (word || query || '').trim(), [word, query]);
   const isDirectNumber = useMemo(() => /^[0-9]+$/.test(cleanWord), [cleanWord]);
@@ -127,12 +144,19 @@ export function GematriaResultsCard({
     targetMashriqi: mashriqiValue,
     targetMaghribi: maghribiValue,
     algorithmId: selectedAlgorithm,
-    uniqueNooraniOnly,
+    uniqueNooraniOnly: uniqueNooraniOnly || repeatFilterMode === 'unique_only',
+    excludedLetters,
+    onlyRepeated: repeatFilterMode === 'repeated_only' || repeatFilterMode === 'highest_repeats',
     queryText: cleanWord,
-    maxResults: 60,
+    maxResults: 80,
   });
 
-  // Filtered Noorani formulas based on system selection, surah filter, and Quranic match sort
+  // Count formulas that have repeated elements for badge
+  const repeatedFormulasCount = useMemo(() => {
+    return mergedNooraniFormulas.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1).length;
+  }, [mergedNooraniFormulas]);
+
+  // Filtered Noorani formulas based on system selection, surah filter, excluded letters, and repetition mode
   const displayedNooraniFormulas = useMemo(() => {
     let list = [...mergedNooraniFormulas];
     if (nooraniSystemFilter === 'mashriqi') {
@@ -143,7 +167,32 @@ export function GematriaResultsCard({
     if (filterSurahOrder !== null) {
       list = list.filter((f) => f.surahOrders?.includes(filterSurahOrder));
     }
-    if (sortByQuranicMatch) {
+
+    // Client-side Excluded Letters Filter
+    if (excludedLetters.length > 0) {
+      const exclSet = new Set(excludedLetters);
+      list = list.filter((f) => !f.letters.some((c) => exclSet.has(c)));
+    }
+
+    // Repetition Mode Filter
+    if (repeatFilterMode === 'repeated_only') {
+      list = list.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1);
+    } else if (repeatFilterMode === 'unique_only') {
+      list = list.filter((f) => !f.hasDuplicates && (!f.maxRepeatCount || f.maxRepeatCount <= 1));
+    }
+
+    // Sorting: Highest Repeats or Quranic Match
+    if (repeatFilterMode === 'highest_repeats') {
+      list.sort((a, b) => {
+        const repA = a.maxRepeatCount || 1;
+        const repB = b.maxRepeatCount || 1;
+        if (repB !== repA) return repB - repA;
+        const countA = a.surahOrders?.length || 0;
+        const countB = b.surahOrders?.length || 0;
+        if (countA !== countB) return countB - countA;
+        return a.letters.length - b.letters.length;
+      });
+    } else if (sortByQuranicMatch) {
       list.sort((a, b) => {
         const countA = a.surahOrders?.length || 0;
         const countB = b.surahOrders?.length || 0;
@@ -154,7 +203,14 @@ export function GematriaResultsCard({
       });
     }
     return list;
-  }, [nooraniSystemFilter, mergedNooraniFormulas, filterSurahOrder, sortByQuranicMatch]);
+  }, [
+    nooraniSystemFilter,
+    mergedNooraniFormulas,
+    filterSurahOrder,
+    sortByQuranicMatch,
+    excludedLetters,
+    repeatFilterMode,
+  ]);
 
   // Active formula: activates solely on click so cards do not shift or jump under the mouse
   const activeFormula = useMemo(() => {
@@ -516,13 +572,14 @@ export function GematriaResultsCard({
       </div>
 
       {/* 3. Merged & Colorized Noorani Formulas Preview Row (صيغ الأحرف المقطعة) */}
-      {(mergedNooraniFormulas.length > 0 || isNooraniCalculating || isNooraniCancelled) && (
-        <div className="p-2 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/25 border border-emerald-200/70 dark:border-emerald-800/70 space-y-1.5 shadow-2xs">
-          <div className="flex items-center justify-between flex-wrap gap-1 text-2xs font-normal">
+      {(mergedNooraniFormulas.length > 0 || isNooraniCalculating || isNooraniCancelled || excludedLetters.length > 0) && (
+        <div className="p-2 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/25 border border-emerald-200/70 dark:border-emerald-800/70 space-y-2 shadow-2xs">
+          {/* Header Row: Title, System Filters & Repetition Mode Filter */}
+          <div className="flex items-center justify-between flex-wrap gap-1.5 text-2xs font-normal">
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="flex items-center gap-1 text-emerald-900 dark:text-emerald-200 font-semibold text-xs">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>صيغ وتراكيب الأحرف المقطعة ({mergedNooraniFormulas.length})</span>
+                <span>صيغ وتراكيب الأحرف المقطعة ({displayedNooraniFormulas.length})</span>
               </div>
 
               {/* System Filter Buttons for formulas */}
@@ -537,7 +594,7 @@ export function GematriaResultsCard({
                         : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                     }`}
                   >
-                    الكل المدمج ({mergedNooraniFormulas.length})
+                    الكل ({mergedNooraniFormulas.length})
                   </button>
                   <button
                     type="button"
@@ -569,22 +626,108 @@ export function GematriaResultsCard({
               )}
             </div>
 
-            {/* Repeat Filter Button */}
-            <div className="flex items-center gap-1">
+            {/* Repetition Mode Filter Tabs (الكل / تكرارات فقط / الأعلى تكراراً / دون تكرار) */}
+            <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-850 p-0.5 rounded text-3xs font-medium border border-stone-200 dark:border-stone-750">
+                <button
+                  type="button"
+                  onClick={() => setRepeatFilterMode('all')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                    repeatFilterMode === 'all'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs font-bold'
+                      : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  }`}
+                  title="عرض كافة التراكيب"
+                >
+                  الكل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRepeatFilterMode('repeated_only')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-1 ${
+                    repeatFilterMode === 'repeated_only'
+                      ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                      : 'text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50'
+                  }`}
+                  title="إظهار التراكيب التي تحتوي على تكرارات فقط (مثل طه×2، حم×7، يس×2)"
+                >
+                  <Repeat className="w-2.5 h-2.5" />
+                  <span>تكرارات فقط</span>
+                  <span className="font-mono text-[9px] font-bold">({repeatedFormulasCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRepeatFilterMode('highest_repeats')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-1 ${
+                    repeatFilterMode === 'highest_repeats'
+                      ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                      : 'text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-950/50'
+                  }`}
+                  title="ترتيب النتائج بالأعلى تكراراً في المقدمة"
+                >
+                  <span>الأعلى تكراراً ⚡</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRepeatFilterMode('unique_only')}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-0.5 ${
+                    repeatFilterMode === 'unique_only'
+                      ? 'bg-emerald-700 text-white shadow-2xs font-bold'
+                      : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/50'
+                  }`}
+                  title="تراكيب دون تكرار الحروف"
+                >
+                  <span>دون تكرار</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Letter Exclusion Sub-Bar (استبعاد أحرف معينة مثل النون أو الحاء) */}
+          <div className="flex items-center justify-between gap-1.5 flex-wrap py-1 px-1.5 rounded-md bg-stone-100/80 dark:bg-stone-850/80 border border-stone-200/70 dark:border-stone-750">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-3xs font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1 shrink-0">
+                <span className="text-red-500 font-bold">🚫</span>
+                <span>استبعاد أحرف من التوليد:</span>
+              </span>
+
+              <div className="flex items-center gap-1 flex-wrap">
+                {NOORANI_14_LETTERS.map((char) => {
+                  const isExcluded = excludedLetters.includes(char);
+                  return (
+                    <button
+                      key={char}
+                      type="button"
+                      onClick={() => toggleExcludedLetter(char)}
+                      className={`w-5 h-5 rounded text-xs font-quran font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                        isExcluded
+                          ? 'bg-red-500 text-white font-black scale-110 shadow-2xs line-through ring-1 ring-red-400'
+                          : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400'
+                      }`}
+                      title={
+                        isExcluded
+                          ? `الحرف [${char}] مستبعد حالياً (انقر لإلغاء الاستبعاد وإعادته)`
+                          : `انقر لاستبعاد الحرف [${char}] من التوليد والنتائج`
+                      }
+                    >
+                      {char}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {excludedLetters.length > 0 && (
               <button
                 type="button"
-                onClick={() => setUniqueNooraniOnly(!uniqueNooraniOnly)}
-                className={`p-1 rounded text-3xs font-medium transition-colors cursor-pointer border flex items-center gap-1 ${
-                  uniqueNooraniOnly
-                    ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-950 dark:text-emerald-100 border-emerald-300 dark:border-emerald-700'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'
-                }`}
-                title={uniqueNooraniOnly ? 'تصفية دون تكرار (مفعل)' : 'السماح بالتكرار'}
+                onClick={clearExcludedLetters}
+                className="text-4xs font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 hover:bg-red-200 cursor-pointer border border-red-300 dark:border-red-800 flex items-center gap-0.5"
+                title="إلغاء استبعاد كافة الأحرف وإظهارها جميعاً"
               >
-                <Repeat className="w-2.5 h-2.5" />
-                <span className="text-3xs hidden sm:inline">{uniqueNooraniOnly ? 'دون تكرار' : 'بالتكرار'}</span>
+                <span>إلغاء الاستبعاد ({excludedLetters.length})</span>
+                <span>✕</span>
               </button>
-            </div>
+            )}
           </div>
 
           {/* 5 Specialized Algorithm Selector Buttons & Quranic Sort */}
@@ -650,7 +793,7 @@ export function GematriaResultsCard({
             onCancel={cancelNooraniCalculation}
             onRetry={retryNooraniCalculation}
             wasCancelled={isNooraniCancelled}
-            resultCount={mergedNooraniFormulas.length}
+            resultCount={displayedNooraniFormulas.length}
           />
 
           {/* 29 Quranic Surah Openings Sequence Strip */}
@@ -747,61 +890,96 @@ export function GematriaResultsCard({
             </div>
           </div>
 
-          {/* Formulas Chips Grid with Color Coding */}
-          <div className="flex items-center gap-1.5 flex-wrap max-h-36 overflow-y-auto pr-0.5">
-            {displayedNooraniFormulas.map((n) => {
-              const isCopied = copiedText === `noorani_${n.key}`;
-              const isActive = activeFormula?.key === n.key;
+          {/* Formulas Chips Grid with Color Coding & Repetition Badges */}
+          {displayedNooraniFormulas.length === 0 ? (
+            <div className="p-3 text-center bg-stone-100/60 dark:bg-stone-850/50 rounded-lg border border-stone-200 dark:border-stone-750 text-xs text-stone-500 dark:text-stone-400">
+              {excludedLetters.length > 0
+                ? `لا توجد صيغ بعد استبعاد الأحرف [${excludedLetters.join('، ')}]. انقر على زر مسح الاستبعاد لإظهار باقي التراكيب.`
+                : 'لا توجد صيغ مطابقة للفلاتر المحددة.'}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 flex-wrap max-h-40 overflow-y-auto pr-0.5">
+              {displayedNooraniFormulas.map((n) => {
+                const isCopied = copiedText === `noorani_${n.key}`;
+                const isActive = activeFormula?.key === n.key;
 
-              // Determine visual styling based on system and authenticity
-              let chipStyle = '';
+                // Determine visual styling based on system and authenticity
+                let chipStyle = '';
 
-              if (n.system === 'both') {
-                chipStyle = 'bg-emerald-50/90 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500 hover:bg-emerald-100/70';
-              } else if (n.system === 'dual_match') {
-                chipStyle = 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500 hover:bg-indigo-100/70';
-              } else if (n.system === 'mashriqi') {
-                chipStyle = 'bg-sky-50/90 dark:bg-sky-950/70 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:border-sky-500 hover:bg-sky-100/70';
-              } else {
-                chipStyle = 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:border-amber-500 hover:bg-amber-100/70';
-              }
+                if (n.system === 'both') {
+                  chipStyle =
+                    'bg-emerald-50/90 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500 hover:bg-emerald-100/70';
+                } else if (n.system === 'dual_match') {
+                  chipStyle =
+                    'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500 hover:bg-indigo-100/70';
+                } else if (n.system === 'mashriqi') {
+                  chipStyle =
+                    'bg-sky-50/90 dark:bg-sky-950/70 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:border-sky-500 hover:bg-sky-100/70';
+                } else {
+                  chipStyle =
+                    'bg-amber-50/90 dark:bg-amber-950/70 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:border-amber-500 hover:bg-amber-100/70';
+                }
 
-              if (isActive) {
-                chipStyle += ' ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-sm font-bold bg-emerald-100 dark:bg-emerald-900/60 border-emerald-500 dark:border-emerald-400';
-              }
+                if (isActive) {
+                  chipStyle +=
+                    ' ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-sm font-bold bg-emerald-100 dark:bg-emerald-900/60 border-emerald-500 dark:border-emerald-400';
+                }
 
-              return (
-                <button
-                  key={n.key}
-                  type="button"
-                  onClick={() => {
-                    setSelectedFormulaKey(selectedFormulaKey === n.key ? null : n.key);
-                    if (onSelectWord) {
-                      onSelectWord(n.formula);
-                    } else {
-                      handleCopy(n.formula, `noorani_${n.key}`);
-                    }
-                  }}
-                  className={`px-2 py-1 rounded-lg border text-xs font-quran flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs ${chipStyle}`}
-                  title={`الصيغة: ${n.formula} | الحساب: ${n.displaySum} | تفكيك الحروف: ${n.letters.map((c, idx) => `${c}(${n.values[idx]})`).join(' + ')} ${n.description ? `| ${n.description}` : ''} - انقر لتلوين السور المطابقة في شريط المصحف ونسخ التركيبة`}
-                >
-                  <span className="font-bold">{n.formula}</span>
-                  {n.isAuthenticQuranicFawatih && (
-                    <span className="text-3xs text-amber-500" title="فاتحة سورة قرآنية أصيلة">⭐</span>
-                  )}
-                  <span className="font-mono text-4xs font-semibold opacity-75">
-                    ({n.displaySum})
-                  </span>
-                  {n.surahOrders && n.surahOrders.length > 0 && (
-                    <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 text-stone-600 dark:text-stone-300 font-bold" title="عدد السور المطابقة في فواتح المصحف الـ 29">
-                      {n.surahOrders.length} سورة
+                return (
+                  <button
+                    key={n.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFormulaKey(selectedFormulaKey === n.key ? null : n.key);
+                      if (onSelectWord) {
+                        onSelectWord(n.formula);
+                      } else {
+                        handleCopy(n.formula, `noorani_${n.key}`);
+                      }
+                    }}
+                    className={`px-2 py-1 rounded-lg border text-xs font-quran flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs ${chipStyle}`}
+                    title={`الصيغة: ${n.formula} | الحساب: ${n.displaySum} | تفكيك الحروف: ${n.letters
+                      .map((c, idx) => `${c}(${n.values[idx]})`)
+                      .join(' + ')} ${n.repeatSummary ? `| التكرارات: ${n.repeatSummary}` : ''} ${
+                      n.description ? `| ${n.description}` : ''
+                    } - انقر لتلوين السور المطابقة في شريط المصحف ونسخ التركيبة`}
+                  >
+                    <span className="font-bold">{n.formula}</span>
+                    {n.isAuthenticQuranicFawatih && (
+                      <span className="text-3xs text-amber-500" title="فاتحة سورة قرآنية أصيلة">
+                        ⭐
+                      </span>
+                    )}
+
+                    {/* Repetition Multiplicity Badge */}
+                    {n.repeatSummary && (
+                      <span
+                        className="font-mono text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-950 dark:text-amber-200 border border-amber-400/40 font-bold flex items-center gap-0.5 shrink-0"
+                        title={`تكرار مجمع: ${n.repeatSummary}`}
+                      >
+                        <span>🔁</span>
+                        <span>{n.repeatSummary}</span>
+                      </span>
+                    )}
+
+                    <span className="font-mono text-4xs font-semibold opacity-75">
+                      ({n.displaySum})
                     </span>
-                  )}
-                  {isCopied && <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
+
+                    {n.surahOrders && n.surahOrders.length > 0 && (
+                      <span
+                        className="font-mono text-[9px] px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 text-stone-600 dark:text-stone-300 font-bold"
+                        title="عدد السور المطابقة في فواتح المصحف الـ 29"
+                      >
+                        {n.surahOrders.length} سورة
+                      </span>
+                    )}
+                    {isCopied && <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -185,7 +185,7 @@ export function QuranicChainMatcher() {
     isPureNoorani: boolean;
   }
 
-  const [computedTarget, setComputedTarget] = useState<ComputedTargetInfo | null>(null);
+
 
   // Helper to compute target info on demand
   const computeTargetInfo = (text: string, rules: GematriaCalculationOptions, flexOrth: boolean): ComputedTargetInfo | null => {
@@ -267,6 +267,10 @@ export function QuranicChainMatcher() {
       isPureNoorani: isPure,
     };
   };
+
+  const computedTarget = useMemo<ComputedTargetInfo | null>(() => {
+    return computeTargetInfo(inputQuery, localRules, flexibleOrthography);
+  }, [inputQuery, localRules, flexibleOrthography]);
 
   // Noorani combinations classified and merged across Mashriqi and Maghribi systems
   // Noorani combinations classified and merged across Mashriqi and Maghribi systems
@@ -478,7 +482,7 @@ export function QuranicChainMatcher() {
 
     // Compute target details and letter breakdowns at scan time
     const targetDetails = computeTargetInfo(trimmed, localRules, flexibleOrthography);
-    setComputedTarget(targetDetails);
+    
 
     let targetMag = targetDetails ? targetDetails.targetMaghribi : 0;
     let targetMash = targetDetails ? targetDetails.targetMashriqi : 0;
@@ -892,7 +896,7 @@ export function QuranicChainMatcher() {
                   type="button"
                   onClick={() => {
                     setInputQuery('');
-                    setComputedTarget(null);
+                    
                   }}
                   className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 cursor-pointer"
                   title="مسح"
