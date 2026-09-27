@@ -42,6 +42,7 @@ import {
   QURANIC_29_SURAH_FAWATIH,
   inferSurahOrdersFromFormula,
   SynthesizedTextResult,
+  countHamimInFormula,
 } from '../utils/gematriaEngine';
 import { useNooraniClassifier } from '../hooks/useNooraniClassifier';
 import { NooraniProcessingBar } from './NooraniProcessingBar';
@@ -207,7 +208,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   const [uniqueNooraniOnly, setUniqueNooraniOnly] = useState<boolean>(false);
   const [isExplicitlyUnpinned, setIsExplicitlyUnpinned] = useState<boolean>(false);
   const [excludedLetters, setExcludedLetters] = useState<string[]>([]);
-  const [repeatFilterMode, setRepeatFilterMode] = useState<'all' | 'repeated_only' | 'highest_repeats' | 'unique_only'>('all');
+  const [repeatFilterMode, setRepeatFilterMode] = useState<'all' | 'repeated_only' | 'highest_repeats' | 'hamim_max' | 'unique_only'>('all');
   const [copiedFormula, setCopiedFormula] = useState<string | null>(null);
 
   const [matches, setMatches] = useState<InverseQuranicMatch[]>([]);
@@ -429,6 +430,11 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     return mergedNooraniFormulas.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1).length;
   }, [mergedNooraniFormulas]);
 
+  // Count formulas containing Hamim (حم)
+  const hamimFormulasCount = useMemo(() => {
+    return mergedNooraniFormulas.filter((f) => countHamimInFormula(f.formula) > 0).length;
+  }, [mergedNooraniFormulas]);
+
   const displayedNooraniFormulas = useMemo(() => {
     let list = [...mergedNooraniFormulas];
     if (nooraniSystemFilter === 'common') {
@@ -449,14 +455,29 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     }
 
     // Repetition Mode Filter
-    if (repeatFilterMode === 'repeated_only') {
+    if (repeatFilterMode === 'hamim_max') {
+      list = list.filter((f) => countHamimInFormula(f.formula) > 0);
+    } else if (repeatFilterMode === 'repeated_only') {
       list = list.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1);
     } else if (repeatFilterMode === 'unique_only') {
       list = list.filter((f) => !f.hasDuplicates && (!f.maxRepeatCount || f.maxRepeatCount <= 1));
     }
 
-    // Sorting: Highest Repeats or Quranic Match
-    if (repeatFilterMode === 'highest_repeats') {
+    // Sorting: Hamim Max / Highest Repeats / Quranic Match
+    if (repeatFilterMode === 'hamim_max') {
+      list.sort((a, b) => {
+        const hamimA = countHamimInFormula(a.formula);
+        const hamimB = countHamimInFormula(b.formula);
+        if (hamimB !== hamimA) return hamimB - hamimA;
+        const repA = a.maxRepeatCount || 1;
+        const repB = b.maxRepeatCount || 1;
+        if (repB !== repA) return repB - repA;
+        const countA = a.surahOrders?.length || 0;
+        const countB = b.surahOrders?.length || 0;
+        if (countA !== countB) return countB - countA;
+        return a.letters.length - b.letters.length;
+      });
+    } else if (repeatFilterMode === 'highest_repeats') {
       list.sort((a, b) => {
         const repA = a.maxRepeatCount || 1;
         const repB = b.maxRepeatCount || 1;
@@ -1472,6 +1493,21 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   </button>
                   <button
                     type="button"
+                    onClick={() => setRepeatFilterMode((prev) => (prev === 'hamim_max' ? 'all' : 'hamim_max'))}
+                    className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-1 font-bold ${
+                      repeatFilterMode === 'hamim_max'
+                        ? 'bg-rose-600 text-white shadow-2xs font-bold'
+                        : 'text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/50'
+                    }`}
+                    title="استخراج وحصر التراكيب بالأعلى تكراراً لفاتحة (حم)"
+                  >
+                    <span>أكثر تكرار لـ حم 🔥</span>
+                    {hamimFormulasCount > 0 && (
+                      <span className="font-mono text-[9px] font-bold">({hamimFormulasCount})</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setRepeatFilterMode('unique_only')}
                     className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-0.5 ${
                       repeatFilterMode === 'unique_only'
@@ -1880,6 +1916,21 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                       <span className="font-bold">{n.formula}</span>
                       {n.isAuthenticQuranicFawatih && (
                         <span className="text-3xs text-amber-500" title="فاتحة سورة أو تركيب قرآني تّام">⭐</span>
+                      )}
+
+                      {/* Hamim Specific Multiplicity Badge */}
+                      {countHamimInFormula(n.formula) > 0 && (
+                        <span
+                          className={`font-mono text-[9px] px-1 py-0.2 rounded font-bold flex items-center gap-0.5 shrink-0 ${
+                            countHamimInFormula(n.formula) >= 7
+                              ? 'bg-amber-500 text-stone-950 border border-amber-400 shadow-2xs'
+                              : 'bg-rose-500/20 text-rose-950 dark:text-rose-200 border border-rose-400/40'
+                          }`}
+                          title={`تكرار فاتحة حم في هذه التركيبة: ${countHamimInFormula(n.formula)} مرات`}
+                        >
+                          <span>🔥</span>
+                          <span>حم ×{countHamimInFormula(n.formula)}</span>
+                        </span>
                       )}
 
                       {/* Repetition Multiplicity Badge */}

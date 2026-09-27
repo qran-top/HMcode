@@ -2743,6 +2743,169 @@ export interface ClassifyProgressUpdate {
   foundCount: number;
 }
 
+export function countHamimInFormula(formula: string): number {
+  if (!formula) return 0;
+  const normalized = formula.trim().replace(/حم\s+عسق/g, 'حم_عسق');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  let count = 0;
+  for (const t of tokens) {
+    if (t === 'حم' || t === 'حم_عسق' || t === 'حم عسق') {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Generates combinations of Noorani Fawatih maximizing the repetition count of 'حم' (value = 48)
+ * for the target value.
+ */
+export function findNooraniMaxHamimCombinations(
+  targetValue: number,
+  tableValues: Record<string, number> = ABJAD_VALUES,
+  options: { maxResults?: number; excludedLetters?: string[]; shouldAbort?: () => boolean } = {}
+): NooraniFormulaMatch[] {
+  const { maxResults = 50, excludedLetters = [], shouldAbort } = options;
+  if (!targetValue || targetValue <= 0) return [];
+  if (shouldAbort && shouldAbort()) return [];
+
+  const exclSet = new Set(excludedLetters);
+  if (exclSet.has('ح') || exclSet.has('م')) return [];
+
+  const hamimVal = (tableValues['ح'] ?? 8) + (tableValues['م'] ?? 40);
+  if (hamimVal <= 0) return [];
+
+  const maxK = Math.floor(targetValue / hamimVal);
+  if (maxK <= 0) return [];
+
+  const results: NooraniFormulaMatch[] = [];
+  const seenFormulas = new Set<string>();
+
+  // Available complementary Noorani blocks to resolve remainder
+  const rawBlocks = [
+    { word: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'] },
+    { word: 'عسق', letters: ['ع', 'س', 'ق'] },
+    { word: 'المص', letters: ['ا', 'ل', 'م', 'ص'] },
+    { word: 'المر', letters: ['ا', 'ل', 'م', 'ر'] },
+    { word: 'الر', letters: ['ا', 'ل', 'ر'] },
+    { word: 'طسم', letters: ['ط', 'س', 'م'] },
+    { word: 'الم', letters: ['ا', 'ل', 'م'] },
+    { word: 'يس', letters: ['ي', 'س'] },
+    { word: 'طس', letters: ['ط', 'س'] },
+    { word: 'طه', letters: ['ط', 'ه'] },
+    { word: 'ق', letters: ['ق'] },
+    { word: 'ص', letters: ['ص'] },
+    { word: 'ن', letters: ['ن'] },
+  ];
+
+  const blocks = rawBlocks
+    .filter((b) => !b.letters.some((c) => exclSet.has(c)))
+    .map((b) => ({
+      ...b,
+      val: b.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0),
+    }))
+    .filter((b) => b.val > 0);
+
+  // Single letters
+  const singleLetters = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن']
+    .filter((c) => !exclSet.has(c))
+    .map((c) => ({
+      char: c,
+      val: tableValues[c] ?? ABJAD_VALUES[c] ?? 0,
+    }))
+    .filter((l) => l.val > 0)
+    .sort((a, b) => b.val - a.val);
+
+  // Helper to find remainder combinations
+  const findRemainderFormulas = (rem: number, maxCombs: number = 8): string[] => {
+    if (rem === 0) return [''];
+    const remList: string[] = [];
+
+    // 1. Single block match
+    for (const b of blocks) {
+      if (b.val === rem) {
+        remList.push(b.word);
+        if (remList.length >= maxCombs) return remList;
+      }
+    }
+
+    // 2. Pair of blocks match
+    for (let i = 0; i < blocks.length; i++) {
+      const b1 = blocks[i];
+      if (b1.val >= rem) continue;
+      for (let j = i; j < blocks.length; j++) {
+        const b2 = blocks[j];
+        if (b1.val + b2.val === rem) {
+          remList.push(`${b1.word} ${b2.word}`);
+          if (remList.length >= maxCombs) return remList;
+        }
+      }
+    }
+
+    // 3. Fallback to Noorani letters DFS for remainder
+    const dfsLetters = (currRem: number, startIdx: number, path: string[]) => {
+      if (remList.length >= maxCombs) return;
+      if (currRem === 0 && path.length > 0) {
+        remList.push(path.join(' '));
+        return;
+      }
+      if (path.length >= 6) return;
+      for (let i = startIdx; i < singleLetters.length; i++) {
+        const l = singleLetters[i];
+        if (l.val <= currRem) {
+          dfsLetters(currRem - l.val, i, [...path, l.char]);
+        }
+      }
+    };
+    if (remList.length < maxCombs) {
+      dfsLetters(rem, 0, []);
+    }
+
+    return remList;
+  };
+
+  // Iterate from max possible Hamim count down to 1
+  for (let k = maxK; k >= 1; k--) {
+    if (results.length >= maxResults) break;
+    if (shouldAbort && shouldAbort()) break;
+
+    const hamimPrefix = Array.from({ length: k }, () => 'حم').join(' ');
+    const rem = targetValue - k * hamimVal;
+
+    const remFormulas = findRemainderFormulas(rem, k === maxK ? 15 : 6);
+
+    for (const rf of remFormulas) {
+      const formulaStr = rf ? `${hamimPrefix} ${rf}`.trim() : hamimPrefix;
+      if (seenFormulas.has(formulaStr)) continue;
+      seenFormulas.add(formulaStr);
+
+      const allLetters = formulaStr.replace(/\s+/g, '').split('');
+      const values = allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0);
+      const isHawamim7 = k === 7 && rem === 0;
+
+      const surahOrders = inferSurahOrdersFromFormula(formulaStr);
+
+      results.push({
+        formula: formulaStr,
+        letters: allLetters,
+        values,
+        sum: targetValue,
+        isAuthenticQuranicFawatih: true,
+        description: isHawamim7
+          ? 'الحواميم السبع المتتالية في القرآن الكريم (7 سور تبدأ بـ حم متصلة الترتيب مصداقاً للسبع المثاني)'
+          : `أقصى تكرار لفاتحة (حم ×${k}) مع تراكيب نورانية متممة = ${targetValue}`,
+        matchScore: 300000 + k * 20000,
+        hasDuplicates: true,
+        surahOrders,
+      });
+
+      if (results.length >= maxResults) break;
+    }
+  }
+
+  return results;
+}
+
 /**
  * Helper to build merged items from raw mashriqi and maghribi matches
  */
@@ -2801,6 +2964,26 @@ function buildMergedNooraniItems(
     }
   }
 
+  // Guaranteed Hamim-maximizing combinations for target values
+  if (!excludedSet.has('ح') && !excludedSet.has('م')) {
+    const hamimCombsMash = targetMashriqi > 0 ? findNooraniMaxHamimCombinations(targetMashriqi, MASHRIQI_VALUES, { excludedLetters, maxResults: 20 }) : [];
+    const hamimCombsMag = targetMaghribi > 0 ? findNooraniMaxHamimCombinations(targetMaghribi, MAGHRIBI_VALUES, { excludedLetters, maxResults: 20 }) : [];
+    for (const hc of [...hamimCombsMash, ...hamimCombsMag]) {
+      if (!formulaMap.has(hc.formula)) {
+        formulaMap.set(hc.formula, {
+          formula: hc.formula,
+          letters: hc.letters,
+          isAuthenticQuranicFawatih: hc.isAuthenticQuranicFawatih,
+          surahs: hc.surahs,
+          surahOrders: hc.surahOrders,
+          description: hc.description,
+          hasDuplicates: hc.hasDuplicates,
+          matchScore: hc.matchScore,
+        });
+      }
+    }
+  }
+
   // 1. Guaranteed Inclusion: 7 Hawamim when target is 336 (7 * 48 = 336 in both systems)
   if ((targetMashriqi === 336 || targetMaghribi === 336) && !excludedSet.has('ح') && !excludedSet.has('م')) {
     const f7 = 'حم حم حم حم حم حم حم';
@@ -2834,7 +3017,7 @@ function buildMergedNooraniItems(
       surahs: [
         'حم (غافر 40)',
         'حم (فصلت 41)',
-        'حم عسق (الشورى 42 - آية 1 و 2)',
+        'حم عسق (الشورى 42 - آية 1)',
         'حم (الزخرف 43)',
         'حم (الدخان 44)',
         'حم (الجاثية 45)',
