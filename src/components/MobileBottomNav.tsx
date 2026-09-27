@@ -18,21 +18,15 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     id: 'gematria',
-    label: 'محرك الجُمَّل',
+    label: 'البحث بالجمل',
     icon: Sparkles,
     activeColor: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50',
   },
   {
     id: 'search',
-    label: 'البحث الموحد',
+    label: 'البحث بالأوامر',
     icon: Search,
     activeColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50',
-  },
-  {
-    id: 'settings',
-    label: 'الإعدادات والجداول',
-    icon: Settings,
-    activeColor: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50',
   },
 ];
 
@@ -43,7 +37,7 @@ export function MobileBottomNav({ activeTab, setActiveTab }: MobileBottomNavProp
       aria-label="التنقل السفلي للهاتف"
       dir="rtl"
     >
-      <div className="grid grid-cols-3 h-15 max-w-md mx-auto px-2 items-stretch">
+      <div className="grid grid-cols-2 h-15 max-w-md mx-auto px-2 items-stretch">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

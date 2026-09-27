@@ -30,9 +30,8 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
   };
 
   const navItems: { id: HeaderTabType; label: string; icon: React.ElementType }[] = [
-    { id: 'gematria', label: 'محرك الجُمَّل', icon: Sparkles },
-    { id: 'search', label: 'البحث الموحد', icon: Search },
-    { id: 'settings', label: 'الإعدادات والجداول', icon: Settings },
+    { id: 'gematria', label: 'البحث بالجمل', icon: Sparkles },
+    { id: 'search', label: 'البحث بالأوامر', icon: Search },
   ];
 
   return (

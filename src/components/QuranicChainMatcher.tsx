@@ -1166,7 +1166,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
             </div>
             <div>
               <h2 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 font-sans">
-                محرك الجُمَّل والسلاسل القرآنية
+                البحث بالجمل والسلاسل القرآنية
               </h2>
             </div>
           </div>

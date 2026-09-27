@@ -17,7 +17,7 @@ export function App() {
 
   // Ensure title is consistent across views
   useEffect(() => {
-    document.title = 'محرك الجُمَّل والتشفير العربي';
+    document.title = 'البحث بالجمل والتشفير العربي';
   }, [activeTab]);
 
   return (
