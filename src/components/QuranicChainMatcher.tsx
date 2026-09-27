@@ -26,6 +26,8 @@ import {
   X,
   ExternalLink,
   Book,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useGematria, MAGHRIBI_VALUES, MASHRIQI_VALUES } from '../context/GematriaContext';
 import {
@@ -43,6 +45,7 @@ import {
   inferSurahOrdersFromFormula,
   SynthesizedTextResult,
   countHamimInFormula,
+  isStrictlyAuthenticHamimFormula,
 } from '../utils/gematriaEngine';
 import { useNooraniClassifier } from '../hooks/useNooraniClassifier';
 import { NooraniProcessingBar } from './NooraniProcessingBar';
@@ -201,7 +204,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   const [matchSortBy, setMatchSortBy] = useState<'mushaf' | 'length_asc' | 'length_desc' | 'system'>('mushaf');
   const [matchLengthFilter, setMatchLengthFilter] = useState<'all' | 'single' | 'short' | 'medium' | 'long'>('all');
   const [onlyFawatihSurahs, setOnlyFawatihSurahs] = useState<boolean>(false);
-  const [useShortCaptions, setUseShortCaptions] = useState<boolean>(false);
+  const [showCaptions, setShowCaptions] = useState<boolean>(false);
   const [linkWithNooraniSurahs, setLinkWithNooraniSurahs] = useState<boolean>(false);
 
   // Noorani Formulas Filtering State
@@ -430,13 +433,19 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     return mergedNooraniFormulas.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1).length;
   }, [mergedNooraniFormulas]);
 
-  // Count formulas containing Hamim (حم)
+  // Count formulas containing Hamim (حم) that are strictly authentic
   const hamimFormulasCount = useMemo(() => {
-    return mergedNooraniFormulas.filter((f) => countHamimInFormula(f.formula) > 0).length;
+    return mergedNooraniFormulas.filter(
+      (f) => countHamimInFormula(f.formula) > 0 && isStrictlyAuthenticHamimFormula(f.formula)
+    ).length;
   }, [mergedNooraniFormulas]);
 
   const displayedNooraniFormulas = useMemo(() => {
     let list = [...mergedNooraniFormulas];
+
+    // Strictly hide any invalid Hamim combinations with loose non-fawatih letters
+    list = list.filter((f) => isStrictlyAuthenticHamimFormula(f.formula));
+
     if (nooraniSystemFilter === 'common') {
       list = list.filter((f) => f.system === 'both' || f.system === 'dual_match');
     } else if (nooraniSystemFilter === 'mashriqi') {
@@ -456,7 +465,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
     // Repetition Mode Filter
     if (repeatFilterMode === 'hamim_max') {
-      list = list.filter((f) => countHamimInFormula(f.formula) > 0);
+      list = list.filter((f) => countHamimInFormula(f.formula) > 0 && isStrictlyAuthenticHamimFormula(f.formula));
     } else if (repeatFilterMode === 'repeated_only') {
       list = list.filter((f) => f.maxRepeatCount && f.maxRepeatCount > 1);
     } else if (repeatFilterMode === 'unique_only') {
@@ -2552,6 +2561,32 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               </button>
             )}
 
+            {/* Show / Hide Captions Toggle Button - Prominently in top bar */}
+            {matches.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowCaptions((prev) => !prev)}
+                className={`px-2 py-1 rounded-lg text-3xs font-medium border transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 ${
+                  showCaptions
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs font-bold'
+                    : 'bg-white dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
+                }`}
+                title={
+                  showCaptions
+                    ? 'الكابشن ظاهر على البطاقات - انقر للإخفاء والاعتماد على التفاصيل الموسعة'
+                    : 'الكابشن مخفي افتراضياً - انقر لإظهار اسم السورة والأزرار على وجه البطاقة'
+                }
+              >
+                {showCaptions ? (
+                  <EyeOff className="w-3 h-3 text-white" />
+                ) : (
+                  <Eye className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                )}
+                <span>{showCaptions ? 'إخفاء الكابشن' : 'إظهار الكابشن'}</span>
+                {showCaptions && <span className="font-bold text-white">✓</span>}
+              </button>
+            )}
+
             {/* Quick Text Search with Full Ayah Toggle and Reset Filters */}
             {matches.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
@@ -2874,19 +2909,24 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 )}
               </button>
 
-              {/* Short Captions Mode Toggle */}
+              {/* Show / Hide Captions Mode Toggle */}
               <button
                 type="button"
-                onClick={() => setUseShortCaptions((prev) => !prev)}
+                onClick={() => setShowCaptions((prev) => !prev)}
                 className={`px-2 py-0.5 rounded-md text-3xs font-medium border transition-all cursor-pointer inline-flex items-center gap-1 ${
-                  useShortCaptions
-                    ? 'bg-indigo-100 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 font-bold shadow-2xs'
-                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-750 text-stone-600 dark:text-stone-400 hover:bg-stone-50'
+                  showCaptions
+                    ? 'bg-indigo-600 text-white border-indigo-700 font-bold shadow-2xs'
+                    : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-750 text-stone-700 dark:text-stone-300 hover:bg-stone-50'
                 }`}
-                title="إخفاء الكابشن: إخفاء اسم السورة والأزرار وعرض النتائج فقط مع إمكانية فتح التفاصيل عند النقر"
+                title={
+                  showCaptions
+                    ? 'الكابشن ظاهر على البطاقات - انقر للإخفاء والاعتماد على التفاصيل الموسعة'
+                    : 'الكابشن مخفي افتراضياً - انقر لإظهار اسم السورة والأزرار على وجه البطاقة'
+                }
               >
-                <span>إخفاء الكابشن</span>
-                {useShortCaptions && <span className="text-indigo-600 dark:text-indigo-400 font-bold">✓</span>}
+                {showCaptions ? <EyeOff className="w-3 h-3 text-white" /> : <Eye className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />}
+                <span>{showCaptions ? 'إخفاء الكابشن' : 'إظهار الكابشن'}</span>
+                {showCaptions && <span className="text-white font-bold">✓</span>}
               </button>
             </div>
           </div>
@@ -3041,7 +3081,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         }
                       />
 
-                      {useShortCaptions ? (
+                      {!showCaptions ? (
                         <span
                           className={`text-xs sm:text-sm font-semibold font-quran text-stone-900 dark:text-stone-100 leading-normal truncate ${textHoverClass}`}
                         >
@@ -3087,9 +3127,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                       )}
                     </div>
 
-                    {/* Left side: When captions are hidden, hide Surah name and all buttons, showing only chevron indicator */}
-                    {useShortCaptions ? (
-                      <div className="flex items-center shrink-0 text-stone-400 dark:text-stone-500">
+                    {/* Left side: When captions are hidden (default), show clean details chevron */}
+                    {!showCaptions ? (
+                      <div className="flex items-center gap-1 shrink-0 text-stone-400 dark:text-stone-500">
+                        <span className="text-[10px] text-stone-400 dark:text-stone-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors font-sans">
+                          {isExpanded ? 'إخفاء' : 'التفاصيل'}
+                        </span>
                         <ChevronDown
                           className={`w-3.5 h-3.5 transition-transform duration-200 ${
                             isExpanded ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : 'group-hover:text-stone-600 dark:group-hover:text-stone-300'
@@ -3097,7 +3140,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         />
                       </div>
                     ) : (
-                      /* Left side (الجهة المقابلة للنتيجة): Smallest font Surah/Ayah + Muqatta'at + Copy + Notebook */
+                      /* Left side when Captions are Visible: Smallest font Surah/Ayah + Muqatta'at + Copy + Notebook */
                       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         {/* Small Surah Name + Ayah Number + Disconnected Letters in smallest font -> Searches for the word in Quran on qran-top */}
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 dark:text-stone-500 font-sans shrink-0 whitespace-nowrap">
@@ -3166,18 +3209,18 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                     )}
                   </div>
 
-                  {/* Expanded: Shows Full Ayah + Surah Reference + Complete Summation Equation */}
+                  {/* Expanded Details: Shows Full Ayah + Surah Reference + Comprehensive Actions & Equation */}
                   {isExpanded && (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="pt-2 mt-1 border-t border-stone-200/80 dark:border-stone-800 text-3xs space-y-2 bg-white/80 dark:bg-stone-950/80 p-2.5 rounded-lg font-normal animate-in fade-in duration-150"
+                      className="pt-2.5 mt-1 border-t border-stone-200/80 dark:border-stone-800 text-3xs space-y-2.5 bg-white/90 dark:bg-stone-950/90 p-3 rounded-lg font-normal animate-in fade-in duration-150 shadow-inner"
                     >
                       {/* Full Quranic Ayah Box */}
                       {item.fullAyahText && (
                         <div className="p-2.5 rounded-lg bg-stone-50 dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-800 space-y-1.5">
-                          <div className="flex items-center justify-between text-3xs text-stone-500 dark:text-stone-400">
-                            <span className="font-medium text-stone-700 dark:text-stone-300">الآية الكريمة كاملة:</span>
-                            <span className="font-sans font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <div className="flex items-center justify-between text-3xs text-stone-500 dark:text-stone-400 flex-wrap gap-1">
+                            <span className="font-semibold text-stone-700 dark:text-stone-300">الآية الكريمة كاملة:</span>
+                            <span className="font-sans font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                               <a
                                 href={item.quranUrl || getQuranTopSearchUrl(item.phrase)}
                                 target="_blank"
@@ -3190,8 +3233,11 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                                 <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                               </a>
                               {surahMuqattaat && (
-                                <span className="text-4xs font-quran px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">
-                                  {surahMuqattaat}
+                                <span
+                                  className="text-4xs font-quran px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold"
+                                  title={`الأحرف المقطعة في فاتحة سورة ${item.surahName}`}
+                                >
+                                  فاتحة السورة: {surahMuqattaat}
                                 </span>
                               )}
                             </span>
@@ -3202,69 +3248,95 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         </div>
                       )}
 
-                      {/* Matched phrase header & values */}
-                      <div className="flex items-center justify-between gap-1 text-stone-600 dark:text-stone-300">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">
-                            المقطع المطابق: «{item.phrase}»
-                          </span>
-                          {useShortCaptions && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleCopyPhrase(item.id, item.phrase)}
-                                className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors cursor-pointer inline-flex items-center gap-1 text-3xs font-sans"
-                                title="نسخ العبارة"
-                                aria-label="نسخ العبارة"
-                              >
-                                {isCopied ? (
-                                  <Check className="w-2.5 h-2.5 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-2.5 h-2.5" />
-                                )}
-                                <span>نسخ</span>
-                              </button>
+                      {/* Action Bar inside Expanded Details: Copy Phrase, Copy Ayah, Notebook, Quran Search */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap text-stone-600 dark:text-stone-300 pt-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Copy Phrase */}
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPhrase(item.id, item.phrase)}
+                            className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors cursor-pointer inline-flex items-center gap-1 text-3xs font-sans font-medium"
+                            title="نسخ العبارة المطابقة"
+                          >
+                            {isCopied ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>{isCopied ? 'تم النسخ' : 'نسخ العبارة'}</span>
+                          </button>
 
-                              <AddToNotebookButton
-                                word={item.phrase}
-                                cipher={`= ${item.value} [${item.systemLabel}]`}
-                                surahInfo={`سورة ${item.surahName}`}
-                                ayahNum={item.ayahNumber}
-                                type="quranic"
-                                className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors inline-flex items-center gap-1 text-3xs"
-                              />
-                            </div>
+                          {/* Copy Full Ayah */}
+                          {item.fullAyahText && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`﴿ ${item.fullAyahText} ﴾ [سورة ${item.surahName}: ${item.ayahNumber}]`);
+                                handleCopyPhrase(item.id + '_ayah', item.fullAyahText);
+                              }}
+                              className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors cursor-pointer inline-flex items-center gap-1 text-3xs font-sans font-medium"
+                              title="نسخ نص الآية الكريمة كاملة مع السورة ورقم الآية"
+                            >
+                              <BookOpen className="w-3 h-3 text-emerald-600" />
+                              <span>نسخ الآية كاملة</span>
+                            </button>
                           )}
+
+                          {/* Add to Notebook */}
+                          <AddToNotebookButton
+                            word={item.phrase}
+                            cipher={`= ${item.value} [${item.systemLabel}]`}
+                            surahInfo={`سورة ${item.surahName}`}
+                            ayahNum={item.ayahNumber}
+                            type="quranic"
+                            className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors inline-flex items-center gap-1 text-3xs font-medium"
+                          />
+
+                          {/* Search in Quran (qran-top) */}
+                          <a
+                            href={item.quranUrl || getQuranTopSearchUrl(item.phrase)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 text-3xs font-medium cursor-pointer"
+                            title="فتح محرك بحث القرآن الكريم (qran-top) لكافة مواضع هذه الكلمة"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>بحث بالمصحف</span>
+                          </a>
                         </div>
-                        <div className="flex items-center gap-1 font-mono">
+
+                        {/* System Value */}
+                        <div className="flex items-center gap-1 font-mono text-3xs">
                           {isCommon ? (
-                            <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                            <span className="text-emerald-700 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800">
                               المجموع المشترك = {item.value}
                             </span>
                           ) : (
-                            <>
-                              <span className="text-amber-700 dark:text-amber-300">
+                            <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center gap-1">
+                              <span className="text-amber-700 dark:text-amber-300 font-semibold">
                                 غربي: {item.maghribiValue}
                               </span>
                               <span>|</span>
-                              <span className="text-sky-700 dark:text-sky-300">
+                              <span className="text-sky-700 dark:text-sky-300 font-semibold">
                                 شرقي: {item.mashriqiValue}
                               </span>
-                            </>
+                            </span>
                           )}
                         </div>
                       </div>
 
                       {/* Word Summation */}
-                      <div className="flex items-center gap-1 flex-wrap text-stone-700 dark:text-stone-300 font-mono">
-                        <span className="font-medium">{wordEquation}</span>
-                        <span className="text-stone-400">=</span>
-                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">{numSumEquation} = {item.value} ✓</span>
-                      </div>
+                      <div className="p-2 rounded bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800/60 space-y-1">
+                        <div className="flex items-center gap-1 flex-wrap text-stone-700 dark:text-stone-300 font-mono">
+                          <span className="font-semibold text-stone-800 dark:text-stone-200">{wordEquation}</span>
+                          <span className="text-stone-400">=</span>
+                          <span className="font-bold text-emerald-700 dark:text-emerald-300">{numSumEquation} = {item.value} ✓</span>
+                        </div>
 
-                      {/* Letter Breakdown Summation */}
-                      <div className="text-stone-500 dark:text-stone-400 font-mono text-3xs opacity-90 leading-normal">
-                        {letterFullEquation}
+                        {/* Letter Breakdown Summation */}
+                        <div className="text-stone-500 dark:text-stone-400 font-mono text-4xs opacity-90 leading-relaxed">
+                          {letterFullEquation}
+                        </div>
                       </div>
                     </div>
                   )}

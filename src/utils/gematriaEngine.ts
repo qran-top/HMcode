@@ -2756,9 +2756,29 @@ export function countHamimInFormula(formula: string): number {
   return count;
 }
 
+export const AUTHENTIC_FAWATIH_TOKENS_SET = new Set([
+  'الم', 'الر', 'المص', 'المر', 'كهيعص', 'طه', 'طسم', 'طس', 'يس', 'ص', 'حم', 'عسق', 'ق', 'ن', 'حم_عسق'
+]);
+
+/**
+ * Checks if a formula containing Hamim is strictly authentic
+ * (i.e. every single token in the formula is an authentic Quranic opening word, with zero loose non-fawatih letters).
+ */
+export function isStrictlyAuthenticHamimFormula(formula: string): boolean {
+  if (!formula) return true;
+  const normalized = formula.trim().replace(/حم\s+عسق/g, 'حم_عسق');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const hasHamim = tokens.some((t) => t === 'حم' || t === 'حم_عسق' || t === 'حم عسق');
+  if (!hasHamim) {
+    return true; // Not a Hamim formula
+  }
+  // If formula contains Hamim, EVERY token MUST be one of the authentic Quranic Fawatih tokens
+  return tokens.every((t) => AUTHENTIC_FAWATIH_TOKENS_SET.has(t));
+}
+
 /**
  * Generates combinations of Noorani Fawatih maximizing the repetition count of 'حم' (value = 48)
- * for the target value.
+ * for the target value, strictly paired with complete authentic Quranic Fawatih words only.
  */
 export function findNooraniMaxHamimCombinations(
   targetValue: number,
@@ -2781,7 +2801,7 @@ export function findNooraniMaxHamimCombinations(
   const results: NooraniFormulaMatch[] = [];
   const seenFormulas = new Set<string>();
 
-  // Available complementary Noorani blocks to resolve remainder
+  // Available authentic complementary Quranic blocks to resolve remainder
   const rawBlocks = [
     { word: 'كهيعص', letters: ['ك', 'ه', 'ي', 'ع', 'ص'] },
     { word: 'عسق', letters: ['ع', 'س', 'ق'] },
@@ -2804,63 +2824,31 @@ export function findNooraniMaxHamimCombinations(
       ...b,
       val: b.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0),
     }))
-    .filter((b) => b.val > 0);
-
-  // Single letters
-  const singleLetters = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن']
-    .filter((c) => !exclSet.has(c))
-    .map((c) => ({
-      char: c,
-      val: tableValues[c] ?? ABJAD_VALUES[c] ?? 0,
-    }))
-    .filter((l) => l.val > 0)
+    .filter((b) => b.val > 0)
     .sort((a, b) => b.val - a.val);
 
-  // Helper to find remainder combinations
+  // Helper to find remainder combinations using COMPLETE AUTHENTIC BLOCKS ONLY (no loose non-fawatih single letters)
   const findRemainderFormulas = (rem: number, maxCombs: number = 8): string[] => {
     if (rem === 0) return [''];
     const remList: string[] = [];
 
-    // 1. Single block match
-    for (const b of blocks) {
-      if (b.val === rem) {
-        remList.push(b.word);
-        if (remList.length >= maxCombs) return remList;
-      }
-    }
-
-    // 2. Pair of blocks match
-    for (let i = 0; i < blocks.length; i++) {
-      const b1 = blocks[i];
-      if (b1.val >= rem) continue;
-      for (let j = i; j < blocks.length; j++) {
-        const b2 = blocks[j];
-        if (b1.val + b2.val === rem) {
-          remList.push(`${b1.word} ${b2.word}`);
-          if (remList.length >= maxCombs) return remList;
-        }
-      }
-    }
-
-    // 3. Fallback to Noorani letters DFS for remainder
-    const dfsLetters = (currRem: number, startIdx: number, path: string[]) => {
+    // DFS with complete Quranic opening blocks only
+    const dfsBlocks = (currRem: number, startIdx: number, path: string[]) => {
       if (remList.length >= maxCombs) return;
       if (currRem === 0 && path.length > 0) {
         remList.push(path.join(' '));
         return;
       }
-      if (path.length >= 6) return;
-      for (let i = startIdx; i < singleLetters.length; i++) {
-        const l = singleLetters[i];
-        if (l.val <= currRem) {
-          dfsLetters(currRem - l.val, i, [...path, l.char]);
+      if (path.length >= 4) return; // Limit depth to 4 complementary words
+      for (let i = startIdx; i < blocks.length; i++) {
+        const b = blocks[i];
+        if (b.val <= currRem) {
+          dfsBlocks(currRem - b.val, i, [...path, b.word]);
         }
       }
     };
-    if (remList.length < maxCombs) {
-      dfsLetters(rem, 0, []);
-    }
 
+    dfsBlocks(rem, 0, []);
     return remList;
   };
 
@@ -3087,6 +3075,11 @@ function buildMergedNooraniItems(
 
   for (const [formulaStr, item] of formulaMap.entries()) {
     if (excludedSet.size > 0 && item.letters.some((c) => excludedSet.has(c))) {
+      continue;
+    }
+
+    // Strict Hamim Rule: Any formula containing 'حم' must be composed purely of 'حم' or 'حم' with complete authentic Quranic Fawatih tokens only (no loose letters)
+    if (!isStrictlyAuthenticHamimFormula(formulaStr)) {
       continue;
     }
 
