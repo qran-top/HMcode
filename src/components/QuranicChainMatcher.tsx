@@ -280,9 +280,16 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   const [showRulesPanel, setShowRulesPanel] = useState(false);
   const [flexibleOrthography, setFlexibleOrthography] = useState(true);
 
+  // Multiplier State (مضاعف الكلمة المبحوث عنها)
+  const [multiplier, setMultiplier] = useState<number>(1);
+  const [multiplierInput, setMultiplierInput] = useState<string>('1');
+
   // Computed Target Information (calculated only when user presses "ابدأ" or triggers scan)
   interface ComputedTargetInfo {
     isDirectNumber: boolean;
+    baseMaghribi?: number;
+    baseMashriqi?: number;
+    multiplier?: number;
     targetMaghribi: number;
     targetMashriqi: number;
     isIdentical: boolean;
@@ -294,19 +301,28 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     isPureNoorani: boolean;
   }
 
-
-
-  // Helper to compute target info on demand
-  const computeTargetInfo = (text: string, rules: GematriaCalculationOptions, flexOrth: boolean): ComputedTargetInfo | null => {
+  // Helper to compute target info on demand (including multiplier)
+  const computeTargetInfo = (
+    text: string,
+    rules: GematriaCalculationOptions,
+    flexOrth: boolean,
+    mult: number = 1
+  ): ComputedTargetInfo | null => {
     const trimmed = text.trim();
     if (!trimmed) return null;
+    const safeMult = Math.max(1, Math.floor(mult || 1));
 
     const numCheck = parseNumericQuery(trimmed);
     if (numCheck.isNumber) {
+      const baseVal = numCheck.value;
+      const targetVal = baseVal * safeMult;
       return {
         isDirectNumber: true,
-        targetMaghribi: numCheck.value,
-        targetMashriqi: numCheck.value,
+        baseMaghribi: baseVal,
+        baseMashriqi: baseVal,
+        multiplier: safeMult,
+        targetMaghribi: targetVal,
+        targetMashriqi: targetVal,
         isIdentical: true,
         alternateTargets: [] as number[],
         queryText: trimmed,
@@ -318,8 +334,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     }
 
     const clean = cleanArabicTextForGematria(trimmed);
-    const magVal = calculateGematriaWithOptions(trimmed, rules, MAGHRIBI_VALUES);
-    const mashVal = calculateGematriaWithOptions(trimmed, rules, MASHRIQI_VALUES);
+    const baseMag = calculateGematriaWithOptions(trimmed, rules, MAGHRIBI_VALUES);
+    const baseMash = calculateGematriaWithOptions(trimmed, rules, MASHRIQI_VALUES);
+    const magVal = baseMag * safeMult;
+    const mashVal = baseMash * safeMult;
 
     // Compute alternate targets when flexibleOrthography is enabled
     const altTargets: number[] = [];
@@ -329,24 +347,24 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
         ...rules,
         daggerAlif: rules.daggerAlif === 'count_as_1' ? 'ignore_0' : 'count_as_1',
       };
-      altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MAGHRIBI_VALUES));
-      altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MASHRIQI_VALUES));
+      altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MAGHRIBI_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MASHRIQI_VALUES) * safeMult);
 
       // 2. Alternate silent waw (أولو / أولئك)
       const altWaw: GematriaCalculationOptions = {
         ...rules,
         silentWawMode: rules.silentWawMode === 'count_as_6' ? 'ignore_0' : 'count_as_6',
       };
-      altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MAGHRIBI_VALUES));
-      altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MASHRIQI_VALUES));
+      altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MAGHRIBI_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MASHRIQI_VALUES) * safeMult);
 
       // 3. Alternate uthmani waw (الصلوة / الزكوة)
       const altUthmaniWaw: GematriaCalculationOptions = {
         ...rules,
         uthmaniWawMode: rules.uthmaniWawMode === 'as_alif_1' ? 'as_waw_6' : 'as_alif_1',
       };
-      altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MAGHRIBI_VALUES));
-      altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MASHRIQI_VALUES));
+      altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MAGHRIBI_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MASHRIQI_VALUES) * safeMult);
     }
     const alternateTargets = Array.from(new Set(altTargets)).filter((v) => v > 0 && v !== magVal && v !== mashVal);
 
@@ -365,6 +383,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
     return {
       isDirectNumber: false,
+      baseMaghribi: baseMag,
+      baseMashriqi: baseMash,
+      multiplier: safeMult,
       targetMaghribi: magVal,
       targetMashriqi: mashVal,
       isIdentical: magVal === mashVal,
@@ -378,8 +399,8 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   };
 
   const computedTarget = useMemo<ComputedTargetInfo | null>(() => {
-    return computeTargetInfo(committedQuery, localRules, flexibleOrthography);
-  }, [committedQuery, localRules, flexibleOrthography]);
+    return computeTargetInfo(committedQuery, localRules, flexibleOrthography, multiplier);
+  }, [committedQuery, localRules, flexibleOrthography, multiplier]);
 
 
 
@@ -630,12 +651,13 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     targetMag: number,
     targetMash: number,
     isIdenticalVal: boolean,
-    matchesTotal?: number
+    matchesTotal?: number,
+    mult: number = 1
   ) => {
     if (!queryText.trim()) return;
     setSearchHistory((prev) => {
       const existing = prev.find(
-        (item) => item.query === queryText && item.scope === scope && item.onlyNoorani === nooraniOnly
+        (item) => item.query === queryText && item.scope === scope && item.onlyNoorani === nooraniOnly && (item.multiplier || 1) === mult
       );
       const isFav = existing?.isFavorite || false;
       const updatedItem: QuranicChainHistoryItem = {
@@ -647,6 +669,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
         targetMaghribi: targetMag,
         targetMashriqi: targetMash,
         isIdentical: isIdenticalVal,
+        multiplier: mult,
         matchesCount: matchesTotal !== undefined ? matchesTotal : existing?.matchesCount,
         isFavorite: isFav,
       };
@@ -726,7 +749,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   };
 
   // Start Phase 2: Comprehensive Quran Scan (runs automatically after Noorani completes)
-  const startQuranScanPhase = async (customQuery?: string, customScope?: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words', customOnlyNoorani?: boolean) => {
+  const startQuranScanPhase = async (
+    customQuery?: string,
+    customScope?: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words',
+    customOnlyNoorani?: boolean,
+    customMultiplier?: number
+  ) => {
     const q = (customQuery || committedQuery || inputQuery).trim();
     if (!q) return;
 
@@ -736,8 +764,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
     const scopeToUse = customScope !== undefined ? customScope : selectedScope;
     const nooraniToUse = customOnlyNoorani !== undefined ? customOnlyNoorani : onlyNoorani;
+    const multToUse = customMultiplier !== undefined ? customMultiplier : multiplier;
 
-    const targetDetails = computeTargetInfo(q, localRules, flexibleOrthography);
+    const targetDetails = computeTargetInfo(q, localRules, flexibleOrthography, multToUse);
     const targetMag = targetDetails ? targetDetails.targetMaghribi : 0;
     const targetMash = targetDetails ? targetDetails.targetMashriqi : 0;
     const isIdenticalVal = targetDetails ? targetDetails.isIdentical : true;
@@ -754,7 +783,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
       isCancelled: false,
     });
 
-    recordSearchInHistory(q, scopeToUse, nooraniToUse, targetMag, targetMash, isIdenticalVal, undefined);
+    recordSearchInHistory(q, scopeToUse, nooraniToUse, targetMag, targetMash, isIdenticalVal, undefined, multToUse);
 
     try {
       await scannerRef.current.scan(
@@ -783,7 +812,8 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 targetMag,
                 targetMash,
                 isIdenticalVal,
-                allMatches.length
+                allMatches.length,
+                multToUse
               );
               // Trigger Stage 3: Arabic Lexicon Scan after a small delay
               setTimeout(() => {
@@ -805,10 +835,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   // Start Multi-Stage Pipeline: Initiates Phase 1 (Noorani Formulas & Combinations)
   const handleStartScan = async (overrideParams?: {
     query?: string;
+    multiplier?: number;
     scope?: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words';
     onlyNoorani?: boolean;
   }) => {
     const activeQuery = overrideParams?.query !== undefined ? overrideParams.query : inputQuery;
+    const activeMult = overrideParams?.multiplier !== undefined ? overrideParams.multiplier : multiplier;
     const activeScope = overrideParams?.scope !== undefined ? overrideParams.scope : selectedScope;
     const activeOnlyNoorani = overrideParams?.onlyNoorani !== undefined ? overrideParams.onlyNoorani : onlyNoorani;
 
@@ -817,6 +849,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
     if (overrideParams?.scope) setSelectedScope(overrideParams.scope);
     if (overrideParams?.onlyNoorani !== undefined) setOnlyNoorani(overrideParams.onlyNoorani);
+    if (overrideParams?.multiplier !== undefined) {
+      setMultiplier(activeMult);
+      setMultiplierInput(String(activeMult));
+    }
 
     // Cancel any running scanners
     if (scannerRef.current) {
@@ -872,11 +908,15 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   }, [pipelinePhase, isNooraniCalculating, nooraniProgress, mergedNooraniFormulas.length]);
 
   const handleSelectHistoryItem = (item: QuranicChainHistoryItem) => {
+    const itemMult = item.multiplier || 1;
     setInputQuery(item.query);
+    setMultiplier(itemMult);
+    setMultiplierInput(String(itemMult));
     setSelectedScope(item.scope);
     setOnlyNoorani(item.onlyNoorani);
     handleStartScan({
       query: item.query,
+      multiplier: itemMult,
       scope: item.scope,
       onlyNoorani: item.onlyNoorani,
     });
@@ -1238,10 +1278,19 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
               {/* Totals in distinct Western (Amber) and Eastern (Sky) and Common (Emerald) colors */}
               <div className="flex items-center gap-1.5 shrink-0">
+                {computedTarget.multiplier && computedTarget.multiplier > 1 && (
+                  <span
+                    className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/90 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-bold font-mono text-3xs shadow-2xs"
+                    title={`مضاعف القيمة: × ${computedTarget.multiplier}`}
+                  >
+                    × {computedTarget.multiplier}
+                  </span>
+                )}
+
                 {computedTarget.isIdentical ? (
                   <span
                     className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold font-mono text-xs shadow-2xs"
-                    title={`المجموع المشترك: ${computedTarget.targetMaghribi}`}
+                    title={`المجموع المشترك: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
                   >
                     {computedTarget.targetMaghribi}
                   </span>
@@ -1249,14 +1298,14 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   <div className="flex items-center gap-1 font-mono font-bold text-xs">
                     <span
                       className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
-                      title={`المجموع المغربي: ${computedTarget.targetMaghribi}`}
+                      title={`المجموع المغربي: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
                     >
                       {computedTarget.targetMaghribi}
                     </span>
                     <span className="text-stone-300">/</span>
                     <span
                       className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border border-sky-300 dark:border-sky-700 shadow-2xs"
-                      title={`المجموع المشرقي: ${computedTarget.targetMashriqi}`}
+                      title={`المجموع المشرقي: ${computedTarget.targetMashriqi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMashriqi} × ${computedTarget.multiplier})` : ''}`}
                     >
                       {computedTarget.targetMashriqi}
                     </span>
@@ -1282,7 +1331,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
         {/* Input & Action Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-end">
-          {/* Main Query Input */}
+          {/* Main Query Input + Multiplier Box */}
           <div className="lg:col-span-8 space-y-1">
             {computedTarget && computedTarget.alternateTargets && computedTarget.alternateTargets.length > 0 && (
               <div className="flex items-center justify-end font-mono text-3xs">
@@ -1294,32 +1343,74 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 </span>
               </div>
             )}
-            <div className="relative">
-              <input
-                type="text"
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !progress.isRunning) {
-                    handleStartScan();
-                  }
-                }}
-                placeholder="اكتب عبارة (مثل: كهيعص أو لا إله إلا الله) أو رقماً (مثل: 165 أو 518)..."
-                className="w-full text-xs sm:text-sm font-quran font-normal p-2 sm:p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
-              />
-              {inputQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputQuery('');
-                    
+            <div className="flex items-center gap-1.5">
+              {/* Search Query Input */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !progress.isRunning) {
+                      handleStartScan();
+                    }
                   }}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 cursor-pointer"
-                  title="مسح"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
+                  placeholder="اكتب عبارة (مثل: كهيعص أو لا إله إلا الله) أو رقماً (مثل: 165 أو 518)..."
+                  className="w-full text-xs sm:text-sm font-quran font-normal p-2 sm:p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
+                />
+                {inputQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputQuery('');
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 cursor-pointer"
+                    title="مسح"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Multiplier Input Box: × [ 1 ] */}
+              <div
+                className="flex items-center gap-0.5 sm:gap-1 bg-stone-100 dark:bg-stone-850 px-2 py-1.5 sm:py-2 rounded-xl border border-stone-300 dark:border-stone-700 shadow-2xs shrink-0"
+                title="مضاعف الكلمة: ضرب القيمة الجملية للكلمة في هذا المعامل (مثال: ضرب حم × 7 للوصول لقيمة 336)"
+              >
+                <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 select-none">×</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10000"
+                  step="1"
+                  value={multiplierInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMultiplierInput(val);
+                    const parsed = parseInt(val, 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      setMultiplier(parsed);
+                    } else if (val === '') {
+                      setMultiplier(1);
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(multiplierInput, 10);
+                    if (!multiplierInput || isNaN(parsed) || parsed < 1) {
+                      setMultiplierInput('1');
+                      setMultiplier(1);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !progress.isRunning) {
+                      handleStartScan();
+                    }
+                  }}
+                  className="w-9 sm:w-12 text-center font-mono font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100 bg-transparent border-none focus:outline-none p-0"
+                  placeholder="1"
+                  aria-label="مضاعف الكلمة المبحوث عنها"
+                />
+              </div>
             </div>
           </div>
 

@@ -21,6 +21,7 @@ export interface QuranicChainHistoryItem {
   targetMaghribi: number;
   targetMashriqi: number;
   isIdentical: boolean;
+  multiplier?: number;
   matchesCount?: number;
   isFavorite?: boolean;
 }
@@ -266,6 +267,13 @@ export function QuranicChainHistory({
                         ? `قيمة = ${item.targetMaghribi}`
                         : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}`}
                     </span>
+
+                    {/* Multiplier Badge */}
+                    {item.multiplier && item.multiplier > 1 && (
+                      <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-mono font-bold">
+                        × {item.multiplier}
+                      </span>
+                    )}
 
                     {/* Scope Badge */}
                     <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
