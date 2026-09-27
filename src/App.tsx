@@ -1,50 +1,37 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { MobileBottomNav, AppTabType } from './components/MobileBottomNav';
-import { LayersTable } from './components/LayersTable';
 import { DualTranslator } from './components/DualTranslator';
 import { NotebookDrawer } from './components/NotebookDrawer';
 import { PWAPrompt } from './components/PWAPrompt';
-import { GematriaView } from './components/GematriaView';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
+import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
 import { useCipherLayers } from './context/CipherLayersContext';
 
 export function App() {
   const { analyzeText } = useCipherLayers();
-  const [activeTab, setActiveTab] = useState<AppTabType>('search');
+  // Default landing page is the comprehensive Gematria & Quranic Matcher ('gematria')
+  const [activeTab, setActiveTab] = useState<AppTabType>('gematria');
   const [sharedText, setSharedText] = useState('');
 
   // Ensure title is consistent across views
   useEffect(() => {
-    document.title = 'التشفير العربي';
+    document.title = 'محرك الجُمَّل والتشفير العربي';
   }, [activeTab]);
-
-  // List of active layer numbers in current text for highlighting in table
-  const activeLayersInText = useMemo(() => {
-    if (!sharedText) return [];
-    const details = analyzeText(sharedText);
-    const layers = new Set<number>();
-    details.forEach((d) => {
-      if (d.layer) {
-        layers.add(d.layer.layer);
-      }
-    });
-    return Array.from(layers);
-  }, [sharedText, analyzeText]);
 
   return (
     <div
       className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-stone-900 transition-colors duration-200 w-full max-w-full overflow-x-hidden"
       dir="rtl"
     >
-      {/* Compact Header for Desktop and Mobile with exclamation icon for Info & Policies */}
+      {/* Compact Header for Desktop and Mobile */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenInstructions={() => setActiveTab('info')}
         onGoHome={() => {
-          setActiveTab('search');
+          setActiveTab('gematria');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -52,7 +39,12 @@ export function App() {
       {/* Main Container - pb-20 on mobile leaves room for fixed bottom nav bar */}
       <main className="max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-3 sm:py-5 flex-1 space-y-3 sm:space-y-4 overflow-x-hidden pb-20 sm:pb-6">
         
-        {/* Tab 1: Primary Unified Search Hub (مربع بحث واحد يستخرج التشفير والفك والجُمَّل والمطابقة القرآنية في بطاقات منفصلة) */}
+        {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (الصفحة الافتراضية الرئيسية) */}
+        <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
+          <QuranicChainMatcher initialQuery={sharedText} />
+        </div>
+
+        {/* Tab 2: Unified Search & Cipher Hub (البحث الموحد والتشفير وفك التشفير) */}
         <div className={activeTab === 'search' ? 'block' : 'hidden'}>
           <DualTranslator
             mode="both"
@@ -72,40 +64,19 @@ export function App() {
             }}
             onNavigateToMatcher={(text) => {
               setSharedText(text);
-              setActiveTab('matcher');
+              setActiveTab('gematria');
             }}
           />
         </div>
 
-        {/* Tab 2: Matcher View (مطابق السلاسل والقرآن الكريم) */}
-        <div className={activeTab === 'matcher' ? 'block' : 'hidden'}>
-          <QuranicChainMatcher initialQuery={sharedText} />
+        {/* Tab 3: Settings & Tables Management View (صفحة عادية كاملة لإدارة وتعديل جداول السماوات والأرض والجمل) */}
+        <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
+          <SettingsView />
         </div>
 
-        {/* Tab 3: Advanced Gematria Engine (محرك الجُمَّل الموسع والحاسبة) */}
-        <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
-          <GematriaView
-            initialText={sharedText}
-            onNavigateToDual={(text) => {
-              setSharedText(text);
-              setActiveTab('search');
-            }}
-          />
-        </div>
-
-        {/* Tab 4: Table View (جدول الطبقات السبع والمنظومات المتناظرة) */}
-        <div className={activeTab === 'table' ? 'block' : 'hidden'}>
-          <LayersTable
-            highlightedLayerNumbers={activeLayersInText}
-            onSelectLetter={(char) => {
-              setSharedText((prev) => prev + char);
-            }}
-          />
-        </div>
-
-        {/* Tab 5: Info & Legal View (صفحة منفصلة بالكامل للمعلومات والسياسات بدون أي نوافذ منبثقة وبدون فوتر) */}
+        {/* Tab 4: Info & Legal View (صفحة منفصلة بالكامل للمعلومات والسياسات بدون أي نوافذ منبثقة وبدون فوتر) */}
         <div className={activeTab === 'info' ? 'block' : 'hidden'}>
-          <InfoView onBack={() => setActiveTab('search')} />
+          <InfoView onBack={() => setActiveTab('gematria')} />
         </div>
       </main>
 

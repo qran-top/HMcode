@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -10,6 +11,18 @@
 
 :root {
   --font-app: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html.dark, html.dark body {
+  color-scheme: dark;
+  background-color: #0c0a09;
+  color: #f5f5f4;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color-scheme: dark;
 }
 
 body, button, input, textarea, select {

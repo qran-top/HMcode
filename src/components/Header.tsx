@@ -1,10 +1,10 @@
 import React from 'react';
-import { Moon, Sun, Type, Search, Sparkles, Calculator, Layers, BookMarked, AlertCircle } from 'lucide-react';
+import { Moon, Sun, Type, Search, Sparkles, Layers, BookMarked, AlertCircle, Settings } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
 
-export type HeaderTabType = 'search' | 'matcher' | 'gematria' | 'table' | 'info';
+export type HeaderTabType = 'gematria' | 'search' | 'settings' | 'info';
 
 interface HeaderProps {
   activeTab: HeaderTabType;
@@ -24,16 +24,15 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
     if (onGoHome) {
       onGoHome();
     } else {
-      setActiveTab('search');
+      setActiveTab('gematria');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const navItems: { id: HeaderTabType; label: string; icon: React.ElementType }[] = [
+    { id: 'gematria', label: 'محرك الجُمَّل', icon: Sparkles },
     { id: 'search', label: 'البحث الموحد', icon: Search },
-    { id: 'matcher', label: 'مطابق السلاسل', icon: Sparkles },
-    { id: 'gematria', label: 'محرك الجُمَّل', icon: Calculator },
-    { id: 'table', label: 'جدول الطبقات', icon: Layers },
+    { id: 'settings', label: 'الإعدادات والجداول', icon: Settings },
   ];
 
   return (
@@ -102,18 +101,18 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
             )}
           </button>
 
-          {/* Font Size Adjust Button */}
+          {/* Font Size Adjust Button (Enhanced) */}
           <button
             type="button"
             id="btn-toggle-font-size"
             onClick={cycleFontSize}
-            className="p-2 rounded-xl text-stone-700 dark:text-stone-200 hover:text-amber-900 dark:hover:text-amber-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-            title={`تغيير حجم الخط: ${fontLabel}`}
+            className="px-2 py-1.5 rounded-xl text-stone-700 dark:text-stone-200 hover:text-amber-900 dark:hover:text-amber-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+            title={`تغيير حجم الخط (الآن: ${fontLabel}) - انقر للتبديل`}
             aria-label={`تغيير حجم الخط: ${fontLabel}`}
           >
-            <Type className="w-4 h-4 text-stone-600 dark:text-stone-300" />
-            <span className="text-[10px] font-mono font-bold px-0.5 rounded text-stone-800 dark:text-stone-200">
-              {fontSize === 'sm' ? 'A-' : fontSize === 'md' ? 'A' : fontSize === 'lg' ? 'A+' : 'A++'}
+            <Type className="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" />
+            <span className="text-[11px] font-mono font-bold px-1 py-0.2 rounded bg-stone-200/80 dark:bg-stone-700 text-stone-800 dark:text-stone-200">
+              {fontLabel}
             </span>
           </button>
 
@@ -131,6 +130,22 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
             ) : (
               <Moon className="w-4 h-4 text-stone-600 dark:text-stone-300" />
             )}
+          </button>
+
+          {/* Settings Button (Desktop quick shortcut & mobile accessibility) */}
+          <button
+            type="button"
+            id="btn-header-settings"
+            onClick={() => setActiveTab('settings')}
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs shrink-0 ${
+              activeTab === 'settings'
+                ? 'bg-amber-600 text-white border-amber-700'
+                : 'text-stone-700 dark:text-stone-200 hover:text-amber-900 dark:hover:text-amber-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 border-stone-200 dark:border-stone-700'
+            }`}
+            title="لوحة الإعدادات وتعديل الجداول وقواعد الحساب"
+            aria-label="لوحة الإعدادات والجداول"
+          >
+            <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-white' : 'text-stone-600 dark:text-stone-300'}`} />
           </button>
 
           {/* Info & Legal Page Button (رمز تعجب صغير يشير لصفحة الفوتر والمعلومات) */}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-export type FontSizeLevel = 'sm' | 'md' | 'lg' | 'xl';
+export type FontSizeLevel = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface FontSizeContextType {
   fontSize: FontSizeLevel;
@@ -11,10 +11,11 @@ interface FontSizeContextType {
 }
 
 const FONT_SIZE_MAP: Record<FontSizeLevel, { percent: number; label: string; next: FontSizeLevel }> = {
-  sm: { percent: 90, label: 'صغير (90%)', next: 'md' },
-  md: { percent: 100, label: 'عادي (100%)', next: 'lg' },
-  lg: { percent: 110, label: 'كبير (110%)', next: 'xl' },
-  xl: { percent: 122, label: 'كبير جداً (122%)', next: 'sm' },
+  sm: { percent: 85, label: '85%', next: 'md' },
+  md: { percent: 100, label: '100%', next: 'lg' },
+  lg: { percent: 115, label: '115%', next: 'xl' },
+  xl: { percent: 130, label: '130%', next: '2xl' },
+  '2xl': { percent: 150, label: '150%', next: 'sm' },
 };
 
 const FontSizeContext = createContext<FontSizeContextType | undefined>(undefined);
