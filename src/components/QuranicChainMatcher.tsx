@@ -3127,19 +3127,8 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                       )}
                     </div>
 
-                    {/* Left side: When captions are hidden (default), show clean details chevron */}
-                    {!showCaptions ? (
-                      <div className="flex items-center gap-1 shrink-0 text-stone-400 dark:text-stone-500">
-                        <span className="text-[10px] text-stone-400 dark:text-stone-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors font-sans">
-                          {isExpanded ? 'إخفاء' : 'التفاصيل'}
-                        </span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : 'group-hover:text-stone-600 dark:group-hover:text-stone-300'
-                          }`}
-                        />
-                      </div>
-                    ) : (
+                    {/* Left side: When captions are hidden (default), render nothing to maximize phrase space */}
+                    {!showCaptions ? null : (
                       /* Left side when Captions are Visible: Smallest font Surah/Ayah + Muqatta'at + Copy + Notebook */
                       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         {/* Small Surah Name + Ayah Number + Disconnected Letters in smallest font -> Searches for the word in Quran on qran-top */}
