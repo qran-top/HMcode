@@ -91,14 +91,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const DEFAULT_DOS_HINT = 'C:\\QURAN\\GEMATRIA> النظام جاهز للعمل | [F1: مساعدة] [F8: تغيير لون الدوس] [F9: تبديل الثيم]';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // 1. Theme state: Default is now DOS!
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('app-theme') as Theme | null;
-      if (saved === 'dark' || saved === 'light' || saved === 'dos') return saved;
-    }
-    return 'dos'; // Default is DOS
-  });
+  // 1. Theme state: Permanently DOS!
+  const [theme, setThemeState] = useState<Theme>('dos');
 
   // 2. DOS CRT Scanlines state
   const [dosScanlines, setDosScanlinesState] = useState<boolean>(() => {
@@ -127,11 +121,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'norton-blue';
   });
 
-  // 5. Global Real-Time Hint System (Bottom Screen Hint Bar)
+  // 5. Global Real-Time Hint System (Top/Status Hint Display)
   const [activeHint, setActiveHint] = useState<string>(DEFAULT_DOS_HINT);
 
-  const isDark = theme === 'dark' || theme === 'dos';
-  const isDos = theme === 'dos';
+  const isDark = true;
+  const isDos = true;
 
   const setDosScanlines = (enabled: boolean) => {
     setDosScanlinesState(enabled);

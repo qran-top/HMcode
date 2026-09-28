@@ -1,21 +1,18 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { MobileBottomNav, AppTabType } from './components/MobileBottomNav';
+import { AppTabType } from './components/MobileBottomNav';
 import { DualTranslator } from './components/DualTranslator';
 import { NotebookDrawer } from './components/NotebookDrawer';
 import { PWAPrompt } from './components/PWAPrompt';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
-import { DosBottomBar } from './components/DosBottomBar';
 import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
 import { useDosKeyboardNavigation } from './hooks/useDosKeyboardNavigation';
-import { useCipherLayers } from './context/CipherLayersContext';
 import { useTheme } from './context/ThemeContext';
 
 export function App() {
-  const { analyzeText } = useCipherLayers();
-  const { isDos, dosScanlines } = useTheme();
+  const { dosScanlines } = useTheme();
 
   // Default landing page is the comprehensive Gematria & Quranic Matcher ('gematria')
   const [activeTab, setActiveTab] = useState<AppTabType>('gematria');
@@ -27,29 +24,25 @@ export function App() {
     setActiveTab,
   });
 
-  // Ensure title is consistent across views
+  // Ensure title is consistent
   useEffect(() => {
-    document.title = isDos
-      ? 'C:\\MS-DOS\\CIPHER.EXE - نظام التشفير العربي'
-      : 'البحث بالجمل والتشفير العربي';
-  }, [activeTab, isDos]);
+    document.title = 'C:\\QURAN\\CIPHER.EXE - نظام التشفير والجُمّل العربي';
+  }, [activeTab]);
 
   return (
     <div
-      className={`min-h-screen ${
-        isDos
-          ? 'bg-[#000080] text-white font-mono'
-          : 'bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans'
-      } flex flex-col antialiased selection:bg-amber-200 selection:text-stone-900 transition-colors duration-200 w-full max-w-full overflow-x-hidden`}
+      style={{ backgroundColor: 'var(--dos-bg)', color: 'var(--dos-text)' }}
+      className="min-h-screen flex flex-col font-mono antialiased selection:bg-[#ffff55] selection:text-black w-full max-w-full overflow-x-hidden transition-none"
       dir="rtl"
     >
       {/* CRT Scanline Overlay when DOS CRT effect is enabled */}
-      {isDos && dosScanlines && <div className="dos-crt-overlay" aria-hidden="true" />}
+      {dosScanlines && <div className="dos-crt-overlay" aria-hidden="true" />}
 
-      {/* Compact Header for Desktop and Mobile */}
+      {/* Full DOS Command Header with integrated top hint bar and controls */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onOpenHelp={() => setIsHelpOpen(true)}
         onOpenInstructions={() => setActiveTab('info')}
         onGoHome={() => {
           setActiveTab('gematria');
@@ -57,18 +50,14 @@ export function App() {
         }}
       />
 
-      {/* Main Container - bottom padding accommodates either DOS bottom bar or Mobile Nav */}
-      <main
-        className={`max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-3 sm:py-5 flex-1 space-y-3 sm:space-y-4 overflow-x-hidden ${
-          isDos ? 'pb-16 sm:pb-12' : 'pb-20 sm:pb-6'
-        }`}
-      >
-        {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (الصفحة الافتراضية الرئيسية) */}
+      {/* Main Terminal Container: Free of any bottom overlays so all results are 100% visible */}
+      <main className="max-w-7xl w-full mx-auto px-2 sm:px-4 py-2.5 sm:py-3.5 flex-1 space-y-3 pb-8 overflow-x-hidden">
+        {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (F1) */}
         <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
           <QuranicChainMatcher initialQuery={sharedText} />
         </div>
 
-        {/* Tab 2: Unified Search & Cipher Hub (البحث الموحد والتشفير وفك التشفير) */}
+        {/* Tab 2: Unified Command Search & Dual Translator / Cipher Hub (F2) */}
         <div className={activeTab === 'search' ? 'block' : 'hidden'}>
           <DualTranslator
             mode="both"
@@ -93,35 +82,18 @@ export function App() {
           />
         </div>
 
-        {/* Tab 3: Settings & Tables Management View (صفحة عادية كاملة لإدارة وتعديل جداول السماوات والأرض والجمل) */}
+        {/* Tab 3: Settings & Tables Management View (F3) */}
         <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
           <SettingsView />
         </div>
 
-        {/* Tab 4: Info & Legal View (صفحة منفصلة بالكامل للمعلومات والسياسات بدون أي نوافذ منبثقة وبدون فوتر) */}
+        {/* Tab 4: Info & Documentation View (F4) */}
         <div className={activeTab === 'info' ? 'block' : 'hidden'}>
           <InfoView onBack={() => setActiveTab('gematria')} />
         </div>
       </main>
 
-      {/* DOS 90s Function Keys Ribbon (F1-F10) */}
-      {isDos && (
-        <DosBottomBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onOpenHelp={() => setIsHelpOpen(true)}
-        />
-      )}
-
-      {/* Mobile Bottom Navigation Bar (Hidden when in DOS mode since DosBottomBar takes its place) */}
-      {!isDos && (
-        <MobileBottomNav
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-      )}
-
-      {/* Drawers & PWA Prompts */}
+      {/* Drawers & Modals */}
       <PWAPrompt />
       <NotebookDrawer />
 
@@ -135,4 +107,3 @@ export function App() {
 }
 
 export default App;
-

@@ -1815,7 +1815,7 @@ export function DualTranslator({
                     لا توجد ألفاظ قرآنية مباشرة
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-64 overflow-y-auto pr-0.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 w-full">
                     {quranicMatches.map((item, idx) => {
                       const url = getQuranTopWordUrl(item.word, item.meta.surahNumber, item.meta.ayahNum, item.meta.occurrences);
                       const isCopied = copiedText === `q_${idx}`;
@@ -1908,7 +1908,7 @@ export function DualTranslator({
                       </span>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1 rounded-md bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800">
+                    <div className="flex flex-wrap gap-1 w-full p-1 rounded-md bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800">
                       {arabicDictionaryMatches.slice(0, 40).map((item, idx) => (
                         <div
                           key={`dict_${item.word}_${idx}`}
@@ -2031,7 +2031,7 @@ export function DualTranslator({
                         <span>مفردات قرآنية ({encQuranicMatches.length})</span>
                       </h4>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-56 overflow-y-auto pr-0.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 w-full">
                         {encQuranicMatches.map((item, idx) => {
                           const url = getQuranTopWordUrl(item.word, item.meta.surahNumber, item.meta.ayahNum, item.meta.occurrences);
                           const isCopied = copiedText === `enc_q_${idx}`;

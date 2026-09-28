@@ -159,7 +159,8 @@ html.theme-dos[data-dos-palette="wordstar-teal"] {
 
 /* Global MS-DOS Mode Transformations */
 html.theme-dos,
-html.theme-dos body {
+html.theme-dos body,
+html.theme-dos #root {
   color-scheme: dark;
   background-color: var(--dos-bg) !important;
   color: var(--dos-text) !important;
@@ -169,7 +170,7 @@ html.theme-dos body {
   max-width: 100vw !important;
 }
 
-/* Force Monospace everywhere and strip modern roundings */
+/* Force Monospace everywhere and strip modern roundings in DOS */
 html.theme-dos * {
   font-family: 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
   border-radius: 0px !important;
@@ -177,83 +178,19 @@ html.theme-dos * {
   text-shadow: none !important;
 }
 
-/* Prevent horizontal overflow */
-html.theme-dos .overflow-x-auto,
-html.theme-dos .overflow-x-scroll,
-html.theme-dos [class*="overflow-x-"] {
-  overflow-x: hidden !important;
-  flex-wrap: wrap !important;
-  white-space: normal !important;
-  max-width: 100% !important;
-}
-
-html.theme-dos .flex-nowrap {
-  flex-wrap: wrap !important;
-}
-
-html.theme-dos .whitespace-nowrap {
-  white-space: normal !important;
-}
-
-/* Substitute modern spinning loaders with retro [WAIT] badge */
-html.theme-dos .animate-spin {
-  animation: none !important;
-  transform: none !important;
-}
-
-html.theme-dos svg.animate-spin,
-html.theme-dos [class*="animate-spin"] svg {
-  display: none !important;
-}
-
-html.theme-dos [class*="animate-pulse"] {
-  animation: none !important;
-}
-
-html.theme-dos .animate-spin::before {
-  content: "[WAIT]" !important;
-  font-family: monospace !important;
-  font-weight: 900 !important;
-  color: #ffff55 !important;
-  background-color: #aa0000 !important;
-  padding: 0 4px !important;
-  display: inline-block !important;
-  animation: dos-cursor-blink 0.5s step-end infinite !important;
-}
-
-/* DOS ASCII Block Progress Bars */
-html.theme-dos [class*="rounded-full"][class*="h-1"],
-html.theme-dos [class*="rounded-full"][class*="h-1.5"],
-html.theme-dos [class*="rounded-full"][class*="h-2"] {
-  background-color: var(--dos-input-bg) !important;
-  border: 1px solid var(--dos-border) !important;
-  height: 14px !important;
-  border-radius: 0px !important;
-  overflow: hidden !important;
-}
-
-html.theme-dos [class*="rounded-full"][class*="h-1"] > div,
-html.theme-dos [class*="rounded-full"][class*="h-1.5"] > div,
-html.theme-dos [class*="rounded-full"][class*="h-2"] > div {
-  background: #55ff55 !important;
-  background-image: repeating-linear-gradient(
-    90deg,
-    #55ff55 0px,
-    #55ff55 8px,
-    var(--dos-input-bg) 8px,
-    var(--dos-input-bg) 11px
-  ) !important;
-  border-radius: 0px !important;
-  height: 100% !important;
-  transition: none !important;
-}
-
-/* DOS Modals and Drawers */
-html.theme-dos [role="dialog"],
-html.theme-dos .fixed[class*="z-"] > div {
-  box-shadow: 6px 6px 0px #000000 !important;
-  border: 2px solid var(--dos-border) !important;
-  background-color: var(--dos-panel) !important;
+/* Base Panel & Surface Fallbacks (Non-Result Elements) */
+html.theme-dos .dos-panel,
+html.theme-dos .bg-white,
+html.theme-dos .bg-stone-50,
+html.theme-dos .bg-stone-100,
+html.theme-dos .bg-stone-200,
+html.theme-dos .bg-stone-800,
+html.theme-dos .bg-stone-850,
+html.theme-dos .bg-stone-900,
+html.theme-dos .bg-stone-950 {
+  background-color: var(--dos-panel);
+  border-color: var(--dos-border);
+  color: var(--dos-text);
 }
 
 /* DOS Inputs, Textareas & Selects */
@@ -270,7 +207,7 @@ html.theme-dos select {
 
 html.theme-dos input:focus,
 html.theme-dos textarea:focus {
-  background-color: #000022 !important;
+  background-color: var(--dos-input-bg) !important;
   color: var(--dos-accent) !important;
   border: 2px solid var(--dos-accent) !important;
   outline: 2px dashed var(--dos-accent) !important;
@@ -279,166 +216,128 @@ html.theme-dos textarea:focus {
   caret-shape: block !important;
 }
 
-/* DOS Card Containers & Surfaces */
-html.theme-dos main div[class*="bg-"],
-html.theme-dos section[class*="bg-"],
-html.theme-dos article[class*="bg-"],
-html.theme-dos .bg-white,
-html.theme-dos .bg-stone-50,
-html.theme-dos .bg-stone-100,
-html.theme-dos .bg-stone-200,
-html.theme-dos .bg-stone-800,
-html.theme-dos .bg-stone-850,
-html.theme-dos .bg-stone-900,
-html.theme-dos .bg-stone-950 {
-  background-color: var(--dos-panel) !important;
-  border-color: var(--dos-border) !important;
-  color: var(--dos-text) !important;
-}
-
-/* DOS Panels & High-Contrast Boxes */
-html.theme-dos .border,
-html.theme-dos [class*="border-stone-"] {
-  border-color: var(--dos-border) !important;
-}
-
 /* DOS Interactive Buttons: Classic 90s 3D beveled block look */
-html.theme-dos button:not([class*="bg-amber-600"]):not([class*="bg-red-"]):not([class*="bg-rose-"]) {
-  background-color: var(--dos-btn-bg) !important;
-  color: #ffffff !important;
-  border-top: 2px solid #ffffff !important;
-  border-left: 2px solid #ffffff !important;
-  border-bottom: 2px solid #000000 !important;
-  border-right: 2px solid #000000 !important;
-  transition: none !important;
+html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):not([class*="bg-amber-600"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]) {
+  background-color: var(--dos-btn-bg);
+  color: #ffffff;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-bottom: 2px solid #000000;
+  border-right: 2px solid #000000;
+  transition: none;
 }
 
-html.theme-dos button:hover,
-html.theme-dos button:focus-visible {
-  background-color: var(--dos-accent) !important;
-  color: #000000 !important;
-  border-top: 2px solid #000000 !important;
-  border-left: 2px solid #000000 !important;
-  border-bottom: 2px solid #ffffff !important;
-  border-right: 2px solid #ffffff !important;
-  outline: none !important;
-}
-
-html.theme-dos button:active {
-  background-color: #55ff55 !important;
-  color: #000000 !important;
-  border-top: 2px solid #000000 !important;
-  border-left: 2px solid #000000 !important;
-  border-bottom: 2px solid #ffffff !important;
-  border-right: 2px solid #ffffff !important;
+html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):hover,
+html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):focus-visible {
+  background-color: var(--dos-accent);
+  color: #000000;
+  border-top: 2px solid #000000;
+  border-left: 2px solid #000000;
+  border-bottom: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+  outline: none;
 }
 
 /* ========================================================================= */
-/* 🎨 VIBRANT VGA 16-COLOR PALETTE FOR BADGES, RESULTS & ICONS               */
+/* 🎨 VIVID 16-COLOR DOS CLASSIFICATION STYLING (شرقي / غربي / مشترك / مشفر) */
 /* ========================================================================= */
 
-/* Emerald / Green Results & Matches */
-html.theme-dos [class*="bg-emerald-"],
-html.theme-dos [class*="bg-green-"] {
-  background-color: #003810 !important;
-  border: 1px solid #55ff55 !important;
+/* 1. الشرقي (Mashriqi) - Vivid DOS Cyan (#55ffff / #00ffff) */
+.dos-card-mashriqi {
+  background-color: #001e38 !important;
+  border: 2px solid #00e5ff !important;
+  color: #55ffff !important;
+}
+.dos-card-mashriqi:hover {
+  background-color: #002e52 !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-mashriqi {
+  background-color: #003652 !important;
+  color: #55ffff !important;
+  border: 1px solid #00e5ff !important;
+  font-weight: bold !important;
+}
+
+/* 2. المغربي (Maghribi) - Rich DOS Amber / Orange (#ffaa00 / #ff8800) */
+.dos-card-maghribi {
+  background-color: #331600 !important;
+  border: 2px solid #ffaa00 !important;
+  color: #ffbb33 !important;
+}
+.dos-card-maghribi:hover {
+  background-color: #4a2200 !important;
+  border-color: #ffff55 !important;
+}
+.dos-badge-maghribi {
+  background-color: #572500 !important;
+  color: #ffaa00 !important;
+  border: 1px solid #ffaa00 !important;
+  font-weight: bold !important;
+}
+
+/* 3. المشترك (Common / In Both) - High-Voltage Green (#55ff55 / #33ff33) */
+.dos-card-common {
+  background-color: #00290a !important;
+  border: 2px solid #33ff33 !important;
   color: #55ff55 !important;
 }
-
-/* Amber / Yellow Numerical Results & Values */
-html.theme-dos [class*="bg-amber-"],
-html.theme-dos [class*="bg-yellow-"] {
-  background-color: #382800 !important;
-  border: 1px solid #ffff55 !important;
-  color: #ffff55 !important;
+.dos-card-common:hover {
+  background-color: #003d10 !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-common {
+  background-color: #004d14 !important;
+  color: #55ff55 !important;
+  border: 1px solid #33ff33 !important;
+  font-weight: bold !important;
 }
 
-/* Purple / Magenta Noorani & Special Badges */
-html.theme-dos [class*="bg-purple-"],
-html.theme-dos [class*="bg-violet-"],
-html.theme-dos [class*="bg-fuchsia-"] {
-  background-color: #3a003a !important;
+/* 4. المشفر (Enciphered) - Vivid DOS Magenta (#ff55ff) */
+.dos-card-enciphered {
+  background-color: #330033 !important;
+  border: 2px solid #ff55ff !important;
+  color: #ff77ff !important;
+}
+.dos-card-enciphered:hover {
+  background-color: #4d004d !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-enciphered {
+  background-color: #590059 !important;
+  color: #ff55ff !important;
   border: 1px solid #ff55ff !important;
-  color: #ff55ff !important;
+  font-weight: bold !important;
 }
 
-/* Cyan / Sky / Blue Informational Chips */
-html.theme-dos [class*="bg-cyan-"],
-html.theme-dos [class*="bg-sky-"],
-html.theme-dos [class*="bg-teal-"] {
-  background-color: #002f3a !important;
-  border: 1px solid #55ffff !important;
-  color: #55ffff !important;
-}
-
-/* Rose / Red Exclusions & Warnings */
-html.theme-dos [class*="bg-rose-"],
-html.theme-dos [class*="bg-red-"] {
-  background-color: #3f0000 !important;
-  border: 1px solid #ff5555 !important;
-  color: #ff5555 !important;
-}
-
-/* Blue Layers & Headers */
-html.theme-dos [class*="bg-blue-"] {
-  background-color: #001f5c !important;
-  border: 1px solid #55aaff !important;
+/* 5. غير المشفر / الصريح (Plain / Explicit) - Crisp White / Silver (#ffffff) */
+.dos-card-plain {
+  background-color: #1a1a1a !important;
+  border: 2px solid #ffffff !important;
   color: #ffffff !important;
 }
+.dos-card-plain:hover {
+  background-color: #2b2b2b !important;
+  border-color: #ffff55 !important;
+}
+.dos-badge-plain {
+  background-color: #383838 !important;
+  color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  font-weight: bold !important;
+}
 
-/* Vibrant VGA Icons (SVGs) */
-html.theme-dos svg.text-amber-500,
-html.theme-dos svg.text-amber-400,
-html.theme-dos svg.text-amber-600,
-html.theme-dos svg.text-yellow-500,
-html.theme-dos svg.text-yellow-400,
-html.theme-dos [class*="text-amber-"] svg,
-html.theme-dos [class*="text-yellow-"] svg {
+/* 6. النوراني / الفواتح (Noorani / Muqattaat) - Bright Yellow (#ffff55) */
+.dos-card-noorani {
+  background-color: #333300 !important;
+  border: 2px solid #ffff55 !important;
   color: #ffff55 !important;
-  stroke: #ffff55 !important;
 }
-
-html.theme-dos svg.text-emerald-500,
-html.theme-dos svg.text-emerald-400,
-html.theme-dos svg.text-emerald-600,
-html.theme-dos svg.text-green-500,
-html.theme-dos [class*="text-emerald-"] svg,
-html.theme-dos [class*="text-green-"] svg {
-  color: #55ff55 !important;
-  stroke: #55ff55 !important;
-}
-
-html.theme-dos svg.text-purple-500,
-html.theme-dos svg.text-purple-400,
-html.theme-dos svg.text-fuchsia-500,
-html.theme-dos [class*="text-purple-"] svg,
-html.theme-dos [class*="text-violet-"] svg {
-  color: #ff55ff !important;
-  stroke: #ff55ff !important;
-}
-
-html.theme-dos svg.text-cyan-500,
-html.theme-dos svg.text-cyan-400,
-html.theme-dos svg.text-sky-500,
-html.theme-dos [class*="text-cyan-"] svg,
-html.theme-dos [class*="text-sky-"] svg {
-  color: #55ffff !important;
-  stroke: #55ffff !important;
-}
-
-html.theme-dos svg.text-rose-500,
-html.theme-dos svg.text-red-500,
-html.theme-dos [class*="text-rose-"] svg,
-html.theme-dos [class*="text-red-"] svg {
-  color: #ff5555 !important;
-  stroke: #ff5555 !important;
-}
-
-html.theme-dos svg.text-blue-500,
-html.theme-dos svg.text-blue-400,
-html.theme-dos [class*="text-blue-"] svg {
-  color: #55aaff !important;
-  stroke: #55aaff !important;
+.dos-badge-noorani {
+  background-color: #4a4a00 !important;
+  color: #ffff55 !important;
+  border: 1px solid #ffff55 !important;
+  font-weight: bold !important;
 }
 
 /* Headings in DOS */

@@ -252,6 +252,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   });
   const nooraniStartedRef = useRef(false);
 
+  // Progressive rendering limit to prevent browser freeze when rendering thousands of items
+  const [visibleLimit, setVisibleLimit] = useState<number>(90);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState<boolean>(false);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -287,6 +290,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   // Multiplier State (مضاعف الكلمة المبحوث عنها)
   const [multiplier, setMultiplier] = useState<number>(1);
   const [multiplierInput, setMultiplierInput] = useState<string>('1');
+
+  useEffect(() => {
+    setVisibleLimit(90);
+  }, [committedQuery, multiplier, selectedScope, selectedOriginFilter, resultsFilter, matchLengthFilter, onlyFawatihSurahs]);
 
   // Computed Target Information (calculated only when user presses "ابدأ" or triggers scan)
   interface ComputedTargetInfo {
@@ -689,31 +696,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   };
 
   // Start Phase 3: Arabic Lexicon Scan (runs automatically after Quran scan completes)
-  const startArabicScanPhase = async (targetMag: number, targetMash: number, isIdenticalVal: boolean) => {
-    setArabicProgress({
-      isRunning: true,
-      percent: 15,
-      message: 'المرحلة 3: بدء فحص جذور المعجم العربي وتوليف المفردات المتطابقة...',
-      foundCount: 0,
-      isCompleted: false,
-    });
-
-    await new Promise((r) => setTimeout(r, 200));
-    setArabicProgress((prev) => ({
-      ...prev,
-      percent: 50,
-      message: 'مطابقة أوزان وقيم الجُمَّل (الشرقي والغربي) والتحقق من المعاجم...',
-    }));
-
-    await new Promise((r) => setTimeout(r, 220));
-    setArabicProgress((prev) => ({
-      ...prev,
-      percent: 85,
-      message: 'تنقية المفردات وفرز النتائج حسب التطابق اللغوي...',
-    }));
-
-    await new Promise((r) => setTimeout(r, 160));
-
+  const startArabicScanPhase = (targetMag: number, targetMash: number, isIdenticalVal: boolean) => {
     try {
       const targetVal = isIdenticalVal ? targetMag : targetMash;
       let finalResults: SynthesizedTextResult[] = [];
@@ -789,6 +772,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
     recordSearchInHistory(q, scopeToUse, nooraniToUse, targetMag, targetMash, isIdenticalVal, undefined, multToUse);
 
+    let matchBatch: InverseQuranicMatch[] = [];
+    let lastFlushTime = Date.now();
+
     try {
       await scannerRef.current.scan(
         targetMag,
@@ -804,7 +790,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
             setProgress(p);
           },
           onMatch: (newMatch) => {
-            setMatches((prev) => [...prev, newMatch]);
+            matchBatch.push(newMatch);
+            const now = Date.now();
+            if (now - lastFlushTime > 120) {
+              lastFlushTime = now;
+              setMatches([...matchBatch]);
+            }
           },
           onComplete: (allMatches, cancelled) => {
             setMatches(allMatches);
@@ -819,11 +810,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 allMatches.length,
                 multToUse
               );
-              // Trigger Stage 3: Arabic Lexicon Scan after a small delay
-              setTimeout(() => {
-                setPipelinePhase('arabic');
-                startArabicScanPhase(targetMag, targetMash, isIdenticalVal);
-              }, 400);
+              // Immediately execute Stage 3 (Arabic Dictionary) without artificial delay
+              setPipelinePhase('arabic');
+              startArabicScanPhase(targetMag, targetMash, isIdenticalVal);
             } else {
               setPipelinePhase('idle');
             }
@@ -2650,14 +2639,14 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
             </div>
 
             {filteredArabicMatches.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-0.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 pr-0.5">
                 {filteredArabicMatches.map((item, idx) => (
                   <a
                     key={`${item.text}_${idx}`}
                     href={`https://www.google.com/search?q=${encodeURIComponent(item.text)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-2.5 py-2 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-500 dark:hover:border-amber-500 hover:bg-amber-50/60 dark:hover:bg-amber-950/30 text-stone-900 dark:text-stone-100 hover:text-amber-700 dark:hover:text-amber-300 shadow-2xs flex items-center justify-center text-center font-serif font-bold text-sm sm:text-base transition-all select-text cursor-pointer leading-normal"
+                    className="px-2.5 py-2 rounded-lg bg-[#0000aa] border-2 border-[#ffaa00] hover:border-[#ffff55] hover:bg-[#332200] text-[#ffff55] hover:text-[#ffffff] shadow-sm flex items-center justify-center text-center font-serif font-bold text-sm sm:text-base transition-none select-text cursor-pointer leading-normal"
                     title={`البحث عن «${item.text}» في Google`}
                   >
                     <span>{item.text}</span>
@@ -3250,8 +3239,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
         {/* Minimal High-Density Results Grid with Distinct System Colors */}
         {filteredMatches.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-0.5">
-            {filteredMatches.map((item) => {
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pr-0.5">
+              {filteredMatches.slice(0, visibleLimit).map((item) => {
               const isExpanded = expandedMatchId === item.id;
               const isCopied = copiedId === item.id;
               const surahMuqattaat = getSurahMuqattaat(item.surahNumber, item.surahName);
@@ -3262,22 +3252,16 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               const isMashriqi = item.systemOrigin === 'mashriqi' && !item.isIntrinsicCommon;
 
               const cardClasses = isCommon
-                ? 'bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500'
+                ? 'dos-card-common'
                 : isMaghribi
-                ? 'bg-amber-50/50 dark:bg-amber-950/25 border-amber-300 dark:border-amber-700/80 hover:border-amber-500'
-                : 'bg-sky-50/50 dark:bg-sky-950/25 border-sky-300 dark:border-sky-700/80 hover:border-sky-500';
+                ? 'dos-card-maghribi'
+                : 'dos-card-mashriqi';
 
-              const indicatorDot = isCommon
-                ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-800'
+              const phraseTextClass = isCommon
+                ? 'text-[#55ff55]'
                 : isMaghribi
-                ? 'bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-800'
-                : 'bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-800';
-
-              const textHoverClass = isCommon
-                ? 'hover:text-emerald-700 dark:hover:text-emerald-300'
-                : isMaghribi
-                ? 'hover:text-amber-700 dark:hover:text-amber-300'
-                : 'hover:text-sky-700 dark:hover:text-sky-300';
+                ? 'text-[#ffbb33]'
+                : 'text-[#55ffff]';
 
               // Calculate total verification equation
               const wordEquation = item.breakdown.map((b) => `${b.word} (${b.value})`).join(' + ');
@@ -3290,30 +3274,33 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 <div
                   key={item.id}
                   onClick={() => setExpandedMatchId(isExpanded ? null : item.id)}
-                  className={`px-2.5 py-1.5 rounded-xl border shadow-2xs transition-all select-none group flex flex-col justify-center gap-1 cursor-pointer ${cardClasses} ${
-                    isExpanded ? 'ring-2 ring-emerald-500/20 shadow-xs' : ''
+                  className={`px-2.5 py-1.5 border shadow-2xs select-none group flex flex-col justify-center gap-1 cursor-pointer transition-none ${cardClasses} ${
+                    isExpanded ? 'ring-2 ring-white shadow-xs' : ''
                   }`}
                   title={isExpanded ? 'انقر لإخفاء التفاصيل' : 'انقر لعرض تفاصيل الآية والتفكيك'}
                 >
-                  {/* Clean Single Row: Indicator Dot + Phrase (Right) & Small Surah/Ayah/Muqattaat + Actions (Left) */}
+                  {/* Clean Single Row: System Tag + Clickable Full Quranic Phrase (Right) & Small Surah/Ayah/Muqattaat (Left) */}
                   <div className="flex items-center justify-between gap-1.5 w-full">
-                    {/* Right side: Color Dot + Clickable Full Quranic Phrase */}
+                    {/* Right side: System Tag + Full Quranic Phrase */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      {/* Subtle Color Dot Indicator */}
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${indicatorDot}`}
-                        title={
-                          isCommon
-                            ? `مشترك في النظامين (القيمة = ${item.value})`
-                            : isMaghribi
-                            ? `غربي (القيمة = ${item.maghribiValue})`
-                            : `شرقي (القيمة = ${item.mashriqiValue})`
-                        }
-                      />
+                      {/* Bold DOS System Tag */}
+                      {isCommon ? (
+                        <span className="dos-badge-common text-3xs px-1 py-0.5 shrink-0 font-mono">
+                          [مشترك:{item.value}]
+                        </span>
+                      ) : isMaghribi ? (
+                        <span className="dos-badge-maghribi text-3xs px-1 py-0.5 shrink-0 font-mono">
+                          [غربي:{item.maghribiValue}]
+                        </span>
+                      ) : (
+                        <span className="dos-badge-mashriqi text-3xs px-1 py-0.5 shrink-0 font-mono">
+                          [شرقي:{item.mashriqiValue}]
+                        </span>
+                      )}
 
                       {!showCaptions ? (
                         <span
-                          className={`text-xs sm:text-sm font-semibold font-quran text-stone-900 dark:text-stone-100 leading-normal truncate ${textHoverClass}`}
+                          className={`text-xs sm:text-sm font-bold font-quran leading-normal truncate ${phraseTextClass}`}
                         >
                           {resultsFilter.trim() ? highlightQuranText(item.phrase, resultsFilter.trim()) : item.phrase}
                         </span>
@@ -3323,7 +3310,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className={`text-xs sm:text-sm font-semibold font-quran text-stone-900 dark:text-stone-100 leading-normal truncate hover:underline hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer ${textHoverClass}`}
+                          className={`text-xs sm:text-sm font-bold font-quran leading-normal truncate hover:underline hover:text-white cursor-pointer ${phraseTextClass}`}
                           title={`البحث عن «${item.phrase}» في المصحف الشريف بموقع (qran-top)`}
                         >
                           {resultsFilter.trim() ? highlightQuranText(item.phrase, resultsFilter.trim()) : item.phrase}
@@ -3339,10 +3326,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         if (!inPhrase && inAyah) {
                           return (
                             <span
-                              className="text-[9px] px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-sans inline-flex items-center gap-0.5 shrink-0 font-medium border border-emerald-200 dark:border-emerald-800"
+                              className="text-[9px] px-1 py-0.5 bg-[#003810] text-[#55ff55] font-sans inline-flex items-center gap-0.5 shrink-0 font-medium border border-[#33ff33]"
                               title={`الكلمة المبحوثة «${q}» وردت ضمن سياق الآية الكريمة لهذه النتيجة`}
                             >
-                              <BookOpen className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                              <BookOpen className="w-2.5 h-2.5 text-[#55ff55]" />
                               <span>في سياق الآية</span>
                             </span>
                           );
@@ -3351,8 +3338,8 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                       })()}
 
                       {isCopied && (
-                        <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal shrink-0">
-                          تم
+                        <span className="text-3xs text-[#55ff55] font-bold shrink-0">
+                          [تم النسخ]
                         </span>
                       )}
                     </div>
@@ -3432,28 +3419,28 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   {isExpanded && (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="pt-2.5 mt-1 border-t border-stone-200/80 dark:border-stone-800 text-3xs space-y-2.5 bg-white/90 dark:bg-stone-950/90 p-3 rounded-lg font-normal animate-in fade-in duration-150 shadow-inner"
+                      className="pt-2.5 mt-1 border-t-2 border-white/60 text-3xs space-y-2.5 bg-black/90 p-3 font-mono shadow-md"
                     >
                       {/* Full Quranic Ayah Box */}
                       {item.fullAyahText && (
-                        <div className="p-2.5 rounded-lg bg-stone-50 dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-800 space-y-1.5">
-                          <div className="flex items-center justify-between text-3xs text-stone-500 dark:text-stone-400 flex-wrap gap-1">
-                            <span className="font-semibold text-stone-700 dark:text-stone-300">الآية الكريمة كاملة:</span>
-                            <span className="font-sans font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <div className="p-2 bg-black border border-white/40 space-y-1.5">
+                          <div className="flex items-center justify-between text-3xs text-[#ffff55] flex-wrap gap-1">
+                            <span className="font-bold">الآية الكريمة كاملة:</span>
+                            <span className="font-sans font-medium text-[#55ffff] flex items-center gap-1.5">
                               <a
                                 href={item.quranUrl || getQuranTopSearchUrl(item.phrase)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hover:underline hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer font-bold"
+                                className="hover:underline hover:text-white flex items-center gap-1 cursor-pointer font-bold"
                                 title={`البحث عن كلمة «${item.phrase}» في المصحف الشريف بموقع (qran-top)`}
                               >
-                                <BookOpen className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <BookOpen className="w-3 h-3 text-[#55ff55]" />
                                 <span>سورة {item.surahName} [الآية {item.ayahNumber}]</span>
                                 <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                               </a>
                               {surahMuqattaat && (
                                 <span
-                                  className="text-4xs font-quran px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold"
+                                  className="text-4xs font-quran px-1.5 py-0.5 bg-[#4a4a00] text-[#ffff55] border border-[#ffff55] font-bold"
                                   title={`الأحرف المقطعة في فاتحة سورة ${item.surahName}`}
                                 >
                                   فاتحة السورة: {surahMuqattaat}
@@ -3461,24 +3448,24 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                               )}
                             </span>
                           </div>
-                          <p className="text-xs sm:text-sm font-quran leading-loose text-stone-900 dark:text-stone-100 text-right select-text">
+                          <p className="text-xs sm:text-sm font-quran leading-loose text-white text-right select-text">
                             ﴿ {resultsFilter.trim() && searchInFullAyah ? highlightQuranText(item.fullAyahText, resultsFilter.trim()) : item.fullAyahText} ﴾
                           </p>
                         </div>
                       )}
 
                       {/* Action Bar inside Expanded Details: Copy Phrase, Copy Ayah, Notebook, Quran Search */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap text-stone-600 dark:text-stone-300 pt-0.5">
+                      <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {/* Copy Phrase */}
                           <button
                             type="button"
                             onClick={() => handleCopyPhrase(item.id, item.phrase)}
-                            className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors cursor-pointer inline-flex items-center gap-1 text-3xs font-sans font-medium"
+                            className="px-2 py-1 bg-[#222222] hover:bg-[#ffff55] hover:text-black text-white border border-white cursor-pointer inline-flex items-center gap-1 text-3xs font-mono font-bold"
                             title="نسخ العبارة المطابقة"
                           >
                             {isCopied ? (
-                              <Check className="w-3 h-3 text-emerald-600" />
+                              <Check className="w-3 h-3 text-[#55ff55]" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
@@ -3493,10 +3480,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                                 navigator.clipboard.writeText(`﴿ ${item.fullAyahText} ﴾ [سورة ${item.surahName}: ${item.ayahNumber}]`);
                                 handleCopyPhrase(item.id + '_ayah', item.fullAyahText);
                               }}
-                              className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors cursor-pointer inline-flex items-center gap-1 text-3xs font-sans font-medium"
+                              className="px-2 py-1 bg-[#222222] hover:bg-[#ffff55] hover:text-black text-white border border-white cursor-pointer inline-flex items-center gap-1 text-3xs font-mono font-bold"
                               title="نسخ نص الآية الكريمة كاملة مع السورة ورقم الآية"
                             >
-                              <BookOpen className="w-3 h-3 text-emerald-600" />
+                              <BookOpen className="w-3 h-3 text-[#55ff55]" />
                               <span>نسخ الآية كاملة</span>
                             </button>
                           )}
@@ -3508,7 +3495,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                             surahInfo={`سورة ${item.surahName}`}
                             ayahNum={item.ayahNumber}
                             type="quranic"
-                            className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-colors inline-flex items-center gap-1 text-3xs font-medium"
+                            className="px-2 py-1 bg-[#222222] hover:bg-[#ffff55] hover:text-black text-white border border-white inline-flex items-center gap-1 text-3xs font-bold"
                           />
 
                           {/* Search in Quran (qran-top) */}
@@ -3516,7 +3503,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                             href={item.quranUrl || getQuranTopSearchUrl(item.phrase)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors inline-flex items-center gap-1 text-3xs font-medium cursor-pointer"
+                            className="px-2 py-1 bg-[#003810] hover:bg-[#55ff55] hover:text-black text-[#55ff55] border border-[#33ff33] inline-flex items-center gap-1 text-3xs font-bold cursor-pointer"
                             title="فتح محرك بحث القرآن الكريم (qran-top) لكافة مواضع هذه الكلمة"
                           >
                             <ExternalLink className="w-3 h-3" />
@@ -3527,16 +3514,16 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         {/* System Value */}
                         <div className="flex items-center gap-1 font-mono text-3xs">
                           {isCommon ? (
-                            <span className="text-emerald-700 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800">
+                            <span className="text-[#55ff55] font-bold px-1.5 py-0.5 bg-[#003810] border border-[#33ff33]">
                               المجموع المشترك = {item.value}
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center gap-1">
-                              <span className="text-amber-700 dark:text-amber-300 font-semibold">
+                            <span className="px-1.5 py-0.5 bg-black border border-white flex items-center gap-1">
+                              <span className="text-[#ffaa00] font-bold">
                                 غربي: {item.maghribiValue}
                               </span>
-                              <span>|</span>
-                              <span className="text-sky-700 dark:text-sky-300 font-semibold">
+                              <span className="text-white">|</span>
+                              <span className="text-[#55ffff] font-bold">
                                 شرقي: {item.mashriqiValue}
                               </span>
                             </span>
@@ -3545,15 +3532,15 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                       </div>
 
                       {/* Word Summation */}
-                      <div className="p-2 rounded bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800/60 space-y-1">
-                        <div className="flex items-center gap-1 flex-wrap text-stone-700 dark:text-stone-300 font-mono">
-                          <span className="font-semibold text-stone-800 dark:text-stone-200">{wordEquation}</span>
-                          <span className="text-stone-400">=</span>
-                          <span className="font-bold text-emerald-700 dark:text-emerald-300">{numSumEquation} = {item.value} ✓</span>
+                      <div className="p-2 bg-[#001800] border border-[#33ff33] space-y-1">
+                        <div className="flex items-center gap-1 flex-wrap text-white font-mono">
+                          <span className="font-bold text-[#ffff55]">{wordEquation}</span>
+                          <span className="text-white">=</span>
+                          <span className="font-bold text-[#55ff55]">{numSumEquation} = {item.value} ✓</span>
                         </div>
 
                         {/* Letter Breakdown Summation */}
-                        <div className="text-stone-500 dark:text-stone-400 font-mono text-4xs opacity-90 leading-relaxed">
+                        <div className="text-[#aaffaa] font-mono text-4xs opacity-90 leading-relaxed">
                           {letterFullEquation}
                         </div>
                       </div>
@@ -3562,7 +3549,22 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 </div>
               );
             })}
-          </div>
+            </div>
+            {filteredMatches.length > visibleLimit && (
+              <div className="pt-3 pb-1 flex justify-center w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVisibleLimit((prev) => prev + 90);
+                    if (isDos) playDosBeep(750, 20);
+                  }}
+                  className="w-full sm:w-auto px-6 py-2 bg-[#0000aa] hover:bg-[#55ffff] hover:text-black text-[#ffff55] border-2 border-[#55ffff] font-mono font-bold text-xs cursor-pointer active:translate-y-0.5 transition-none select-none text-center shadow-md"
+                >
+                  [▼ عرض 90 نتيجة إضافية ({filteredMatches.length - visibleLimit} نتيجة متبقية)]
+                </button>
+              </div>
+            )}
+          </>
         ) : !progress.isRunning && progress.scannedCount > 0 ? (
           <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 text-center space-y-1.5">
             <BookOpen className="w-6 h-6 text-stone-400 mx-auto" />
