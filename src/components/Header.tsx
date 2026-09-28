@@ -265,31 +265,6 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           </button>
         </nav>
       </div>
-
-      {/* 3. Dynamic DOS Hint Bar: High-contrast, useful, doesn't shift layout, toggleable */}
-      {isHintEnabled && (
-        <div
-          style={{ backgroundColor: 'var(--dos-input-bg)', borderColor: 'var(--dos-border)' }}
-          className="px-2 py-1 border-b text-xs font-mono flex items-center justify-between gap-2 overflow-hidden shadow-inner select-none transition-none"
-        >
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-            <span className="text-[#ffff55] font-black shrink-0 text-2xs sm:text-xs">
-              C:\DOS\HINT&gt;
-            </span>
-            <span className="text-[#55ffff] font-bold text-2xs sm:text-xs truncate">
-              {hintText || 'مرر المؤشر فوق أي زر أو نتيجة بالصفحة لعرض شرح فوري أو تفاصيل النتيجة الكاملة...'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={toggleHint}
-            className="text-4xs text-[#aaaaaa] hover:text-[#ff5555] shrink-0 font-mono px-1 py-0.2 border border-[#444444] cursor-pointer"
-            title="إخفاء شريط الهنت (يمكنك إعادة إظهاره من زر تلميح بالأعلى)"
-          >
-            [إخفاء ✕]
-          </button>
-        </div>
-      )}
     </header>
   );
 }

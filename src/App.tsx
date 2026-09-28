@@ -8,6 +8,7 @@ import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
 import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
+import { DosBottomHintBar } from './components/DosBottomHintBar';
 import { useDosKeyboardNavigation } from './hooks/useDosKeyboardNavigation';
 import { useTheme } from './context/ThemeContext';
 
@@ -50,8 +51,8 @@ export function App() {
         }}
       />
 
-      {/* Main Terminal Container: Free of any bottom overlays so all results are 100% visible */}
-      <main className="max-w-7xl w-full mx-auto px-2 sm:px-4 py-2.5 sm:py-3.5 flex-1 space-y-3 pb-8 overflow-x-hidden">
+      {/* Main Terminal Container: Generous pb-36 sm:pb-44 so bottom sticky hint bar never covers the last result */}
+      <main className="max-w-7xl w-full mx-auto px-2 sm:px-4 py-2.5 sm:py-3.5 flex-1 space-y-3 pb-36 sm:pb-44 overflow-x-hidden">
         {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (F1) */}
         <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
           <QuranicChainMatcher initialQuery={sharedText} />
@@ -96,6 +97,9 @@ export function App() {
       {/* Drawers & Modals */}
       <PWAPrompt />
       <NotebookDrawer />
+
+      {/* Persistent Bottom DOS Hint Bar: Always visible on bottom wherever page scrolls without overlapping results */}
+      <DosBottomHintBar />
 
       {/* DOS Keyboard & Help Dialog */}
       <DosKeyboardHelpModal

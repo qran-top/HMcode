@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 
 interface HintContextType {
   isHintEnabled: boolean;
@@ -24,6 +24,7 @@ export function HintProvider({ children }: { children: ReactNode }) {
   });
 
   const [hintText, setHintTextState] = useState<string>('');
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     try {
@@ -38,11 +39,25 @@ export function HintProvider({ children }: { children: ReactNode }) {
   };
 
   const setHintText = (text: string) => {
-    setHintTextState(text);
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
+    }
+    if (text) {
+      setHintTextState(text);
+    }
   };
 
+  // Keep the hint text on screen so the user has ample time to read it!
+  // Instead of disappearing instantly when the mouse leaves the small button,
+  // it remains visible until another element is hovered, or clears after a generous delay.
   const clearHint = () => {
-    setHintTextState('');
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current);
+    }
+    clearTimerRef.current = setTimeout(() => {
+      setHintTextState('');
+    }, 12000); // 12 seconds persistence so the user can easily read the hint
   };
 
   return (

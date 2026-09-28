@@ -293,8 +293,15 @@ export class InverseQuranicScanner {
           return;
         }
 
-        // Process a chunk of Surahs per animation frame / tick
-        const surahsPerBatch = 6;
+        // Adaptive Surah Batching: Process 1 Surah at a time for long initial Surahs, 2-3 for medium, up to 5 for short
+        let surahsPerBatch = 5;
+        if (currentSurah <= 7) {
+          surahsPerBatch = 1; // Longest surahs (Al-Baqarah, Al-Imran, An-Nisa, etc.)
+        } else if (currentSurah <= 25) {
+          surahsPerBatch = 2; // Medium-long surahs
+        } else if (currentSurah <= 60) {
+          surahsPerBatch = 4;
+        }
         const endSurah = Math.min(currentSurah + surahsPerBatch - 1, totalSurahs);
 
         for (let sNum = currentSurah; sNum <= endSurah; sNum++) {
@@ -577,7 +584,7 @@ export class InverseQuranicScanner {
 
         if (currentSurah <= totalSurahs && matches.length < maxResults) {
           // Cooperative timeout ensures browser event loop breathes and React renders without freezing
-          setTimeout(step, 2);
+          setTimeout(step, 4);
         } else {
           this.isScanning = false;
           if (onProgress) {
@@ -597,7 +604,7 @@ export class InverseQuranicScanner {
           setTimeout(() => {
             if (onComplete) onComplete(matches, false);
             resolve(matches);
-          }, 15);
+          }, 40);
         }
       };
 
