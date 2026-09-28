@@ -1474,9 +1474,14 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onFocus={() => {
                     if (isDos) playDosBeep(980, 20);
                   }}
+                  enterKeyHint="search"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !progress.isRunning) {
-                      handleStartScan();
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                      e.preventDefault();
+                      (e.target as HTMLElement)?.blur();
+                      if (!progress.isRunning) {
+                        handleStartScan();
+                      }
                     }
                   }}
                   placeholder={
@@ -1513,6 +1518,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   max="10000"
                   step="1"
                   value={multiplierInput}
+                  enterKeyHint="search"
                   onChange={(e) => {
                     const val = e.target.value;
                     setMultiplierInput(val);
@@ -1531,8 +1537,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                     }
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !progress.isRunning) {
-                      handleStartScan();
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                      e.preventDefault();
+                      (e.target as HTMLElement)?.blur();
+                      if (!progress.isRunning) {
+                        handleStartScan();
+                      }
                     }
                   }}
                   className="w-9 sm:w-12 text-center font-mono font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100 bg-transparent border-none focus:outline-none p-0"
