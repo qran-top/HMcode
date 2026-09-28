@@ -249,11 +249,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         const dosHint = current.getAttribute('data-dos-hint');
         if (dosHint && dosHint.trim()) return dosHint.trim();
 
-        // 2. title attribute
+        // 2. data-dos-title (suppressed title)
+        const dosTitle = current.getAttribute('data-dos-title');
+        if (dosTitle && dosTitle.trim()) return dosTitle.trim();
+
+        // 3. title attribute
         const titleHint = current.getAttribute('title');
         if (titleHint && titleHint.trim()) return titleHint.trim();
 
-        // 3. aria-label attribute
+        // 4. aria-label attribute
         const ariaHint = current.getAttribute('aria-label');
         if (ariaHint && ariaHint.trim()) return ariaHint.trim();
 
@@ -265,6 +269,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
+
+      // Suppress native browser tooltips by moving 'title' to 'data-dos-title'
+      let current: HTMLElement | null = target;
+      while (current && current !== document.body) {
+        if (current.hasAttribute('title')) {
+          const t = current.getAttribute('title');
+          if (t) {
+            current.setAttribute('data-dos-title', t);
+            current.removeAttribute('title');
+          }
+        }
+        current = current.parentElement;
+      }
+
       const hint = extractHintFromElement(target);
       if (hint) {
         if (resetTimer) clearTimeout(resetTimer);

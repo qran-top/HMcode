@@ -234,6 +234,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   type ScanPipelinePhase = 'idle' | 'noorani' | 'quran' | 'arabic' | 'completed';
   const [pipelinePhase, setPipelinePhase] = useState<ScanPipelinePhase>('idle');
   const isPipelineRunning = pipelinePhase === 'noorani' || pipelinePhase === 'quran' || pipelinePhase === 'arabic';
+  const [isStartBtnDepressed, setIsStartBtnDepressed] = useState<boolean>(false);
 
   interface ArabicScanProgress {
     isRunning: boolean;
@@ -868,15 +869,20 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     setArabicMatches([]);
     setExpandedMatchId(null);
 
-    // Reset progress
+    // Visual button depress animation and retro sound
+    setIsStartBtnDepressed(true);
+    if (isDos) playDosBeep(880, 45);
+    setTimeout(() => setIsStartBtnDepressed(false), 180);
+
+    // Reset progress with immediate isRunning flag
     setProgress({
-      percent: 0,
+      percent: 5,
       scannedCount: 0,
       totalCount: 114,
       matchesCount: 0,
       itemsPerSecond: 0,
-      currentSurahOrPhase: 'المرحلة 1 قيد المعالجة (الصيغ والتراكيب النورانية)...',
-      isRunning: false,
+      currentSurahOrPhase: 'المرحلة ١: جاري توليف الصيغ والتراكيب النورانية...',
+      isRunning: true,
       isCompleted: false,
       isCancelled: false,
     });
@@ -1232,105 +1238,170 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     <div className="space-y-3 max-w-6xl mx-auto">
       {/* Top Controls Card */}
       <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-2.5 sm:p-3.5 shadow-2xs space-y-2.5 transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 flex items-center justify-center border border-emerald-300/80 dark:border-emerald-700/60 shadow-2xs shrink-0">
-              <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 font-sans">
-                البحث بالجمل والسلاسل القرآنية
-              </h2>
-            </div>
-          </div>
-
-          {/* Display Letter Values Breakdown & Totals in Eastern & Western Colors */}
-          {computedTarget ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 dark:bg-stone-850/80 border border-stone-200 dark:border-stone-800 text-3xs font-mono flex-wrap self-start sm:self-auto max-w-full overflow-hidden shadow-2xs">
-              {/* Letters breakdown */}
-              {computedTarget.magBreakdown.length > 0 && (
-                <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 border-l border-stone-250 dark:border-stone-700 pl-1.5 ml-0.5">
-                  {computedTarget.magBreakdown.map((item, idx) => {
-                    const mashVal = computedTarget.mashBreakdown[idx]?.val ?? item.val;
-                    const isDiff = item.val !== mashVal;
-                    return (
-                      <span
-                        key={idx}
-                        className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded border text-3xs ${
-                          isDiff
-                            ? 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-600'
-                            : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-750'
-                        }`}
-                        title={`حرف (${item.char}): غربي = ${item.val} | شرقي = ${mashVal}`}
-                      >
-                        <span className="font-quran text-stone-900 dark:text-stone-100 font-medium">{item.char}</span>
-                        {isDiff ? (
-                          <span className="flex items-center gap-0.5 text-4xs">
-                            <span className="text-amber-600 dark:text-amber-400 font-bold">{item.val}</span>
-                            <span className="text-stone-300">/</span>
-                            <span className="text-sky-600 dark:text-sky-400 font-bold">{mashVal}</span>
-                          </span>
-                        ) : (
-                          <span className="text-emerald-700 dark:text-emerald-400 font-bold text-4xs">{item.val}</span>
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Totals in distinct Western (Amber) and Eastern (Sky) and Common (Emerald) colors */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                {computedTarget.multiplier && computedTarget.multiplier > 1 && (
-                  <span
-                    className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/90 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-bold font-mono text-3xs shadow-2xs"
-                    title={`مضاعف القيمة: × ${computedTarget.multiplier}`}
-                  >
-                    × {computedTarget.multiplier}
-                  </span>
-                )}
-
-                {computedTarget.isIdentical ? (
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold font-mono text-xs shadow-2xs"
-                    title={`المجموع المشترك: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
-                  >
-                    {computedTarget.targetMaghribi}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1 font-mono font-bold text-xs">
+        {/* Header Area: Shows Live Progress Banner during scanning, or Normal Title & Letters Breakdown when idle */}
+        {isPipelineRunning || progress.isRunning ? (
+          <div
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all ${
+              isDos
+                ? 'bg-[#000044] border-2 border-[#55ffff] text-white font-mono'
+                : 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 shadow-xs'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className={isDos ? 'text-[#ffff55] font-black text-sm animate-pulse' : 'inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-xs'}>
+                  {isDos ? '▶' : '⏳'}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className={`text-xs sm:text-sm font-bold ${isDos ? 'text-[#ffff55]' : 'text-emerald-900 dark:text-emerald-200'}`}>
+                      {pipelinePhase === 'noorani'
+                        ? 'المرحلة ١: جاري توليف الصيغ والتراكيب النورانية...'
+                        : pipelinePhase === 'quran'
+                        ? `المرحلة ٢: مسح الآيات والسلاسل (${progress.currentSurahOrPhase || 'جاري المسح'})...`
+                        : 'المرحلة ٣: مطابقة المفردات في المعجم العربي...'}
+                    </h3>
                     <span
-                      className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
-                      title={`المجموع المغربي: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
+                      className={`font-mono font-bold text-xs px-1.5 py-0.2 rounded ${
+                        isDos ? 'bg-[#55ff55] text-black font-black' : 'bg-emerald-600 text-white'
+                      }`}
                     >
-                      {computedTarget.targetMaghribi}
-                    </span>
-                    <span className="text-stone-300">/</span>
-                    <span
-                      className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border border-sky-300 dark:border-sky-700 shadow-2xs"
-                      title={`المجموع المشرقي: ${computedTarget.targetMashriqi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMashriqi} × ${computedTarget.multiplier})` : ''}`}
-                    >
-                      {computedTarget.targetMashriqi}
+                      {Math.max(5, Math.min(100, Math.round(progress.percent || (pipelinePhase === 'noorani' ? 25 : pipelinePhase === 'quran' ? 65 : 90))))}%
                     </span>
                   </div>
-                )}
+                  <div className={`text-3xs font-mono mt-0.5 ${isDos ? 'text-[#55ffff]' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                    <span>المطابقات المكتشفة: </span>
+                    <span className="font-bold underline text-[#ffff55]">{matches.length + arabicMatches.length}</span>
+                    {progress.scannedCount > 0 && <span> | المفحوص: {progress.scannedCount} سورة/موضع</span>}
+                  </div>
+                </div>
+              </div>
 
-                {computedTarget.alternateTargets && computedTarget.alternateTargets.length > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-300 dark:border-stone-700 text-4xs"
-                    title="أوجه بديلة مشمولة في المسح المتوازي"
-                  >
-                    أوجه: {computedTarget.alternateTargets.join(', ')}
-                  </span>
+              {/* Live Progress Bar Track */}
+              <div className="w-full sm:w-72 space-y-1">
+                {isDos ? (
+                  <div className="font-mono text-xs text-[#55ff55] tracking-tight text-left dir-ltr">
+                    {(() => {
+                      const pct = Math.max(5, Math.min(100, Math.round(progress.percent || (pipelinePhase === 'noorani' ? 25 : pipelinePhase === 'quran' ? 65 : 90))));
+                      const filled = Math.round((pct / 100) * 16);
+                      const empty = 16 - filled;
+                      return `[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${pct}%`;
+                    })()}
+                  </div>
+                ) : (
+                  <div className="w-full h-2.5 rounded-full bg-emerald-200 dark:bg-emerald-900 overflow-hidden shadow-inner">
+                    <div
+                      className="h-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-300 rounded-full"
+                      style={{
+                        width: `${Math.max(5, Math.min(100, Math.round(progress.percent || (pipelinePhase === 'noorani' ? 25 : pipelinePhase === 'quran' ? 65 : 90))))}%`,
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             </div>
-          ) : (
-            <div className="text-3xs text-stone-400 font-normal self-start sm:self-auto px-2 py-0.5">
-              <span>أدخل عبارة أو رقماً واضغط «ابدأ» لحساب قيم الحروف وبدء المسح</span>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 flex items-center justify-center border border-emerald-300/80 dark:border-emerald-700/60 shadow-2xs shrink-0">
+                <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 font-sans">
+                  البحث بالجمل والسلاسل القرآنية
+                </h2>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Display Letter Values Breakdown & Totals in Eastern & Western Colors */}
+            {computedTarget ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 dark:bg-stone-850/80 border border-stone-200 dark:border-stone-800 text-3xs font-mono flex-wrap self-start sm:self-auto max-w-full overflow-hidden shadow-2xs">
+                {/* Letters breakdown */}
+                {computedTarget.magBreakdown.length > 0 && (
+                  <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 border-l border-stone-250 dark:border-stone-700 pl-1.5 ml-0.5">
+                    {computedTarget.magBreakdown.map((item, idx) => {
+                      const mashVal = computedTarget.mashBreakdown[idx]?.val ?? item.val;
+                      const isDiff = item.val !== mashVal;
+                      return (
+                        <span
+                          key={idx}
+                          className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded border text-3xs ${
+                            isDiff
+                              ? 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-600'
+                              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-750'
+                          }`}
+                          title={`حرف (${item.char}): غربي = ${item.val} | شرقي = ${mashVal}`}
+                        >
+                          <span className="font-quran text-stone-900 dark:text-stone-100 font-medium">{item.char}</span>
+                          {isDiff ? (
+                            <span className="flex items-center gap-0.5 text-4xs">
+                              <span className="text-amber-600 dark:text-amber-400 font-bold">{item.val}</span>
+                              <span className="text-stone-300">/</span>
+                              <span className="text-sky-600 dark:text-sky-400 font-bold">{mashVal}</span>
+                            </span>
+                          ) : (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-bold text-4xs">{item.val}</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Totals in distinct Western (Amber) and Eastern (Sky) and Common (Emerald) colors */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {computedTarget.multiplier && computedTarget.multiplier > 1 && (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/90 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-bold font-mono text-3xs shadow-2xs"
+                      title={`مضاعف القيمة: × ${computedTarget.multiplier}`}
+                    >
+                      × {computedTarget.multiplier}
+                    </span>
+                  )}
+
+                  {computedTarget.isIdentical ? (
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold font-mono text-xs shadow-2xs"
+                      title={`المجموع المشترك: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
+                    >
+                      {computedTarget.targetMaghribi}
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1 font-mono font-bold text-xs">
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                        title={`المجموع المغربي: ${computedTarget.targetMaghribi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMaghribi} × ${computedTarget.multiplier})` : ''}`}
+                      >
+                        {computedTarget.targetMaghribi}
+                      </span>
+                      <span className="text-stone-300">/</span>
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border border-sky-300 dark:border-sky-700 shadow-2xs"
+                        title={`المجموع المشرقي: ${computedTarget.targetMashriqi}${computedTarget.multiplier && computedTarget.multiplier > 1 ? ` (${computedTarget.baseMashriqi} × ${computedTarget.multiplier})` : ''}`}
+                      >
+                        {computedTarget.targetMashriqi}
+                      </span>
+                    </div>
+                  )}
+
+                  {computedTarget.alternateTargets && computedTarget.alternateTargets.length > 0 && (
+                    <span
+                      className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-300 dark:border-stone-700 text-4xs"
+                      title="أوجه بديلة مشمولة في المسح المتوازي"
+                    >
+                      أوجه: {computedTarget.alternateTargets.join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-3xs text-stone-400 font-normal self-start sm:self-auto px-2 py-0.5">
+                <span>أدخل عبارة أو رقماً واضغط «ابدأ» لحساب قيم الحروف وبدء المسح</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Input & Action Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-end">
@@ -1348,9 +1419,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
             )}
 
             <div className="flex items-center gap-1.5">
-              {/* Search Query Input */}
+              {/* Search Query Input with AutoFocus */}
               <div className="relative flex-1">
                 <DosBlinkBlockInput
+                  autoFocus={true}
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
                   onFocus={() => {
@@ -1358,7 +1430,6 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !progress.isRunning) {
-                      if (isDos) playDosBeep(880, 45);
                       handleStartScan();
                     }
                   }}
@@ -1433,7 +1504,9 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               onClick={() => handleStartScan()}
               disabled={!inputQuery.trim() || isPipelineRunning}
               className={`flex-1 py-2 sm:py-2.5 px-3 rounded-xl text-white text-xs font-normal inline-flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer ${
-                isPipelineRunning
+                isStartBtnDepressed
+                  ? 'translate-y-1 scale-95 shadow-inner bg-emerald-800 border-t-2 border-l-2 border-black border-b-2 border-r-2 border-white'
+                  : isPipelineRunning
                   ? 'bg-emerald-600/80 cursor-wait opacity-90'
                   : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed'
               }`}

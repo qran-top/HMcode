@@ -1433,6 +1433,7 @@ export function DualTranslator({
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1 min-w-0">
             <DosBlinkBlockInput
+              autoFocus={true}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onFocus={() => {
