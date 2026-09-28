@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useNotebook } from '../context/NotebookContext';
+import { useTheme } from '../context/ThemeContext';
 import { PRESET_TABLES, cleanText, normalizeArabicChar, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS, getShortPresetId, getExpandedPresetId } from '../cipherData';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
@@ -55,6 +56,7 @@ import { getAllNooraniItems, getAllArabicItems, applyWawToCelestialLayers, build
 import { getWordGematriaValue } from '../utils/gematriaEngine';
 import { useGematria } from '../context/GematriaContext';
 import { GematriaResultsCard } from './GematriaResultsCard';
+import { DosBlinkBlockInput } from './DosBlinkBlockInput';
 
 interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
@@ -103,6 +105,7 @@ export function DualTranslator({
   const [importStatusMessage, setImportStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { activeTable, activeTableId, tables, setActiveTableId, calculateWordGematria } = useGematria();
+  const { isDos, playDosBeep } = useTheme();
 
   const [inputText, setInputText] = useState(externalInputText || '');
   const [submittedText, setSubmittedText] = useState(externalInputText || '');
@@ -1428,14 +1431,17 @@ export function DualTranslator({
         
         {/* Step A: Search Input Box with Inline Compact Search Buttons */}
         <div className="flex items-center gap-1.5">
-          <div className="relative flex-1 flex items-center min-w-0">
-            <input
-              type="text"
+          <div className="relative flex-1 min-w-0">
+            <DosBlinkBlockInput
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onFocus={() => {
+                if (isDos) playDosBeep(980, 20);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  if (isDos) playDosBeep(880, 40);
                   if (e.ctrlKey || e.metaKey) {
                     handleComprehensiveSearchClick();
                   } else {
@@ -1443,7 +1449,11 @@ export function DualTranslator({
                   }
                 }
               }}
-              placeholder="اكتب كلمة أو شفرة ثم اضغط Enter أو زر البحث..."
+              placeholder={
+                isDos
+                  ? "C:\\> اكتب كلمة أو شفرة واضغط Enter..."
+                  : "اكتب كلمة أو شفرة ثم اضغط Enter أو زر البحث..."
+              }
               className="w-full text-sm sm:text-base font-medium py-2 sm:py-2.5 px-3 pe-8 ps-14 rounded-xl border border-stone-300 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50/50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 transition-all shadow-inner"
             />
             
@@ -1582,10 +1592,16 @@ export function DualTranslator({
                 </span>
 
                 {dictLoading && (
-                  <span className="inline-flex items-center gap-1 text-2xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse ms-0.5 font-sans shrink-0">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>({dictProgress}%)</span>
-                  </span>
+                  isDos ? (
+                    <span className="font-mono text-2xs text-[#ffff55] bg-[#0000aa] px-1 ms-0.5 border border-[#55ffff]">
+                      [WAIT {dictProgress}%]
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-2xs text-indigo-600 dark:text-indigo-400 font-medium animate-pulse ms-0.5 font-sans shrink-0">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>({dictProgress}%)</span>
+                    </span>
+                  )
                 )}
               </div>
             ) : (
@@ -1870,10 +1886,16 @@ export function DualTranslator({
                       <span>معجمية ({arabicDictionaryMatches.length})</span>
                     </div>
                     {dictLoading && (
-                      <span className="inline-flex items-center gap-1 text-3xs font-normal text-indigo-600 dark:text-indigo-400 animate-pulse">
-                        <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
-                        <span>({dictProgress}%)</span>
-                      </span>
+                      isDos ? (
+                        <span className="font-mono text-3xs text-[#ffff55] bg-[#0000aa] px-1 border border-[#55ffff]">
+                          [WAIT {dictProgress}%]
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-3xs font-normal text-indigo-600 dark:text-indigo-400 animate-pulse">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
+                          <span>({dictProgress}%)</span>
+                        </span>
+                      )
                     )}
                   </h4>
 

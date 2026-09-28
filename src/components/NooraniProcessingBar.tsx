@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2, X, RotateCcw, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NooraniAlgorithmMeta } from '../utils/gematriaEngine';
+import { useTheme } from '../context/ThemeContext';
 
 interface NooraniProcessingBarProps {
   isCalculating: boolean;
@@ -23,11 +24,59 @@ export const NooraniProcessingBar: React.FC<NooraniProcessingBarProps> = ({
   wasCancelled = false,
   resultCount = 0,
 }) => {
+  const { isDos } = useTheme();
+
   if (!isCalculating && !wasCancelled) {
     return null;
   }
 
+  if (isDos && isCalculating) {
+    const pct = Math.min(100, Math.max(0, Math.round(progress)));
+    const totalBlocks = 30;
+    const filledBlocks = Math.min(totalBlocks, Math.max(0, Math.round((pct / 100) * totalBlocks)));
+    const emptyBlocks = totalBlocks - filledBlocks;
+    return (
+      <div className="my-2 p-2 bg-[#0000aa] border-2 border-[#55ffff] font-mono text-xs text-white space-y-1 select-none shadow-none">
+        <div className="flex items-center justify-between text-[#ffff55] border-b border-[#55ffff] pb-1">
+          <span className="font-bold">
+            [DOS TASK] C:\ALGO\{currentAlgorithm.name}
+          </span>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-[#aa0000] text-white px-2 py-0.5 font-bold cursor-pointer hover:bg-[#ff5555] border border-white"
+          >
+            [ESC إلغاء]
+          </button>
+        </div>
+        <div className="text-[#55ff55] text-xs sm:text-sm tracking-widest py-1 break-all">
+          [{'█'.repeat(filledBlocks)}{'░'.repeat(emptyBlocks)}] {pct}%
+        </div>
+        <div className="flex items-center justify-between text-3xs text-[#55ffff]">
+          <span className="truncate">&gt; {statusMessage || 'جاري استخراج ومطابقة فواتح السور الـ 29...'}</span>
+          <span className="text-[#aaaaaa]">[WAITING...]</span>
+        </div>
+      </div>
+    );
+  }
+
   if (wasCancelled) {
+    if (isDos) {
+      return (
+        <div className="my-2 p-2 bg-[#aa0000] text-white border-2 border-[#ffffff] font-mono text-xs flex items-center justify-between">
+          <span>[CANCELLED] تم إلغاء معالجة ({currentAlgorithm.name})</span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="px-2 py-0.5 bg-[#ffff55] text-black font-bold border border-black cursor-pointer"
+            >
+              [إعادة F5]
+            </button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="my-2 p-2.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between gap-2 text-2xs transition-all animate-fadeIn">
         <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">

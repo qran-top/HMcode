@@ -30,6 +30,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { useGematria, MAGHRIBI_VALUES, MASHRIQI_VALUES } from '../context/GematriaContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   parseNumericQuery,
   cleanArabicTextForGematria,
@@ -58,6 +59,7 @@ import { getSurahMuqattaat, getQuranTopSearchUrl, getArabicDictSearchUrl } from 
 import { AddToNotebookButton } from './AddToNotebookButton';
 import { NOORANI_LETTERS_SET } from '../cipherData';
 import { QuranicChainHistory, QuranicChainHistoryItem } from './QuranicChainHistory';
+import { DosBlinkBlockInput } from './DosBlinkBlockInput';
 
 const STORAGE_KEY_CHAIN_HISTORY = 'quranic_chain_matcher_history';
 const DEFAULT_CHAIN_SEARCHES: QuranicChainHistoryItem[] = [
@@ -178,6 +180,7 @@ interface QuranicChainMatcherProps {
 
 export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherProps) {
   const { activeTable, calculationOptions, findArabicMatches } = useGematria();
+  const { isDos, playDosBeep } = useTheme();
 
   const [inputQuery, setInputQuery] = useState<string>(() => initialQuery || '');
   const [committedQuery, setCommittedQuery] = useState<string>(() => (initialQuery || '').trim());
@@ -1343,19 +1346,27 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 </span>
               </div>
             )}
+
             <div className="flex items-center gap-1.5">
               {/* Search Query Input */}
               <div className="relative flex-1">
-                <input
-                  type="text"
+                <DosBlinkBlockInput
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
+                  onFocus={() => {
+                    if (isDos) playDosBeep(980, 20);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !progress.isRunning) {
+                      if (isDos) playDosBeep(880, 45);
                       handleStartScan();
                     }
                   }}
-                  placeholder="اكتب عبارة (مثل: كهيعص أو لا إله إلا الله) أو رقماً (مثل: 165 أو 518)..."
+                  placeholder={
+                    isDos
+                      ? "C:\\> أدخل عبارة أو رقماً واضغط Enter..."
+                      : "اكتب عبارة (مثل: كهيعص أو لا إله إلا الله) أو رقماً (مثل: 165 أو 518)..."
+                  }
                   className="w-full text-xs sm:text-sm font-quran font-normal p-2 sm:p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
                 />
                 {inputQuery && (
@@ -1363,6 +1374,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                     type="button"
                     onClick={() => {
                       setInputQuery('');
+                      if (isDos) playDosBeep(440, 20);
                     }}
                     className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 cursor-pointer"
                     title="مسح"
@@ -1697,7 +1709,11 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                         }`}
                       >
                         {isSelected && isNooraniCalculating ? (
-                          <Loader2 className="w-2.5 h-2.5 animate-spin text-emerald-800" />
+                          isDos ? (
+                            <span className="text-[#ffff55] font-black">*</span>
+                          ) : (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-emerald-800" />
+                          )
                         ) : (
                           algo.id
                         )}
@@ -2390,52 +2406,102 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
       {/* Real-Time Processing Progress Bar (Only visible while processing, disappears when done) */}
       {isPipelineRunning && (
-        <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs p-2.5 sm:p-3 space-y-2 transition-colors animate-in fade-in duration-150">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
-              <span>
-                {pipelinePhase === 'noorani' && (nooraniProgressMessage || 'جاري المعالجة...')}
-                {pipelinePhase === 'quran' && (progress.currentSurahOrPhase || 'جاري المسح القرآني...')}
-                {pipelinePhase === 'arabic' && (arabicProgress.message || 'جاري البحث في المعجم العربي...')}
-              </span>
+        isDos ? (
+          <div className="bg-[#0000aa] border-2 border-[#55ffff] p-2 space-y-1 font-mono text-xs select-none shadow-none">
+            <div className="flex items-center justify-between text-[#ffff55] border-b border-[#55ffff] pb-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <span className="text-[#55ff55]">[DOS SCAN]</span>
+                <span>
+                  {pipelinePhase === 'noorani' && (nooraniProgressMessage || 'جاري المعالجة...')}
+                  {pipelinePhase === 'quran' && (progress.currentSurahOrPhase || 'جاري المسح القرآني...')}
+                  {pipelinePhase === 'arabic' && (arabicProgress.message || 'جاري البحث في المعجم العربي...')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[#55ff55] font-black">
+                  {pipelinePhase === 'noorani' && `${nooraniProgress}%`}
+                  {pipelinePhase === 'quran' && `${progress.percent}%`}
+                  {pipelinePhase === 'arabic' && `${arabicProgress.percent}%`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleStopScan}
+                  className="px-2 py-0.5 bg-[#aa0000] text-[#ffffff] hover:bg-[#ff5555] font-bold border border-white cursor-pointer"
+                >
+                  [ESC إلغاء]
+                </button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-2xs font-bold text-emerald-600 dark:text-emerald-400">
-                {pipelinePhase === 'noorani' && `${nooraniProgress}%`}
-                {pipelinePhase === 'quran' && `${progress.percent}%`}
-                {pipelinePhase === 'arabic' && `${arabicProgress.percent}%`}
-              </span>
-              <button
-                type="button"
-                onClick={handleStopScan}
-                className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-3xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs font-medium shrink-0"
-                title="إلغاء المعالجة فوراً"
-              >
-                <XCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
-                <span>إلغاء</span>
-              </button>
+            {/* ASCII progress bar like [████████░░░░░░░░] */}
+            {(() => {
+              const pct = Math.min(100, Math.max(0, Math.round(
+                pipelinePhase === 'noorani'
+                  ? nooraniProgress
+                  : pipelinePhase === 'quran'
+                  ? progress.percent
+                  : arabicProgress.percent
+              )));
+              const totalBlocks = 30;
+              const filledBlocks = Math.min(totalBlocks, Math.max(0, Math.round((pct / 100) * totalBlocks)));
+              const emptyBlocks = totalBlocks - filledBlocks;
+              return (
+                <div className="text-[#55ff55] text-xs sm:text-sm tracking-widest font-mono py-1 break-all">
+                  [{'█'.repeat(filledBlocks)}{'░'.repeat(emptyBlocks)}] {pct}%
+                </div>
+              );
+            })()}
+            <div className="text-[#55ffff] text-3xs">
+              C:\QURAN\SCAN&gt; مفحوص: {progress.scannedCount} كلمة | متطابقات: {matches.length}
             </div>
           </div>
+        ) : (
+          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs p-2.5 sm:p-3 space-y-2 transition-colors animate-in fade-in duration-150">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                <span>
+                  {pipelinePhase === 'noorani' && (nooraniProgressMessage || 'جاري المعالجة...')}
+                  {pipelinePhase === 'quran' && (progress.currentSurahOrPhase || 'جاري المسح القرآني...')}
+                  {pipelinePhase === 'arabic' && (arabicProgress.message || 'جاري البحث في المعجم العربي...')}
+                </span>
+              </div>
 
-          {/* Clean Progress Bar Track */}
-          <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-150"
-              style={{
-                width: `${Math.max(
-                  3,
-                  pipelinePhase === 'noorani'
-                    ? nooraniProgress
-                    : pipelinePhase === 'quran'
-                    ? progress.percent
-                    : arabicProgress.percent
-                )}%`,
-              }}
-            />
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-2xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {pipelinePhase === 'noorani' && `${nooraniProgress}%`}
+                  {pipelinePhase === 'quran' && `${progress.percent}%`}
+                  {pipelinePhase === 'arabic' && `${arabicProgress.percent}%`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleStopScan}
+                  className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-3xs hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs font-medium shrink-0"
+                  title="إلغاء المعالجة فوراً"
+                >
+                  <XCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                  <span>إلغاء</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Clean Progress Bar Track */}
+            <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-600 transition-all duration-150"
+                style={{
+                  width: `${Math.max(
+                    3,
+                    pipelinePhase === 'noorani'
+                      ? nooraniProgress
+                      : pipelinePhase === 'quran'
+                      ? progress.percent
+                      : arabicProgress.percent
+                  )}%`,
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Discovered Results Section */}

@@ -21,6 +21,7 @@ import { QuranicMatchBadge } from './QuranicMatchBadge';
 import { ResultsSummaryBox } from './ResultsSummaryBox';
 import { QuranicCombinationsLexicon } from './QuranicCombinationsLexicon';
 import { AddToNotebookButton } from './AddToNotebookButton';
+import { useTheme } from '../context/ThemeContext';
 import {
   Copy,
   Check,
@@ -47,6 +48,7 @@ export function DecryptView({
   onCipherInputChange,
   isDualMode = false,
 }: DecryptViewProps = {}) {
+  const { isDos } = useTheme();
   const { layers: cipherLayers, validCipherLetters, activeTableName } = useCipherLayers();
   const [internalCipherInput, setInternalCipherInput] = useState('');
   const cipherInput = externalCipherInput !== undefined ? externalCipherInput : internalCipherInput;
@@ -814,21 +816,39 @@ export function DecryptView({
 
           {/* Smooth Progress Bar (zero freeze guarantee) */}
           {isGenerating && (
-            <div className="space-y-1.5 py-1">
-              <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
-                  <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع القاموس والمعجم القرآني...</span>
-                </span>
-                <span className="font-bold text-stone-700 dark:text-stone-300">{progressPercent}%</span>
+            isDos ? (
+              <div className="bg-[#0000aa] border border-[#55ffff] p-2 space-y-1 font-mono text-xs select-none shadow-none">
+                <div className="flex items-center justify-between text-[#ffff55]">
+                  <span className="font-bold">[DOS SCAN] جاري فحص الاحتمالات في المعجمين القرآني واللغوي...</span>
+                  <span className="text-[#55ff55] font-black">{progressPercent}%</span>
+                </div>
+                {(() => {
+                  const totalBlocks = 28;
+                  const filled = Math.min(totalBlocks, Math.max(0, Math.round((progressPercent / 100) * totalBlocks)));
+                  return (
+                    <div className="text-[#55ff55] text-xs font-mono py-0.5 tracking-widest break-all">
+                      [{'█'.repeat(filled)}{'░'.repeat(totalBlocks - filled)}] {progressPercent}%
+                    </div>
+                  );
+                })()}
               </div>
-              <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2 overflow-hidden border border-stone-200 dark:border-stone-700">
-                <div
-                  className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full transition-all duration-150 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
+            ) : (
+              <div className="space-y-1.5 py-1">
+                <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
+                    <span>جاري معالجة وتوليد ومطابقة الاحتمالات مع القاموس والمعجم القرآني...</span>
+                  </span>
+                  <span className="font-bold text-stone-700 dark:text-stone-300">{progressPercent}%</span>
+                </div>
+                <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2 overflow-hidden border border-stone-200 dark:border-stone-700">
+                  <div
+                    className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full transition-all duration-150 ease-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {/* Filter Match Summary */}

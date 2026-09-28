@@ -14,12 +14,30 @@ import {
   Sparkles,
   HelpCircle,
   Hash,
+  Sun,
+  Moon,
+  Terminal,
+  Monitor,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useGematria, ARABIC_28_CANONICAL, MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/GematriaContext';
 import { DEFAULT_CIPHER_LAYERS, LayerInfo } from '../cipherData';
+import { useTheme } from '../context/ThemeContext';
 
 export function SettingsView() {
+  const {
+    theme,
+    setTheme,
+    isDos,
+    dosScanlines,
+    setDosScanlines,
+    dosSound,
+    setDosSound,
+    playDosBeep,
+  } = useTheme();
+
   const {
     layers,
     updateAllLayers,
@@ -256,6 +274,171 @@ export function SettingsView() {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium shadow-xs">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{feedbackMessage}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 0: المظهر والثيمات وأنظمة العرض (نهاري / ليلي / دوس التسعينات)   */}
+      {/* ========================================================================= */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+              نمط العرض والمظهر العام (Themes & Visual Modes)
+            </h2>
+          </div>
+          <span className="text-xs text-stone-500 dark:text-stone-400">
+            يمكنك أيضاً التبديل السريع بضغطة واحدة من شريط العنوان العلوي أو عبر مفتاح <kbd className="px-1.5 py-0.5 font-mono text-[11px] bg-stone-100 dark:bg-stone-800 border rounded">F9</kbd>
+          </span>
+        </div>
+
+        {/* 3 Theme Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Light Mode */}
+          <button
+            type="button"
+            onClick={() => {
+              setTheme('light');
+              showFeedback('تم تفعيل الوضع النهاري');
+            }}
+            className={`p-3.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              theme === 'light'
+                ? 'bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                : 'bg-stone-50 dark:bg-stone-950/40 border-stone-200 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <span className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                <Sun className="w-4 h-4 text-amber-500" />
+                <span>الوضع النهاري (Light)</span>
+              </span>
+              {theme === 'light' && <Check className="w-4 h-4 text-amber-600" />}
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              واجهة فاتحة ناصعة ذات تباين عالٍ ومريحة للقراءة في الإضاءة القوية.
+            </p>
+          </button>
+
+          {/* Dark Mode */}
+          <button
+            type="button"
+            onClick={() => {
+              setTheme('dark');
+              showFeedback('تم تفعيل الوضع الليلي');
+            }}
+            className={`p-3.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              theme === 'dark'
+                ? 'bg-stone-850 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                : 'bg-stone-50 dark:bg-stone-950/40 border-stone-200 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <span className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                <Moon className="w-4 h-4 text-amber-400" />
+                <span>الوضع الليلي (Dark)</span>
+              </span>
+              {theme === 'dark' && <Check className="w-4 h-4 text-amber-400" />}
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              واجهة مظلمة أنيقة ومريحة للعين في الإضاءة المنخفضة مع إبراز النتائج.
+            </p>
+          </button>
+
+          {/* DOS 90s Mode */}
+          <button
+            type="button"
+            onClick={() => {
+              setTheme('dos');
+              playDosBeep(880, 50);
+              showFeedback('تم تفعيل ثيم دوس التسعينات MS-DOS v6.22 بنجاح');
+            }}
+            className={`p-3.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              theme === 'dos'
+                ? 'bg-[#0000a8] text-white border-2 border-[#55ffff] shadow-[4px_4px_0px_#000000]'
+                : 'bg-stone-50 dark:bg-stone-950/40 border-stone-200 dark:border-stone-800 hover:border-amber-400'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full">
+              <span className="text-sm font-bold flex items-center gap-1.5">
+                <Terminal className="w-4 h-4 text-[#55ff55]" />
+                <span className={theme === 'dos' ? 'text-[#ffff55]' : 'text-stone-900 dark:text-stone-100'}>
+                  دوس التسعينات (MS-DOS)
+                </span>
+              </span>
+              {theme === 'dos' && <span className="text-xs font-mono bg-[#55ff55] text-black px-1 font-bold">نشط</span>}
+            </div>
+            <p className={`text-xs ${theme === 'dos' ? 'text-[#55ffff]' : 'text-stone-500 dark:text-stone-400'}`}>
+              محاكاة كاملة لأنظمة 1995: أزرق نورتون كوماندر، خط مونو سبيس، مؤشر وامض، وأزرار F1-F10.
+            </p>
+          </button>
+        </div>
+
+        {/* Extended DOS Options */}
+        {isDos && (
+          <div className="p-3.5 border-2 border-[#55ffff] bg-[#000055] space-y-3 font-mono text-xs text-white">
+            <div className="flex items-center justify-between border-b border-[#0000aa] pb-2">
+              <span className="text-[#ffff55] font-bold flex items-center gap-1.5">
+                <span>[ خيارات إضافية لشاشة DOS ومؤثرات التسعينات ]</span>
+              </span>
+              <span className="text-[#55ff55]">
+                <span>BIOS READY</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center justify-between bg-[#000080] p-2 border border-[#55ffff]">
+                <div className="flex items-center gap-2">
+                  <Monitor className="w-4 h-4 text-[#55ffff]" />
+                  <span>خطوط المسح الضوئي CRT Scanlines:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDosScanlines(!dosScanlines);
+                    playDosBeep(920, 30);
+                  }}
+                  className={`px-3 py-1 font-bold border ${
+                    dosScanlines ? 'bg-[#55ff55] text-black border-white' : 'bg-stone-700 text-stone-300 border-stone-500'
+                  }`}
+                >
+                  {dosScanlines ? 'مُفعّلة (ON)' : 'معطلة (OFF)'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between bg-[#000080] p-2 border border-[#55ffff]">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-[#ffff55]" />
+                  <span>صوت مكبر DOS الداخلي (PC Speaker):</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDosSound(!dosSound);
+                      playDosBeep(880, 40);
+                    }}
+                    className={`px-3 py-1 font-bold border ${
+                      dosSound ? 'bg-[#55ff55] text-black border-white' : 'bg-stone-700 text-stone-300 border-stone-500'
+                    }`}
+                  >
+                    {dosSound ? 'شغال (ON)' : 'صامت (OFF)'}
+                  </button>
+
+                  {dosSound && (
+                    <button
+                      type="button"
+                      onClick={() => playDosBeep(1000, 60)}
+                      className="px-2 py-1 bg-[#aaaaaa] text-black hover:bg-white font-bold border"
+                      title="تجربة طنين مكبر الصوت"
+                    >
+                      تجربة ♫
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

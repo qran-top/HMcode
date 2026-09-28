@@ -7,24 +7,45 @@ import { PWAPrompt } from './components/PWAPrompt';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
+import { DosBottomBar } from './components/DosBottomBar';
+import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
+import { useDosKeyboardNavigation } from './hooks/useDosKeyboardNavigation';
 import { useCipherLayers } from './context/CipherLayersContext';
+import { useTheme } from './context/ThemeContext';
 
 export function App() {
   const { analyzeText } = useCipherLayers();
+  const { isDos, dosScanlines } = useTheme();
+
   // Default landing page is the comprehensive Gematria & Quranic Matcher ('gematria')
   const [activeTab, setActiveTab] = useState<AppTabType>('gematria');
   const [sharedText, setSharedText] = useState('');
 
+  // Keyboard navigation & F1-F10 shortcuts
+  const { isHelpOpen, setIsHelpOpen } = useDosKeyboardNavigation({
+    activeTab,
+    setActiveTab,
+  });
+
   // Ensure title is consistent across views
   useEffect(() => {
-    document.title = 'البحث بالجمل والتشفير العربي';
-  }, [activeTab]);
+    document.title = isDos
+      ? 'C:\\MS-DOS\\CIPHER.EXE - نظام التشفير العربي'
+      : 'البحث بالجمل والتشفير العربي';
+  }, [activeTab, isDos]);
 
   return (
     <div
-      className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans antialiased selection:bg-amber-200 selection:text-stone-900 transition-colors duration-200 w-full max-w-full overflow-x-hidden"
+      className={`min-h-screen ${
+        isDos
+          ? 'bg-[#000080] text-white font-mono'
+          : 'bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans'
+      } flex flex-col antialiased selection:bg-amber-200 selection:text-stone-900 transition-colors duration-200 w-full max-w-full overflow-x-hidden`}
       dir="rtl"
     >
+      {/* CRT Scanline Overlay when DOS CRT effect is enabled */}
+      {isDos && dosScanlines && <div className="dos-crt-overlay" aria-hidden="true" />}
+
       {/* Compact Header for Desktop and Mobile */}
       <Header
         activeTab={activeTab}
@@ -36,9 +57,12 @@ export function App() {
         }}
       />
 
-      {/* Main Container - pb-20 on mobile leaves room for fixed bottom nav bar */}
-      <main className="max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-3 sm:py-5 flex-1 space-y-3 sm:space-y-4 overflow-x-hidden pb-20 sm:pb-6">
-        
+      {/* Main Container - bottom padding accommodates either DOS bottom bar or Mobile Nav */}
+      <main
+        className={`max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-3 sm:py-5 flex-1 space-y-3 sm:space-y-4 overflow-x-hidden ${
+          isDos ? 'pb-16 sm:pb-12' : 'pb-20 sm:pb-6'
+        }`}
+      >
         {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (الصفحة الافتراضية الرئيسية) */}
         <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
           <QuranicChainMatcher initialQuery={sharedText} />
@@ -80,17 +104,35 @@ export function App() {
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation Bar (sm:hidden, fixed bottom-0) */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+      {/* DOS 90s Function Keys Ribbon (F1-F10) */}
+      {isDos && (
+        <DosBottomBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenHelp={() => setIsHelpOpen(true)}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation Bar (Hidden when in DOS mode since DosBottomBar takes its place) */}
+      {!isDos && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+      )}
 
       {/* Drawers & PWA Prompts */}
       <PWAPrompt />
       <NotebookDrawer />
+
+      {/* DOS Keyboard & Help Dialog */}
+      <DosKeyboardHelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
     </div>
   );
 }
 
 export default App;
+

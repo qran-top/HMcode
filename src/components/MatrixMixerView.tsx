@@ -411,7 +411,7 @@ export const MatrixMixerView: React.FC<MatrixMixerViewProps> = ({ onBackToGrid }
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
             <div>
               <h4 className="font-extrabold text-sm sm:text-base text-amber-400 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400 animate-spin" />
+                <Sparkles className="w-5 h-5 text-amber-400" />
                 <span>تركيب وتقاطع المنظومة المختار</span>
               </h4>
               <p className="text-2xs text-stone-400 mt-0.5">

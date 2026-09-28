@@ -14,6 +14,7 @@ import {
 } from './AdvancedAnalysisBadges';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { LayerInfo } from '../cipherData';
+import { useTheme } from '../context/ThemeContext';
 
 interface ResultsSummaryBoxProps {
   exactQuranicList: { combo: string; meta: QuranicWordMeta; isReversed?: boolean; original?: string }[];
@@ -44,6 +45,7 @@ export function ResultsSummaryBox({
   searchedWord = '',
   layers: passedLayers,
 }: ResultsSummaryBoxProps) {
+  const { isDos } = useTheme();
   const { layers: contextLayers } = useCipherLayers();
   const layers = passedLayers || contextLayers;
   const isDecryption = mode === 'decryption';
@@ -206,10 +208,16 @@ export function ResultsSummaryBox({
           )}
 
           {isGenerating ? (
-            <div className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full animate-pulse">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400" />
-              <span>جارِ البحث في المعاجم...</span>
-            </div>
+            isDos ? (
+              <div className="font-mono text-xs text-[#ffff55] bg-[#0000aa] border border-[#55ffff] px-2 py-0.5">
+                <span className="text-[#55ff55]">[WAIT]</span> جارِ البحث في المعاجم...
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full animate-pulse">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400" />
+                <span>جارِ البحث في المعاجم...</span>
+              </div>
+            )
           ) : (
             copiedWord && (
               <div className="flex items-center gap-1 text-xs text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 px-2.5 py-0.5 rounded-md animate-in fade-in">
@@ -247,10 +255,16 @@ export function ResultsSummaryBox({
 
         {/* State 1: When generating and no results yet */}
         {isGenerating && !hasResults && (
-          <div className="py-4 text-center text-xs sm:text-sm text-stone-500 dark:text-stone-400 flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-amber-600 dark:text-amber-400" />
-            <span>يتم توليد وفحص الاحتمالات في المعجم العربي ومعجم القرآن الكريم...</span>
-          </div>
+          isDos ? (
+            <div className="py-3 text-center text-xs font-mono text-[#55ff55] bg-[#0000aa] border-2 border-[#55ffff]">
+              [DOS TASK] يتم توليد وفحص الاحتمالات في المعجم العربي ومعجم القرآن الكريم...
+            </div>
+          ) : (
+            <div className="py-4 text-center text-xs sm:text-sm text-stone-500 dark:text-stone-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-600 dark:text-amber-400" />
+              <span>يتم توليد وفحص الاحتمالات في المعجم العربي ومعجم القرآن الكريم...</span>
+            </div>
+          )
         )}
 
         {/* State 2: Generated but no meaningful words found */}
