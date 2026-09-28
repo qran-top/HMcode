@@ -357,21 +357,28 @@ export class InverseQuranicScanner {
                     }
 
                     // Determine system origin and labeling with strict accuracy:
-                    // If a phrase only matches one system (e.g. Mashriqi), label it purely Eastern (شرقي).
-                    // Only when it matches BOTH systems and evaluates to the exact same value is it Common (مشترك).
-                    let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'maghribi';
-                    let systemLabel = 'غربي';
+                    // If there is a difference between Eastern and Western search targets (targetMaghribi !== targetMashriqi),
+                    // then no result can be "مشترك" (Common) because each match corresponds to either the Eastern or Western target number.
+                    // Only when search targets are identical in both systems (targetMaghribi === targetMashriqi) is the result Common (مشترك).
+                    const isTargetDiffering = targetMaghribi !== targetMashriqi;
+                    let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'common';
+                    let systemLabel = 'مشترك';
 
-                    if (isMaghribiMatch && isMashriqiMatch && currentMagSum === currentMashSum) {
-                      systemOrigin = 'common';
-                      systemLabel = 'مشترك';
-                    } else if (isMashriqiMatch && !isMaghribiMatch) {
-                      systemOrigin = 'mashriqi';
-                      systemLabel = 'شرقي';
-                    } else if (isMaghribiMatch && !isMashriqiMatch) {
-                      systemOrigin = 'maghribi';
-                      systemLabel = 'غربي';
-                    } else if (isMaghribiMatch && isMashriqiMatch) {
+                    if (isTargetDiffering) {
+                      if (isMashriqiMatch && !isMaghribiMatch) {
+                        systemOrigin = 'mashriqi';
+                        systemLabel = 'شرقي';
+                      } else if (isMaghribiMatch && !isMashriqiMatch) {
+                        systemOrigin = 'maghribi';
+                        systemLabel = 'غربي';
+                      } else if (isMashriqiMatch) {
+                        systemOrigin = 'mashriqi';
+                        systemLabel = 'شرقي';
+                      } else {
+                        systemOrigin = 'maghribi';
+                        systemLabel = 'غربي';
+                      }
+                    } else {
                       systemOrigin = 'common';
                       systemLabel = 'مشترك';
                     }

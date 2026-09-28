@@ -3106,24 +3106,22 @@ function buildMergedNooraniItems(
     let systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
     let displaySum: string;
 
-    if (matchesMash && matchesMag) {
-      if (sumMash === sumMag) {
-        system = 'both';
-        systemLabel = 'مشترك';
+    const isTargetDiff = targetMashriqi !== targetMaghribi;
+
+    if (isTargetDiff) {
+      if (matchesMash) {
+        system = 'mashriqi';
+        systemLabel = 'شرقي';
         displaySum = `${sumMash}`;
       } else {
-        system = 'dual_match';
-        systemLabel = 'مطابق للنظامين';
-        displaySum = `شرقي: ${sumMash} / غربي: ${sumMag}`;
+        system = 'maghribi';
+        systemLabel = 'غربي';
+        displaySum = `${sumMag}`;
       }
-    } else if (matchesMash) {
-      system = 'mashriqi';
-      systemLabel = 'شرقي';
-      displaySum = `${sumMash}`;
     } else {
-      system = 'maghribi';
-      systemLabel = 'غربي';
-      displaySum = `${sumMag}`;
+      system = 'both';
+      systemLabel = 'مشترك';
+      displaySum = `${sumMash}`;
     }
 
     const values = item.letters.map((c) => (system === 'maghribi' ? MAGHRIBI_VALUES[c] : MASHRIQI_VALUES[c]) ?? 0);

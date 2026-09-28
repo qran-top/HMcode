@@ -420,6 +420,10 @@ export function QuranicChainMatcher({
     return computeTargetInfo(committedQuery, localRules, flexibleOrthography, multiplier);
   }, [committedQuery, localRules, flexibleOrthography, multiplier]);
 
+  const isTargetDiffering = useMemo(() => {
+    return computedTarget ? !computedTarget.isIdentical : false;
+  }, [computedTarget]);
+
 
 
   const filteredArabicMatches = useMemo(() => {
@@ -1095,14 +1099,25 @@ export function QuranicChainMatcher({
     let maghribi = 0;
     let mashriqi = 0;
     let verbatim = 0;
+
     for (const m of matches) {
       if (isVerbatimMatch(m.phrase, m.cleanPhrase)) verbatim++;
-      if (m.systemOrigin === 'common' || m.isIntrinsicCommon) common++;
-      if (computedTarget ? m.maghribiValue === computedTarget.targetMaghribi : m.systemOrigin === 'maghribi') maghribi++;
-      if (computedTarget ? m.mashriqiValue === computedTarget.targetMashriqi : m.systemOrigin === 'mashriqi') mashriqi++;
+      if (isTargetDiffering) {
+        // When targets differ, results belong strictly to Eastern or Western
+        if (computedTarget ? m.mashriqiValue === computedTarget.targetMashriqi : m.systemOrigin === 'mashriqi') {
+          mashriqi++;
+        } else {
+          maghribi++;
+        }
+      } else {
+        // When targets are identical, all results are common/unified
+        common++;
+        maghribi++;
+        mashriqi++;
+      }
     }
     return { common, maghribi, mashriqi, verbatim, total: matches.length };
-  }, [matches, computedTarget, isVerbatimMatch]);
+  }, [matches, computedTarget, isTargetDiffering, isVerbatimMatch]);
 
   // Statistics by result length / word count (مفردة، قصيرة، متوسطة، طويلة)
   const countsByLength = useMemo(() => {
@@ -1137,16 +1152,22 @@ export function QuranicChainMatcher({
   const filteredMatches = useMemo(() => {
     let list = matches;
 
-    // 1. Filter by Origin tab (الكل / الكلمة المبحوثة / مشترك / مغربي / شرقي)
+    // 1. Filter by Origin tab (الكل / الكلمة المبحوثة / مغربي / شرقي)
     if (selectedOriginFilter !== 'all') {
       if (selectedOriginFilter === 'verbatim') {
         list = list.filter((m) => isVerbatimMatch(m.phrase, m.cleanPhrase));
       } else if (selectedOriginFilter === 'common') {
-        list = list.filter((m) => m.systemOrigin === 'common' || m.isIntrinsicCommon);
+        if (!isTargetDiffering) {
+          list = list; // All matches are common
+        }
       } else if (selectedOriginFilter === 'maghribi') {
-        list = list.filter((m) => computedTarget ? m.maghribiValue === computedTarget.targetMaghribi : m.systemOrigin === 'maghribi');
+        list = list.filter((m) =>
+          computedTarget ? m.maghribiValue === computedTarget.targetMaghribi : m.systemOrigin === 'maghribi'
+        );
       } else if (selectedOriginFilter === 'mashriqi') {
-        list = list.filter((m) => computedTarget ? m.mashriqiValue === computedTarget.targetMashriqi : m.systemOrigin === 'mashriqi');
+        list = list.filter((m) =>
+          computedTarget ? m.mashriqiValue === computedTarget.targetMashriqi : m.systemOrigin === 'mashriqi'
+        );
       }
     }
 
@@ -1708,7 +1729,7 @@ export function QuranicChainMatcher({
                   <span>صيغ وتراكيب الأحرف المقطعة ({displayedNooraniFormulas.length})</span>
                 </div>
 
-                {mergedNooraniFormulas.length > 0 && (
+                {mergedNooraniFormulas.length > 0 && isTargetDiffering && (
                   <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-850 p-0.5 rounded text-3xs font-medium">
                     <button
                       type="button"
@@ -1721,21 +1742,6 @@ export function QuranicChainMatcher({
                     >
                       الكل ({mergedNooraniFormulas.length})
                     </button>
-                    {commonCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setNooraniSystemFilter('common')}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-all flex items-center gap-0.5 ${
-                          nooraniSystemFilter === 'common'
-                            ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                            : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
-                        }`}
-                        title="صيغ مشتركة ومتطابقة في كلا النظامين"
-                      >
-                        <span>مشترك</span>
-                        <span className="font-mono text-3xs">({commonCount})</span>
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => setNooraniSystemFilter('mashriqi')}
@@ -1744,7 +1750,7 @@ export function QuranicChainMatcher({
                           ? 'bg-sky-600 text-white shadow-2xs font-bold'
                           : 'text-sky-700 dark:text-sky-300 hover:bg-sky-100'
                       }`}
-                      title={`صيغ النظام المشرقي (= ${computedTarget.targetMashriqi})`}
+                      title={`صيغ النظام المشرقي (= ${computedTarget?.targetMashriqi})`}
                     >
                       <span>مشرقي</span>
                       <span className="font-mono text-3xs">({mashCount})</span>
@@ -1757,7 +1763,7 @@ export function QuranicChainMatcher({
                           ? 'bg-amber-600 text-white shadow-2xs font-bold'
                           : 'text-amber-700 dark:text-amber-300 hover:bg-amber-100'
                       }`}
-                      title={`صيغ النظام المغربي (= ${computedTarget.targetMaghribi})`}
+                      title={`صيغ النظام المغربي (= ${computedTarget?.targetMaghribi})`}
                     >
                       <span>مغربي</span>
                       <span className="font-mono text-3xs">({magCount})</span>
@@ -2193,10 +2199,8 @@ export function QuranicChainMatcher({
 
                   let chipStyle = '';
 
-                  if (n.system === 'both') {
+                  if (!isTargetDiffering) {
                     chipStyle = 'dos-chip-common hover:border-white';
-                  } else if (n.system === 'dual_match') {
-                    chipStyle = 'dos-chip-dual hover:border-white';
                   } else if (n.system === 'mashriqi') {
                     chipStyle = 'dos-chip-mashriqi hover:border-white';
                   } else {
@@ -2782,56 +2786,44 @@ export function QuranicChainMatcher({
                   </button>
                 )}
 
-                {/* Common (مشترك) - Emerald */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOriginFilter('common')}
-                  onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات المتطابقة في كلا النظامين الشرقي والغربي (${countsByOrigin.common})`)}
-                  onMouseLeave={clearHint}
-                  className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
-                    selectedOriginFilter === 'common'
-                      ? 'dos-btn-pressed'
-                      : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]'
-                  }`}
-                  title="المطابقات المشتركة في النظامين (الشرقي والغربي)"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#55ff55]" />
-                  <span>{selectedOriginFilter === 'common' && '✓ '}مشترك ({countsByOrigin.common})</span>
-                </button>
+                {/* When search targets differ: DO NOT show "مشترك" button! Show "غربي" and "شرقي" */}
+                {isTargetDiffering && (
+                  <>
+                    {/* Maghribi (غربي) - Amber */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOriginFilter('maghribi')}
+                      onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات الخاصة بحساب الجُمّل الغربي/المغربي فقط (${countsByOrigin.maghribi})`)}
+                      onMouseLeave={clearHint}
+                      className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
+                        selectedOriginFilter === 'maghribi'
+                          ? 'dos-btn-pressed'
+                          : 'bg-[#331600] text-[#ffbb33] hover:bg-[#4a2200] border border-[#ffaa00]'
+                      }`}
+                      title="المطابقات وفق الجُمَّل الغربي (المغربي)"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ffaa00]" />
+                      <span>{selectedOriginFilter === 'maghribi' && '✓ '}غربي ({countsByOrigin.maghribi})</span>
+                    </button>
 
-                {/* Maghribi (غربي) - Amber */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOriginFilter('maghribi')}
-                  onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات الخاصة بحساب الجُمّل الغربي/المغربي فقط (${countsByOrigin.maghribi})`)}
-                  onMouseLeave={clearHint}
-                  className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
-                    selectedOriginFilter === 'maghribi'
-                      ? 'dos-btn-pressed'
-                      : 'bg-[#331600] text-[#ffbb33] hover:bg-[#4a2200] border border-[#ffaa00]'
-                  }`}
-                  title="المطابقات وفق الجُمَّل الغربي (المغربي)"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffaa00]" />
-                  <span>{selectedOriginFilter === 'maghribi' && '✓ '}غربي ({countsByOrigin.maghribi})</span>
-                </button>
-
-                {/* Mashriqi (شرقي) - Sky */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedOriginFilter('mashriqi')}
-                  onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات الخاصة بحساب الجُمّل الشرقي/المشرقي فقط (${countsByOrigin.mashriqi})`)}
-                  onMouseLeave={clearHint}
-                  className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
-                    selectedOriginFilter === 'mashriqi'
-                      ? 'dos-btn-pressed'
-                      : 'bg-[#001e38] text-[#55ffff] hover:bg-[#002e52] border border-[#00e5ff]'
-                  }`}
-                  title="المطابقات وفق الجُمَّل الشرقي (المشرقي)"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]" />
-                  <span>{selectedOriginFilter === 'mashriqi' && '✓ '}شرقي ({countsByOrigin.mashriqi})</span>
-                </button>
+                    {/* Mashriqi (شرقي) - Sky */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOriginFilter('mashriqi')}
+                      onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات الخاصة بحساب الجُمّل الشرقي/المشرقي فقط (${countsByOrigin.mashriqi})`)}
+                      onMouseLeave={clearHint}
+                      className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
+                        selectedOriginFilter === 'mashriqi'
+                          ? 'dos-btn-pressed'
+                          : 'bg-[#001e38] text-[#55ffff] hover:bg-[#002e52] border border-[#00e5ff]'
+                      }`}
+                      title="المطابقات وفق الجُمَّل الشرقي (المشرقي)"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]" />
+                      <span>{selectedOriginFilter === 'mashriqi' && '✓ '}شرقي ({countsByOrigin.mashriqi})</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -3390,10 +3382,14 @@ export function QuranicChainMatcher({
               // Verbatim Match detection (الكلمة المبحوثة ذاتها في المصحف)
               const isVerbatim = isVerbatimMatch(item.phrase, item.cleanPhrase);
 
-              // Color Scheme based on System Origin (مشترك / غربي / شرقي / الكلمة المبحوثة)
-              const isCommon = (item.systemOrigin === 'common' || item.isIntrinsicCommon) && !isVerbatim;
-              const isMaghribi = item.systemOrigin === 'maghribi' && !item.isIntrinsicCommon && !isVerbatim;
-              const isMashriqi = item.systemOrigin === 'mashriqi' && !item.isIntrinsicCommon && !isVerbatim;
+              // Color Scheme based on System Origin:
+              // When targets differ (isTargetDiffering is true):
+              // Matches are STRICTLY either Maghribi or Mashriqi. NO COMMON COLOR!
+              // When targets are identical (isTargetDiffering is false):
+              // ALL non-verbatim matches have uniform common/unified color.
+              const isCommon = !isTargetDiffering && !isVerbatim;
+              const isMaghribi = isTargetDiffering && !isVerbatim && (computedTarget ? item.maghribiValue === computedTarget.targetMaghribi : item.systemOrigin === 'maghribi');
+              const isMashriqi = isTargetDiffering && !isVerbatim && (computedTarget ? item.mashriqiValue === computedTarget.targetMashriqi : item.systemOrigin === 'mashriqi');
 
               const cardClasses = isVerbatim
                 ? 'dos-card-verbatim ring-1 ring-[#ff55ff]'
@@ -3427,8 +3423,8 @@ export function QuranicChainMatcher({
                   onMouseEnter={() => {
                     const sysName = isVerbatim
                       ? '★ الكلمة المبحوثة ذاتها نصياً في القرآن الكريم'
-                      : isCommon
-                      ? 'مشترك بالنظامين'
+                      : !isTargetDiffering
+                      ? 'حساب موحد (متطابق بالنظامين)'
                       : isMaghribi
                       ? 'مغربي (غربي)'
                       : 'مشرقي (شرقي)';
