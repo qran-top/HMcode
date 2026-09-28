@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme, DOS_PALETTES } from '../context/ThemeContext';
 import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
@@ -28,6 +28,26 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
   const { label: fontLabel, cycleFontSize } = useFontSize();
   const { openDrawer, entries, savedSystems } = useNotebook();
   const { isHintEnabled, toggleHint, hintText, setHintText, clearHint } = useHint();
+
+  // Real-time Live DOS Digital Clock & Date
+  const [currentDateTime, setCurrentDateTime] = useState(() => {
+    const now = new Date();
+    return {
+      time: now.toLocaleTimeString('en-GB', { hour12: false }),
+      date: now.toISOString().slice(0, 10),
+    };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentDateTime({
+        time: now.toLocaleTimeString('en-GB', { hour12: false }),
+        date: now.toISOString().slice(0, 10),
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const currentPalette = DOS_PALETTES.find((p) => p.id === dosPalette) || DOS_PALETTES[0];
   const totalSavedCount = (entries?.length || 0) + (savedSystems?.length || 0);
@@ -62,12 +82,12 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
       dir="rtl"
       aria-label="شريط أوامر ونظام دوس MS-DOS"
     >
-      {/* 1. Top DOS Window Title Bar with Quick Action Utilities */}
+      {/* 1. Top DOS Window Title Bar with Live Clock, Date, and Utilities */}
       <div
         style={{ backgroundColor: 'var(--dos-header)', borderColor: 'var(--dos-border)' }}
-        className="text-[#ffffff] px-2 py-1 border-b flex items-center justify-between gap-1 flex-wrap text-xs font-bold"
+        className="text-[#ffffff] px-2 py-1 border-b flex items-center justify-between gap-1.5 flex-wrap text-xs font-bold"
       >
-        {/* System Title */}
+        {/* Left/Start side: Title & DOS Branding */}
         <div
           className="flex items-center gap-1.5 shrink-0 cursor-default"
           onMouseEnter={() => setHintText('نظام التشفير وحساب الجُمّل القرآني الشامل (MS-DOS 6.22 Retro Edition)')}
@@ -77,12 +97,24 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <span className="text-[#ffff55] tracking-wide font-black text-xs sm:text-sm">
             C:\QURAN\CIPHER.EXE
           </span>
-          <span className="text-[#55ffff] text-3xs hidden md:inline border-r border-[#55ffff]/50 pr-1.5 mr-1">
+          <span className="text-[#55ffff] text-3xs hidden lg:inline border-r border-[#55ffff]/50 pr-1.5 mr-1">
             MS-DOS 6.22 [UTF-8 ARABIC]
           </span>
         </div>
 
-        {/* Top Control Buttons (Palette, Sound, CRT, Hint, Font, Notebook, Help) */}
+        {/* Center: Live DOS Clock & Date Display */}
+        <div
+          onMouseEnter={() => setHintText(`ساعة وتاريخ نظام DOS المباشرة: [${currentDateTime.date} ${currentDateTime.time}]`)}
+          onMouseLeave={clearHint}
+          className="inline-flex items-center gap-1 sm:gap-2 px-2 py-0.5 bg-black/90 border border-[#55ffff]/70 text-2xs font-mono text-[#55ffff] font-bold shadow-xs select-none"
+          title="ساعة وتاريخ النظام المباشرة"
+        >
+          <span className="text-[#ffff55] font-black">⏱️ {currentDateTime.time}</span>
+          <span className="text-stone-500">|</span>
+          <span className="text-[#55ff55]">📅 {currentDateTime.date}</span>
+        </div>
+
+        {/* Right/End side: Top Control Buttons (Palette, Sound, CRT, Hint, Font, Notebook, Help) */}
         <div className="flex items-center gap-1 flex-wrap shrink-0">
           {/* F8: Color Palette Switcher */}
           <button
@@ -101,7 +133,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={toggleSound}
-            onMouseEnter={() => setHintText(`مؤثرات بيب نظام دوس الصوتية التفاعلية: ${dosSound ? 'مفعلة' : 'مكتومة'}`)}
+            onMouseEnter={() => setHintText(`مؤثرات بيب نظام دوس الصوتية: ${dosSound ? 'مفعلة' : 'مكتومة'}`)}
             onMouseLeave={clearHint}
             className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none ${
               dosSound
@@ -117,7 +149,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={toggleScanlines}
-            onMouseEnter={() => setHintText(`تأثير خطوط مسح أنبوب الأشعة المهبطية CRT: ${dosScanlines ? 'مفعل' : 'معطل'}`)}
+            onMouseEnter={() => setHintText(`تأثير خطوط شاشة أنبوب الأشعة CRT: ${dosScanlines ? 'مفعل' : 'معطل'}`)}
             onMouseLeave={clearHint}
             style={{ borderColor: 'var(--dos-border)' }}
             className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none hidden sm:inline-block ${
@@ -125,7 +157,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
                 ? 'bg-[#002233] text-[#55ffff]'
                 : 'bg-[#111111] text-[#888888]'
             }`}
-            title="تفعيل/تعطيل خطوط شاشة أنبوب الأشعة المهبطية CRT"
+            title="تفعيل/تعطيل خطوط شاشة CRT"
           >
             [CRT:{dosScanlines ? 'ON' : 'OFF'}]
           </button>
@@ -134,7 +166,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={handleToggleHint}
-            onMouseEnter={() => setHintText('زر إظهار أو إخفاء شريط التلميحات الفورية DOS HINT BAR')}
+            onMouseEnter={() => setHintText('إظهار أو إخفاء شريط التلميحات الفورية السفلي')}
             onMouseLeave={clearHint}
             className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none ${
               isHintEnabled
@@ -153,7 +185,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
               cycleFontSize();
               playDosBeep(700, 20);
             }}
-            onMouseEnter={() => setHintText(`تغيير مقاس الخط العام: المقاس الحالي [${fontLabel}]`)}
+            onMouseEnter={() => setHintText(`تغيير مقاس الخط: المقاس الحالي [${fontLabel}]`)}
             onMouseLeave={clearHint}
             style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-border)', color: 'var(--dos-border)' }}
             className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#00aaaa] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none"
@@ -183,7 +215,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
             <button
               type="button"
               onClick={onOpenHelp}
-              onMouseEnter={() => setHintText('عرض دليل اختصارات لوحة المفاتيح F1-F10 ونظام DOS')}
+              onMouseEnter={() => setHintText('دليل اختصارات لوحة المفاتيح ونظام DOS (F1)')}
               onMouseLeave={clearHint}
               className="px-1.5 py-0.5 text-2xs font-bold bg-[#ffff55] text-black hover:bg-white border border-white cursor-pointer active:translate-y-0.5 transition-none font-black"
               title="دليل اختصارات لوحة المفاتيح ونظام DOS (F1)"
@@ -194,42 +226,42 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
         </div>
       </div>
 
-      {/* 2. Primary Tabs Menu Bar (F1-F4 Navigation Ribbon) */}
+      {/* 2. Primary Tabs Menu Bar (F1-F4 Navigation Ribbon) - Fully Responsive Grid for Mobile Portrait/Landscape */}
       <div
         style={{ backgroundColor: 'var(--dos-bg)', borderColor: 'var(--dos-header)' }}
         className="px-1.5 py-1 flex items-center justify-between gap-1 flex-wrap border-b"
       >
-        <nav className="flex items-center gap-1 flex-wrap w-full sm:w-auto" aria-label="أقسام نظام DOS">
+        <nav className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1 w-full" aria-label="أقسام نظام DOS">
           <button
             type="button"
             onClick={() => handleTabClick('gematria')}
-            onMouseEnter={() => setHintText('مطابق السلاسل القرآنية المدمج: مسح المصحف كاملاً وحساب الجُمّل المشرقي والمغربي وتوليد الفواتح')}
+            onMouseEnter={() => setHintText('مطابق السلاسل القرآنية: مسح المصحف كاملاً وحساب الجُمّل المشرقي والمغربي')}
             onMouseLeave={clearHint}
             style={
               activeTab === 'gematria'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="flex-1 sm:flex-initial px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs"
+            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
             title="مطابق السلاسل القرآنية وحساب الجُمّل المدمج (F1)"
           >
-            [<span className={activeTab === 'gematria' ? 'text-black' : 'text-[#ffff55] font-black'}>F1</span>] مطابق السلاسل القرآنية
+            [<span className={activeTab === 'gematria' ? 'text-black' : 'text-[#ffff55] font-black'}>F1</span>] مطابق السلاسل
           </button>
 
           <button
             type="button"
             onClick={() => handleTabClick('search')}
-            onMouseEnter={() => setHintText('باحث الأوامر والمترجم المزدوج: تشفير وفك تشفير النصوص بحساب الجُمّل')}
+            onMouseEnter={() => setHintText('باحث الأوامر والمترجم: تشفير وفك تشفير النصوص بحساب الجُمّل')}
             onMouseLeave={clearHint}
             style={
               activeTab === 'search'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="flex-1 sm:flex-initial px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs"
+            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
             title="باحث الأوامر والمترجم المزدوج والتشفير (F2)"
           >
-            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] باحث الأوامر والتشفير
+            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] باحث الأوامر
           </button>
 
           <button
@@ -242,10 +274,10 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="flex-1 sm:flex-initial px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs"
+            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
             title="تخصيص قواعد الحساب والجداول المرجعية (F3)"
           >
-            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] الجداول والتخصيص
+            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] الجداول والقواعد
           </button>
 
           <button
@@ -258,7 +290,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="flex-1 sm:flex-initial px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs"
+            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
             title="دليل النظام وتوثيق حساب الجمل القرآني (F4)"
           >
             [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الدليل والتوثيق

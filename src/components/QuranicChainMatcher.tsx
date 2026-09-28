@@ -1386,39 +1386,18 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
                   {computedTarget.isIdentical ? (
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap font-mono">
-                      {/* Western (غربي) */}
+                      {/* Western & Eastern Identical: Prominently show 'مشترك (شرقي وغربي)' */}
                       <div
-                        onMouseEnter={() => setHintText(`المجموع بحساب الجُمّل الغربي (المغربي): ${computedTarget.targetMaghribi}`)}
+                        onMouseEnter={() => setHintText(`المجموع متطابق ومشترك في كلا النظامين الشرقي والغربي: ${computedTarget.targetMaghribi}`)}
                         onMouseLeave={clearHint}
-                        className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-sm bg-[#2b1200] text-[#ffbb33] border-2 border-[#ffaa00] shadow-sm select-text"
-                        title="مجموع حروف العبارة وفق الجُمّل الغربي (المغربي)"
+                        className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-sm bg-[#00290a] text-[#55ff55] border-2 border-[#33ff33] shadow-sm select-text"
+                        title="المجموع متطابق ومشترك في كلا النظامين الشرقي والغربي"
                       >
-                        <span className="text-[#ffff55] font-black text-xs sm:text-sm">غربي:</span>
+                        <span className="text-[#ffff55] font-black text-xs sm:text-sm">مشترك (شرقي وغربي):</span>
                         <strong className="text-xl sm:text-2xl md:text-3xl text-white font-black tracking-wide font-mono">
                           {computedTarget.targetMaghribi}
                         </strong>
                       </div>
-
-                      {/* Eastern (شرقي) */}
-                      <div
-                        onMouseEnter={() => setHintText(`المجموع بحساب الجُمّل الشرقي (المشرقي): ${computedTarget.targetMashriqi}`)}
-                        onMouseLeave={clearHint}
-                        className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-sm bg-[#001c38] text-[#55ffff] border-2 border-[#00e5ff] shadow-sm select-text"
-                        title="مجموع حروف العبارة وفق الجُمّل الشرقي (المشرقي)"
-                      >
-                        <span className="text-[#55ffff] font-black text-xs sm:text-sm">شرقي:</span>
-                        <strong className="text-xl sm:text-2xl md:text-3xl text-white font-black tracking-wide font-mono">
-                          {computedTarget.targetMashriqi}
-                        </strong>
-                      </div>
-
-                      {/* Common badge */}
-                      <span
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm bg-[#00290a] text-[#55ff55] border-2 border-[#33ff33] font-black text-xs sm:text-sm shadow-xs"
-                        title="القيمة متطابقة تماماً في كلا النظامين الشرقي والغربي"
-                      >
-                        <span>★ متطابق بالنظامين</span>
-                      </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap font-mono">
