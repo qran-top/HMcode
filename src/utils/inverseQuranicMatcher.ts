@@ -356,19 +356,24 @@ export class InverseQuranicScanner {
                       if (!isAllNoorani) continue;
                     }
 
-                    // Determine system origin and labeling
+                    // Determine system origin and labeling with strict accuracy:
+                    // If a phrase only matches one system (e.g. Mashriqi), label it purely Eastern (شرقي).
+                    // Only when it matches BOTH systems and evaluates to the exact same value is it Common (مشترك).
                     let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'maghribi';
                     let systemLabel = 'غربي';
 
-                    if (isMaghribiMatch && isMashriqiMatch) {
+                    if (isMaghribiMatch && isMashriqiMatch && currentMagSum === currentMashSum) {
                       systemOrigin = 'common';
                       systemLabel = 'مشترك';
-                    } else if (isMaghribiMatch) {
-                      systemOrigin = isIntrinsicCommon ? 'common' : 'maghribi';
-                      systemLabel = isIntrinsicCommon ? 'مشترك' : 'غربي';
-                    } else {
-                      systemOrigin = isIntrinsicCommon ? 'common' : 'mashriqi';
-                      systemLabel = isIntrinsicCommon ? 'مشترك' : 'شرقي';
+                    } else if (isMashriqiMatch && !isMaghribiMatch) {
+                      systemOrigin = 'mashriqi';
+                      systemLabel = 'شرقي';
+                    } else if (isMaghribiMatch && !isMashriqiMatch) {
+                      systemOrigin = 'maghribi';
+                      systemLabel = 'غربي';
+                    } else if (isMaghribiMatch && isMashriqiMatch) {
+                      systemOrigin = 'common';
+                      systemLabel = 'مشترك';
                     }
 
                     const dedupKey = `${sNum}:${ayah.a}:${cleanPhrase}:${systemOrigin}`;
@@ -586,25 +591,24 @@ export class InverseQuranicScanner {
           // Cooperative timeout ensures browser event loop breathes and React renders without freezing
           setTimeout(step, 4);
         } else {
-          this.isScanning = false;
           if (onProgress) {
             onProgress({
-              percent: 100,
+              percent: 80,
               scannedCount: totalCombinationsScanned,
               totalCount: totalSurahs,
               matchesCount: matches.length,
               itemsPerSecond: speed,
-              currentSurahOrPhase: 'اكتمل المسح الشامل (الشرقي والغربي)',
-              isRunning: false,
-              isCompleted: true,
+              currentSurahOrPhase: `اكتمل مسح 114 سورة كريمة (${matches.length} مطابقة) - جاري الفرز والمعالجة...`,
+              isRunning: true,
+              isCompleted: false,
               isCancelled: false,
             });
           }
-          // Yield to browser before triggering onComplete so 100% UI is rendered first
+          // Cooperative timeout before triggering onComplete
           setTimeout(() => {
             if (onComplete) onComplete(matches, false);
             resolve(matches);
-          }, 40);
+          }, 20);
         }
       };
 

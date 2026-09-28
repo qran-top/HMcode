@@ -30,6 +30,27 @@ export function App() {
     document.title = 'C:\\QURAN\\CIPHER.EXE - نظام التشفير والجُمّل العربي';
   }, [activeTab]);
 
+  const [isWideMode, setIsWideMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('app-wide-mode');
+      return saved !== null ? saved === 'true' : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleWideMode = () => {
+    setIsWideMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('app-wide-mode', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   return (
     <div
       style={{ backgroundColor: 'var(--dos-bg)', color: 'var(--dos-text)' }}
@@ -49,13 +70,15 @@ export function App() {
           setActiveTab('gematria');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        isWideMode={isWideMode}
+        toggleWideMode={toggleWideMode}
       />
 
       {/* Main Terminal Container: Generous pb-36 sm:pb-44 so bottom sticky hint bar never covers the last result */}
-      <main className="max-w-7xl w-full mx-auto px-2 sm:px-4 py-2.5 sm:py-3.5 flex-1 space-y-3 pb-36 sm:pb-44 overflow-x-hidden">
+      <main className={`${isWideMode ? 'max-w-full px-1.5 sm:px-3' : 'max-w-7xl mx-auto px-2 sm:px-4'} w-full py-2.5 sm:py-3.5 flex-1 space-y-3 pb-36 sm:pb-44 overflow-x-hidden transition-all duration-150`}>
         {/* Tab 1: Comprehensive Gematria Engine & Quranic Chain Matcher (F1) */}
         <div className={activeTab === 'gematria' ? 'block' : 'hidden'}>
-          <QuranicChainMatcher initialQuery={sharedText} />
+          <QuranicChainMatcher initialQuery={sharedText} isWideMode={isWideMode} toggleWideMode={toggleWideMode} />
         </div>
 
         {/* Tab 2: Unified Command Search & Dual Translator / Cipher Hub (F2) */}

@@ -4,13 +4,49 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Tajawal', sans-serif;
-  --font-quran: 'Tajawal', sans-serif;
+  --font-sans: var(--font-app, 'Tajawal'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-app, 'Tajawal'), sans-serif;
+  --font-quran: var(--font-app, 'Tajawal'), sans-serif;
 }
 
 :root {
   --font-app: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 5 Distinct Arabic Font Options (Tajawal / Amiri / Cairo / DOS 95 / Arial) */
+html[data-font-family="tajawal"] {
+  --font-app: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Tajawal', sans-serif;
+  --font-serif: 'Tajawal', sans-serif;
+  --font-quran: 'Tajawal', sans-serif;
+}
+
+html[data-font-family="amiri"] {
+  --font-app: 'Amiri', 'Amiri Quran', serif;
+  --font-sans: 'Amiri', serif;
+  --font-serif: 'Amiri', serif;
+  --font-quran: 'Amiri', serif;
+}
+
+html[data-font-family="cairo"] {
+  --font-app: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Cairo', sans-serif;
+  --font-serif: 'Cairo', sans-serif;
+  --font-quran: 'Cairo', sans-serif;
+}
+
+html[data-font-family="dos_arabic"] {
+  --font-app: 'Courier New', Courier, Consolas, Monaco, 'Simplified Arabic Fixed', monospace;
+  --font-sans: 'Courier New', Courier, monospace;
+  --font-serif: 'Courier New', Courier, monospace;
+  --font-quran: 'Courier New', Courier, monospace;
+}
+
+html[data-font-family="arial"] {
+  --font-app: Arial, 'Segoe UI', Tahoma, -apple-system, sans-serif;
+  --font-sans: Arial, 'Segoe UI', Tahoma, sans-serif;
+  --font-serif: Arial, 'Segoe UI', Tahoma, sans-serif;
+  --font-quran: Arial, 'Segoe UI', Tahoma, sans-serif;
 }
 
 html.dark, html.dark body {
@@ -26,12 +62,11 @@ html.dark, html.dark body {
 }
 
 body, button, input, textarea, select {
-  font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-app);
 }
 
-/* 100% Unified Typography across the entire platform (كل شيء موحد بنفس الخط العصري فائق الوضوح) */
 * {
-  font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-app);
 }
 
 code, kbd, samp, pre, .font-mono {
@@ -40,10 +75,8 @@ code, kbd, samp, pre, .font-mono {
 
 .font-sans,
 .font-serif,
-.font-quran,
-[class*="Amiri"],
-[class*="Cairo"] {
-  font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+.font-quran {
+  font-family: var(--font-app) !important;
 }
 
 /* ========================================================================= */
@@ -164,18 +197,26 @@ html.theme-dos #root {
   color-scheme: dark;
   background-color: var(--dos-bg) !important;
   color: var(--dos-text) !important;
-  font-family: 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
+  font-family: var(--font-app), 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
   letter-spacing: 0.02em;
   overflow-x: hidden !important;
   max-width: 100vw !important;
 }
 
-/* Force Monospace everywhere and strip modern roundings in DOS */
+/* Allow Arabic font choice while keeping DOS sharp border discipline */
 html.theme-dos * {
-  font-family: 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
+  font-family: var(--font-app), 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace;
   border-radius: 0px !important;
   box-shadow: none !important;
   text-shadow: none !important;
+}
+
+html.theme-dos .font-mono,
+html.theme-dos code,
+html.theme-dos kbd,
+html.theme-dos samp,
+html.theme-dos pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
 /* Base Panel & Surface Fallbacks (Non-Result Elements) */
@@ -265,7 +306,7 @@ html.theme-dos button[class*="bg-white"]:hover {
 }
 
 /* ========================================================================= */
-/* 🎨 VIVID 16-COLOR DOS CLASSIFICATION STYLING (شرقي / غربي / مشترك / مشفر) */
+/* 🎨 VIVID DOS CLASSIFICATION STYLING (شرقي / غربي / مشترك / لفظي مباشر)     */
 /* ========================================================================= */
 
 /* 1. الشرقي (Mashriqi) - Vivid DOS Cyan (#55ffff / #00ffff) */
@@ -317,6 +358,250 @@ html.theme-dos button[class*="bg-white"]:hover {
   color: #55ff55 !important;
   border: 1px solid #33ff33 !important;
   font-weight: bold !important;
+}
+
+/* 4. المطابقة اللفظية الصريحة (Verbatim Match: الكلمة المبحوثة ذاتها في القرآن) */
+.dos-card-verbatim {
+  background-color: #360033 !important;
+  border: 2px solid #ff55ff !important;
+  color: #ff88ff !important;
+  box-shadow: 0 0 8px rgba(255, 85, 255, 0.45) !important;
+}
+.dos-card-verbatim:hover {
+  background-color: #52004d !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-verbatim {
+  background-color: #4d0044 !important;
+  color: #ff55ff !important;
+  border: 1px solid #ff55ff !important;
+  font-weight: bold !important;
+}
+
+/* ========================================================================= */
+/* 📟 F8 PALETTE-AWARE CARD OVERRIDES: Transform ALL Results with Palette     */
+/* ========================================================================= */
+
+/* Green Phosphor (IBM 5151 / Matrix): All results transform into Phosphor Green Harmony */
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-card-common {
+  background-color: #05260c !important;
+  border-color: #33ff33 !important;
+  color: #55ff55 !important;
+}
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-card-maghribi {
+  background-color: #0a2e0a !important;
+  border-color: #88ff55 !important;
+  color: #aaff66 !important;
+}
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-card-mashriqi {
+  background-color: #022112 !important;
+  border-color: #33ffaa !important;
+  color: #66ffcc !important;
+}
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-card-verbatim {
+  background-color: #0d3816 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Amber CRT Monochrome: All results transform into Warm Gold/Amber Harmony */
+html.theme-dos[data-dos-palette="amber-crt"] .dos-card-common {
+  background-color: #291200 !important;
+  border-color: #ffaa00 !important;
+  color: #ffcc55 !important;
+}
+html.theme-dos[data-dos-palette="amber-crt"] .dos-card-maghribi {
+  background-color: #381500 !important;
+  border-color: #ff7700 !important;
+  color: #ff9933 !important;
+}
+html.theme-dos[data-dos-palette="amber-crt"] .dos-card-mashriqi {
+  background-color: #240d00 !important;
+  border-color: #ffd066 !important;
+  color: #ffe6a6 !important;
+}
+html.theme-dos[data-dos-palette="amber-crt"] .dos-card-verbatim {
+  background-color: #4a1d00 !important;
+  border-color: #ffffff !important;
+  color: #ffff55 !important;
+  box-shadow: 0 0 8px rgba(255, 255, 85, 0.4) !important;
+}
+
+/* Pure Black DOS Prompt (C:\>): High-contrast crisp black cards */
+html.theme-dos[data-dos-palette="dos-black"] .dos-card-common {
+  background-color: #0a1f0a !important;
+  border-color: #55ff55 !important;
+  color: #55ff55 !important;
+}
+html.theme-dos[data-dos-palette="dos-black"] .dos-card-maghribi {
+  background-color: #1f1200 !important;
+  border-color: #ffaa00 !important;
+  color: #ffbb33 !important;
+}
+html.theme-dos[data-dos-palette="dos-black"] .dos-card-mashriqi {
+  background-color: #001726 !important;
+  border-color: #00e5ff !important;
+  color: #55ffff !important;
+}
+html.theme-dos[data-dos-palette="dos-black"] .dos-card-verbatim {
+  background-color: #262626 !important;
+  border-color: #ffffff !important;
+  color: #ffff55 !important;
+}
+
+/* WordStar / Borland Teal: Rich ocean teal cards */
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-common {
+  background-color: #003632 !important;
+  border-color: #33ffaa !important;
+  color: #55ffcc !important;
+}
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-maghribi {
+  background-color: #382410 !important;
+  border-color: #ffaa66 !important;
+  color: #ffcc88 !important;
+}
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-mashriqi {
+  background-color: #002e3b !important;
+  border-color: #00e5ff !important;
+  color: #55ffff !important;
+}
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-verbatim {
+  background-color: #004554 !important;
+  border-color: #ffffff !important;
+  color: #ffff55 !important;
+}
+
+/* ========================================================================= */
+/* 🔤 PHRASE TEXT CLASSES (Dynamic Theme & F8 Palette Aware)                 */
+/* ========================================================================= */
+.dos-phrase-common {
+  color: #55ff55 !important;
+}
+.dos-phrase-maghribi {
+  color: #ffbb33 !important;
+}
+.dos-phrase-mashriqi {
+  color: #55ffff !important;
+}
+.dos-phrase-verbatim {
+  color: #ff77ff !important;
+}
+
+/* Palette overrides for phrase text */
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-phrase-common { color: #55ff55 !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-phrase-maghribi { color: #aaff66 !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-phrase-mashriqi { color: #66ffcc !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-phrase-verbatim { color: #ffffff !important; text-shadow: 0 0 6px rgba(255, 255, 255, 0.7); }
+
+html.theme-dos[data-dos-palette="amber-crt"] .dos-phrase-common { color: #ffcc55 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-phrase-maghribi { color: #ff9933 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-phrase-mashriqi { color: #ffe6a6 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-phrase-verbatim { color: #ffff55 !important; text-shadow: 0 0 6px rgba(255, 255, 85, 0.7); }
+
+html.theme-dos[data-dos-palette="dos-black"] .dos-phrase-common { color: #55ff55 !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-phrase-maghribi { color: #ffbb33 !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-phrase-mashriqi { color: #55ffff !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-phrase-verbatim { color: #ffff55 !important; }
+
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-phrase-common { color: #55ffcc !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-phrase-maghribi { color: #ffcc88 !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-phrase-mashriqi { color: #55ffff !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-phrase-verbatim { color: #ffff55 !important; }
+
+/* ========================================================================= */
+/* 🏷️ NOORANI & SYSTEM CHIPS (Dynamic Theme & F8 Palette Aware)             */
+/* ========================================================================= */
+.dos-chip-common {
+  background-color: #00290a !important;
+  border: 1px solid #33ff33 !important;
+  color: #55ff55 !important;
+}
+.dos-chip-maghribi {
+  background-color: #331600 !important;
+  border: 1px solid #ffaa00 !important;
+  color: #ffbb33 !important;
+}
+.dos-chip-mashriqi {
+  background-color: #001e38 !important;
+  border: 1px solid #00e5ff !important;
+  color: #55ffff !important;
+}
+.dos-chip-dual {
+  background-color: #1a0033 !important;
+  border: 1px solid #ff55ff !important;
+  color: #ff88ff !important;
+}
+
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-chip-common { background-color: #05260c !important; border-color: #33ff33 !important; color: #55ff55 !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-chip-maghribi { background-color: #0a2e0a !important; border-color: #88ff55 !important; color: #aaff66 !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-chip-mashriqi { background-color: #022112 !important; border-color: #33ffaa !important; color: #66ffcc !important; }
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-chip-dual { background-color: #0d3816 !important; border-color: #ffffff !important; color: #ffffff !important; }
+
+html.theme-dos[data-dos-palette="amber-crt"] .dos-chip-common { background-color: #291200 !important; border-color: #ffaa00 !important; color: #ffcc55 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-chip-maghribi { background-color: #381500 !important; border-color: #ff7700 !important; color: #ff9933 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-chip-mashriqi { background-color: #240d00 !important; border-color: #ffd066 !important; color: #ffe6a6 !important; }
+html.theme-dos[data-dos-palette="amber-crt"] .dos-chip-dual { background-color: #4a1d00 !important; border-color: #ffffff !important; color: #ffff55 !important; }
+
+html.theme-dos[data-dos-palette="dos-black"] .dos-chip-common { background-color: #0a1f0a !important; border-color: #55ff55 !important; color: #55ff55 !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-chip-maghribi { background-color: #1f1200 !important; border-color: #ffaa00 !important; color: #ffbb33 !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-chip-mashriqi { background-color: #001726 !important; border-color: #00e5ff !important; color: #55ffff !important; }
+html.theme-dos[data-dos-palette="dos-black"] .dos-chip-dual { background-color: #262626 !important; border-color: #ffffff !important; color: #ffff55 !important; }
+
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-chip-common { background-color: #003632 !important; border-color: #33ffaa !important; color: #55ffcc !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-chip-maghribi { background-color: #382410 !important; border-color: #ffaa66 !important; color: #ffcc88 !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-chip-mashriqi { background-color: #002e3b !important; border-color: #00e5ff !important; color: #55ffff !important; }
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-chip-dual { background-color: #004554 !important; border-color: #ffffff !important; color: #ffff55 !important; }
+
+/* ========================================================================= */
+/* 🔘 UNMISTAKABLE INVERTED PRESSED BUTTON STATE (All Palettes)              */
+/* ========================================================================= */
+.dos-btn-pressed {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid #ffffff !important;
+  border-right: 2px solid #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.8) !important;
+  transform: translateY(1px) !important;
+}
+
+html.theme-dos[data-dos-palette="green-phosphor"] .dos-btn-pressed {
+  background-color: #55ff55 !important;
+  color: #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid #55ff55 !important;
+  border-right: 2px solid #55ff55 !important;
+}
+
+html.theme-dos[data-dos-palette="amber-crt"] .dos-btn-pressed {
+  background-color: #ffaa00 !important;
+  color: #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid #ffaa00 !important;
+  border-right: 2px solid #ffaa00 !important;
+}
+
+html.theme-dos[data-dos-palette="dos-black"] .dos-btn-pressed {
+  background-color: #ffff55 !important;
+  color: #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid #ffff55 !important;
+  border-right: 2px solid #ffff55 !important;
+}
+
+html.theme-dos[data-dos-palette="wordstar-teal"] .dos-btn-pressed {
+  background-color: #00e5ff !important;
+  color: #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid #00e5ff !important;
+  border-right: 2px solid #00e5ff !important;
 }
 
 /* 4. المشفر (Enciphered) - Vivid DOS Magenta (#ff55ff) */

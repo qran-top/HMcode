@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   Search,
   Play,
@@ -176,12 +176,18 @@ function highlightQuranText(fullText: string, query: string): React.ReactNode {
 
 interface QuranicChainMatcherProps {
   initialQuery?: string;
+  isWideMode?: boolean;
+  toggleWideMode?: () => void;
 }
 
-export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherProps) {
+export function QuranicChainMatcher({
+  initialQuery = '',
+  isWideMode = false,
+  toggleWideMode,
+}: QuranicChainMatcherProps) {
   const { activeTable, calculationOptions, findArabicMatches } = useGematria();
   const { isDos, playDosBeep } = useTheme();
-  const { setHintText, clearHint } = useHint();
+  const { setHintText, clearHint, setCurrentQuery } = useHint();
 
   const [inputQuery, setInputQuery] = useState<string>(() => initialQuery || '');
   const [committedQuery, setCommittedQuery] = useState<string>(() => (initialQuery || '').trim());
@@ -200,7 +206,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   const [selectedScope, setSelectedScope] = useState<'all' | 'verses_and_chains' | 'chains_only' | 'single_words'>('all');
   const [onlyNoorani, setOnlyNoorani] = useState<boolean>(false);
   const [isFilterUnique, setIsFilterUnique] = useState<boolean>(true);
-  const [selectedOriginFilter, setSelectedOriginFilter] = useState<'all' | 'common' | 'maghribi' | 'mashriqi'>('all');
+  const [selectedOriginFilter, setSelectedOriginFilter] = useState<'all' | 'common' | 'maghribi' | 'mashriqi' | 'verbatim'>('all');
   const [resultsFilter, setResultsFilter] = useState<string>('');
   const [searchInFullAyah, setSearchInFullAyah] = useState<boolean>(true);
 
@@ -231,10 +237,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     isCancelled: false,
   });
 
-  // Multi-Stage Sequential Pipeline Phase ('idle' | 'noorani' | 'quran' | 'arabic' | 'completed')
-  type ScanPipelinePhase = 'idle' | 'noorani' | 'quran' | 'arabic' | 'completed';
+  // Multi-Stage Sequential Pipeline Phase ('idle' | 'noorani' | 'quran' | 'processing' | 'arabic' | 'preparing' | 'completed')
+  type ScanPipelinePhase = 'idle' | 'noorani' | 'quran' | 'processing' | 'arabic' | 'preparing' | 'completed';
   const [pipelinePhase, setPipelinePhase] = useState<ScanPipelinePhase>('idle');
-  const isPipelineRunning = pipelinePhase === 'noorani' || pipelinePhase === 'quran' || pipelinePhase === 'arabic';
+  const isPipelineRunning = pipelinePhase === 'noorani' || pipelinePhase === 'quran' || pipelinePhase === 'processing' || pipelinePhase === 'arabic' || pipelinePhase === 'preparing';
   const [isStartBtnDepressed, setIsStartBtnDepressed] = useState<boolean>(false);
 
   interface ArabicScanProgress {
@@ -461,20 +467,45 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     maxResults: 100,
   });
 
-  // Single Unified Progress Percentage for the entire search pipeline (Smooth 0% -> 100%, never hangs at 90%)
+  // Helper to determine if a result item matches the exact searched query in the Holy Quran
+  const isVerbatimMatch = useCallback((phrase: string, cleanPhrase?: string) => {
+    const rawTarget = (committedQuery || inputQuery).trim();
+    if (!rawTarget) return false;
+    const cleanTarget = cleanArabicTextForGematria(rawTarget);
+    if (!cleanTarget) return false;
+
+    const cleanItem = cleanArabicTextForGematria(cleanPhrase || phrase);
+    if (cleanItem === cleanTarget) return true;
+
+    const words = cleanItem.split(/\s+/);
+    if (words.length === 1 && words[0] === cleanTarget) return true;
+
+    return false;
+  }, [committedQuery, inputQuery]);
+
+  // Single Unified Progress Percentage for the entire search pipeline (Smooth 0% -> 100%, never hangs at 100%)
   const unifiedPercent = useMemo(() => {
     if (!isPipelineRunning) return 0;
+    if (progress.percent === 100 && (pipelinePhase === 'completed' || progress.currentSurahOrPhase.includes('100%'))) {
+      return 100;
+    }
     if (pipelinePhase === 'noorani') {
       return Math.min(25, Math.max(5, Math.round((nooraniProgress || 5) * 0.25)));
     }
     if (pipelinePhase === 'quran') {
-      return Math.min(94, Math.max(25, 25 + Math.round((progress.percent || 0) * 0.69)));
+      return Math.min(80, Math.max(25, 25 + Math.round((progress.percent || 0) * 0.55)));
+    }
+    if (pipelinePhase === 'processing') {
+      return 85;
     }
     if (pipelinePhase === 'arabic') {
-      return Math.min(100, Math.max(95, 95 + Math.round((arabicProgress.percent || 100) * 0.05)));
+      return Math.min(94, Math.max(88, 88 + Math.round((arabicProgress.percent || 0) * 0.06)));
+    }
+    if (pipelinePhase === 'preparing') {
+      return 98;
     }
     return 100;
-  }, [isPipelineRunning, pipelinePhase, nooraniProgress, progress.percent, arabicProgress.percent]);
+  }, [isPipelineRunning, pipelinePhase, nooraniProgress, progress.percent, progress.currentSurahOrPhase, arabicProgress.percent]);
 
   // Count formulas that have repeated elements for badge
   const repeatedFormulasCount = useMemo(() => {
@@ -711,9 +742,20 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     });
   };
 
-  // Start Phase 3: Arabic Lexicon Scan (runs automatically after Quran scan completes)
-  const startArabicScanPhase = (targetMag: number, targetMash: number, isIdenticalVal: boolean) => {
+  // Start Phase 3: Arabic Lexicon Scan (runs asynchronously with UI yielding)
+  const startArabicScanPhaseAsync = async (targetMag: number, targetMash: number, isIdenticalVal: boolean) => {
     try {
+      setArabicProgress({
+        isRunning: true,
+        percent: 50,
+        message: 'جاري فحص واستخراج مطابقات المعجم العربي...',
+        foundCount: 0,
+        isCompleted: false,
+      });
+
+      // Yield to let browser update DOM
+      await new Promise((r) => setTimeout(r, 40));
+
       const targetVal = isIdenticalVal ? targetMag : targetMash;
       let finalResults: SynthesizedTextResult[] = [];
       if (targetVal > 0) {
@@ -733,21 +775,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
       setArabicProgress({
         isRunning: false,
         percent: 100,
-        message: `اكتمل استخراج المعجم العربي بنجاح (تم العثور على ${finalResults.length} مفردة)`,
+        message: `تم العثور على ${finalResults.length} مفردة معجمية مطابقة`,
         foundCount: finalResults.length,
         isCompleted: true,
       });
 
-      // Free UI thread smoothly after briefly displaying 100% completion and play completion sound
-      setTimeout(() => {
-        setPipelinePhase('completed');
-        try {
-          playDosBeep(880, 80);
-          setTimeout(() => playDosBeep(1174, 120), 90);
-        } catch {
-          // ignore sound error if muted
-        }
-      }, 400);
+      await new Promise((r) => setTimeout(r, 40));
     } catch (err) {
       console.error('Arabic scan error:', err);
       setArabicProgress({
@@ -757,15 +790,6 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
         foundCount: 0,
         isCompleted: true,
       });
-      setTimeout(() => {
-        setPipelinePhase('completed');
-        try {
-          playDosBeep(880, 80);
-          setTimeout(() => playDosBeep(1174, 120), 90);
-        } catch {
-          // ignore sound error
-        }
-      }, 400);
     }
   };
 
@@ -831,26 +855,59 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               setMatches([...matchBatch]);
             }
           },
-          onComplete: (allMatches, cancelled) => {
-            setMatches(allMatches);
-            if (!cancelled) {
-              recordSearchInHistory(
-                q,
-                scopeToUse,
-                nooraniToUse,
-                targetMag,
-                targetMash,
-                isIdenticalVal,
-                allMatches.length,
-                multToUse
-              );
-              setPipelinePhase('arabic');
-              // Yield to allow browser to render 100% Quran phase
-              setTimeout(() => {
-                startArabicScanPhase(targetMag, targetMash, isIdenticalVal);
-              }, 16);
-            } else {
+          onComplete: async (allMatches, cancelled) => {
+            if (cancelled) {
               setPipelinePhase('idle');
+              return;
+            }
+
+            // Step 1: Processing matches (82%)
+            setPipelinePhase('processing');
+            setProgress((prev) => ({
+              ...prev,
+              percent: 82,
+              currentSurahOrPhase: `[المرحلة 3/4]: جاري فرز وترتيب وتدقيق ${allMatches.length} مطابقة قرآنية...`,
+            }));
+            await new Promise((r) => setTimeout(r, 40));
+
+            setMatches(allMatches);
+            recordSearchInHistory(
+              q,
+              scopeToUse,
+              nooraniToUse,
+              targetMag,
+              targetMash,
+              isIdenticalVal,
+              allMatches.length,
+              multToUse
+            );
+
+            // Step 2: Arabic lexicon scan (90%)
+            setPipelinePhase('arabic');
+            setProgress((prev) => ({
+              ...prev,
+              percent: 90,
+              currentSurahOrPhase: '[المرحلة 4/4]: جاري استخراج مطابقات المعجم العربي العام...',
+            }));
+            await startArabicScanPhaseAsync(targetMag, targetMash, isIdenticalVal);
+
+            // Step 3: Instant Display Ready (100% Completed)
+            // Set visible limit and mark completed at the same instant with sound
+            setVisibleLimit(90);
+            setProgress((prev) => ({
+              ...prev,
+              percent: 100,
+              currentSurahOrPhase: `[اكتمل بنجاح 100%]: تم استخراج ${allMatches.length} مطابقة قرآنية!`,
+              isRunning: false,
+              isCompleted: true,
+            }));
+            setPipelinePhase('completed');
+
+            try {
+              playDosBeep(880, 60);
+              setTimeout(() => playDosBeep(1174, 80), 70);
+            } catch {
+              // ignore
             }
           },
         }
@@ -890,6 +947,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     cancelNooraniCalculation();
 
     setCommittedQuery(trimmed);
+    setCurrentQuery(trimmed);
     setMatches([]);
     setArabicMatches([]);
     setExpandedMatchId(null);
@@ -1036,13 +1094,15 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     let common = 0;
     let maghribi = 0;
     let mashriqi = 0;
+    let verbatim = 0;
     for (const m of matches) {
+      if (isVerbatimMatch(m.phrase, m.cleanPhrase)) verbatim++;
       if (m.systemOrigin === 'common' || m.isIntrinsicCommon) common++;
       if (computedTarget ? m.maghribiValue === computedTarget.targetMaghribi : m.systemOrigin === 'maghribi') maghribi++;
       if (computedTarget ? m.mashriqiValue === computedTarget.targetMashriqi : m.systemOrigin === 'mashriqi') mashriqi++;
     }
-    return { common, maghribi, mashriqi, total: matches.length };
-  }, [matches, computedTarget]);
+    return { common, maghribi, mashriqi, verbatim, total: matches.length };
+  }, [matches, computedTarget, isVerbatimMatch]);
 
   // Statistics by result length / word count (مفردة، قصيرة، متوسطة، طويلة)
   const countsByLength = useMemo(() => {
@@ -1077,9 +1137,11 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
   const filteredMatches = useMemo(() => {
     let list = matches;
 
-    // 1. Filter by Origin tab
+    // 1. Filter by Origin tab (الكل / الكلمة المبحوثة / مشترك / مغربي / شرقي)
     if (selectedOriginFilter !== 'all') {
-      if (selectedOriginFilter === 'common') {
+      if (selectedOriginFilter === 'verbatim') {
+        list = list.filter((m) => isVerbatimMatch(m.phrase, m.cleanPhrase));
+      } else if (selectedOriginFilter === 'common') {
         list = list.filter((m) => m.systemOrigin === 'common' || m.isIntrinsicCommon);
       } else if (selectedOriginFilter === 'maghribi') {
         list = list.filter((m) => computedTarget ? m.maghribiValue === computedTarget.targetMaghribi : m.systemOrigin === 'maghribi');
@@ -1097,6 +1159,18 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
         seen.add(clean);
         return true;
       });
+    }
+
+    // 2.2 Filter by Search Scope (الكل / آيات وسلاسل / مفردات)
+    if (selectedScope === 'verses_and_chains') {
+      list = list.filter((m) => m.wordCount >= 2);
+    } else if (selectedScope === 'single_words') {
+      list = list.filter((m) => m.wordCount === 1);
+    }
+
+    // 2.3 Filter by Pure Noorani Letters if enabled
+    if (onlyNoorani) {
+      list = list.filter((m) => m.isPureNoorani === true);
     }
 
     // 3. Filter by Result Length (عدد الكلمات)
@@ -1201,6 +1275,8 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
     onlyFawatihSurahs,
     matchSortBy,
     computedTarget,
+    selectedScope,
+    onlyNoorani,
     FAWATIH_SURAH_NUMBERS,
     linkWithNooraniSurahs,
     effectiveLinkedSurahNumbers,
@@ -1276,9 +1352,10 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   [MS-DOS SCANNER]
                 </span>
                 <span className="text-[#55ffff] font-bold text-xs sm:text-base">
-                  {pipelinePhase === 'noorani' && `[المرحلة 1/3]: ${nooraniProgressMessage || 'توليف الصيغ والتراكيب النورانية...'}`}
-                  {pipelinePhase === 'quran' && `[المرحلة 2/3]: مسح المصحف - ${progress.currentSurahOrPhase || 'جاري مسح الآيات والسلاسل...'}`}
-                  {pipelinePhase === 'arabic' && `[المرحلة 3/3]: ${arabicProgress.message || 'استخراج مفردات المعجم العربي...'}`}
+                  {pipelinePhase === 'noorani' && `[المرحلة 1/4]: ${nooraniProgressMessage || 'توليف الصيغ والتراكيب النورانية...'}`}
+                  {pipelinePhase === 'quran' && `[المرحلة 2/4]: مسح المصحف - ${progress.currentSurahOrPhase || 'جاري مسح الآيات والسلاسل...'}`}
+                  {pipelinePhase === 'processing' && `[المرحلة 3/4]: ${progress.currentSurahOrPhase || 'فرز وتدقيق المطابقات القرآنية...'}`}
+                  {pipelinePhase === 'arabic' && `[المرحلة 4/4]: ${arabicProgress.message || progress.currentSurahOrPhase || 'استخراج مفردات المعجم العربي...'}`}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -1319,21 +1396,17 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
             </div>
 
             <div className="flex items-center justify-between text-xs text-[#ffff55] flex-wrap gap-2 font-mono font-bold">
-              <span>C:\QURAN\SCAN&gt; تم فحص: {progress.scannedCount} تركيبة قرآنية</span>
-              <span className="text-[#55ff55] font-black">المطابقات المكتشفة: {matches.length + arabicMatches.length}</span>
+              <span>[►] {progress.currentSurahOrPhase || `تم فحص: ${progress.scannedCount} تركيبة قرآنية`}</span>
+              <span className="text-[#55ff55] font-black">المطابقات: {matches.length + arabicMatches.length}</span>
             </div>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 flex items-center justify-center border border-emerald-300/80 dark:border-emerald-700/60 shadow-2xs shrink-0">
-                <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 font-sans">
-                  البحث بالجمل والسلاسل القرآنية
-                </h2>
-              </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="bg-[#00aaaa] text-black px-1.5 py-0.5 font-black text-xs shadow-xs">[►]</span>
+              <span className="text-[#ffff55] font-black text-sm sm:text-base tracking-wide font-mono">
+                {(committedQuery || inputQuery).trim() || 'نظام مطابقة السلاسل القرآنية'}
+              </span>
             </div>
 
             {/* Display Letter Values Breakdown & Totals in Eastern & Western Colors */}
@@ -2121,17 +2194,17 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   let chipStyle = '';
 
                   if (n.system === 'both') {
-                    chipStyle = 'bg-emerald-50/90 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500 hover:bg-emerald-100/70';
+                    chipStyle = 'dos-chip-common hover:border-white';
                   } else if (n.system === 'dual_match') {
-                    chipStyle = 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500 hover:bg-indigo-100/70';
+                    chipStyle = 'dos-chip-dual hover:border-white';
                   } else if (n.system === 'mashriqi') {
-                    chipStyle = 'bg-sky-50/90 dark:bg-sky-950/70 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:border-sky-500 hover:bg-sky-100/70';
+                    chipStyle = 'dos-chip-mashriqi hover:border-white';
                   } else {
-                    chipStyle = 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:border-amber-500 hover:bg-amber-100/70';
+                    chipStyle = 'dos-chip-maghribi hover:border-white';
                   }
 
                   if (isActive) {
-                    chipStyle += ' ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-sm font-bold bg-emerald-100 dark:bg-emerald-900/60 border-emerald-500 dark:border-emerald-400';
+                    chipStyle += ' ring-2 ring-white font-black shadow-md';
                   }
 
                   return (
@@ -2206,65 +2279,84 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
           </div>
         )}
 
-        {/* Scope & Noorani Filters */}
+        {/* Scope & Noorani Filters (يعمل قبل البحث لتحديد النطاق وبعد البحث لتصفية النتائج فوراً) */}
         <div className="pt-1.5 border-t border-[var(--dos-border)]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-2xs font-normal text-white">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex rounded border border-[var(--dos-border)] p-0.5 bg-black/40 text-3xs font-mono">
+            <span className="text-[#ffff55] font-black shrink-0 text-3xs font-mono">نطاق الفحص والتصفية:</span>
+            <div className="inline-flex items-center gap-1 rounded border-2 border-[var(--dos-border)] p-0.5 bg-black/70 text-3xs font-mono flex-wrap">
               <button
                 type="button"
-                onClick={() => setSelectedScope('all')}
-                onMouseEnter={() => setHintText('نطاق البحث [الكل]: البحث في الآيات الكريمة والسلاسل القرآنية والمفردات المستقلة')}
+                onClick={() => {
+                  setSelectedScope('all');
+                  setOnlyNoorani(false);
+                  playDosBeep(880, 20);
+                }}
+                onMouseEnter={() => setHintText('نطاق البحث والتصفية [الكل]: الآيات الكريمة والسلاسل القرآنية والمفردات')}
                 onMouseLeave={clearHint}
                 className={`px-2 py-0.5 rounded cursor-pointer transition-none font-bold ${
-                  selectedScope === 'all'
-                    ? 'bg-[#ffff55] text-black shadow-xs'
-                    : 'text-[#55ffff] hover:bg-[#000088] hover:text-white'
+                  selectedScope === 'all' && !onlyNoorani
+                    ? 'dos-btn-pressed'
+                    : 'bg-[#000044] text-[#55ffff] hover:bg-[#000088] hover:text-white border border-[#55ffff]/40'
                 }`}
+                title="عرض وبحث كافة النتائج دون تقييد"
               >
-                الكل
+                {selectedScope === 'all' && !onlyNoorani && '✓ '}الكل
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedScope('verses_and_chains')}
-                onMouseEnter={() => setHintText('نطاق البحث [آيات وسلاسل]: حصر البحث على الآيات والسلاسل القرآنية المتتالية (كلمتين فأكثر)')}
+                onClick={() => {
+                  setSelectedScope('verses_and_chains');
+                  setOnlyNoorani(false);
+                  playDosBeep(880, 20);
+                }}
+                onMouseEnter={() => setHintText('نطاق البحث والتصفية [آيات]: حصر النتائج على الآيات والسلاسل القرآنية (كلمتين فأكثر)')}
                 onMouseLeave={clearHint}
                 className={`px-2 py-0.5 rounded cursor-pointer transition-none font-bold ${
-                  selectedScope === 'verses_and_chains'
-                    ? 'bg-[#ffff55] text-black shadow-xs'
-                    : 'text-[#55ffff] hover:bg-[#000088] hover:text-white'
+                  selectedScope === 'verses_and_chains' && !onlyNoorani
+                    ? 'dos-btn-pressed'
+                    : 'bg-[#000044] text-[#55ffff] hover:bg-[#000088] hover:text-white border border-[#55ffff]/40'
                 }`}
+                title="آيات وسلاسل قرآنية متعددة الكلمات (2+ كلمات)"
               >
-                آيات
+                {selectedScope === 'verses_and_chains' && !onlyNoorani && '✓ '}آيات
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedScope('single_words')}
-                onMouseEnter={() => setHintText('نطاق البحث [مفردات]: حصر البحث على الكلمات والمفردات القرآنية المفردة فقط')}
+                onClick={() => {
+                  setSelectedScope('single_words');
+                  setOnlyNoorani(false);
+                  playDosBeep(880, 20);
+                }}
+                onMouseEnter={() => setHintText('نطاق البحث والتصفية [مفردات]: حصر النتائج على الكلمات والمفردات القرآنية المفردة')}
                 onMouseLeave={clearHint}
                 className={`px-2 py-0.5 rounded cursor-pointer transition-none font-bold ${
-                  selectedScope === 'single_words'
-                    ? 'bg-[#ffff55] text-black shadow-xs'
-                    : 'text-[#55ffff] hover:bg-[#000088] hover:text-white'
+                  selectedScope === 'single_words' && !onlyNoorani
+                    ? 'dos-btn-pressed'
+                    : 'bg-[#000044] text-[#55ffff] hover:bg-[#000088] hover:text-white border border-[#55ffff]/40'
                 }`}
+                title="مفردات بكلمة واحدة فقط"
               >
-                مفردات
+                {selectedScope === 'single_words' && !onlyNoorani && '✓ '}مفردات
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOnlyNoorani(!onlyNoorani);
+                  playDosBeep(980, 25);
+                }}
+                onMouseEnter={() => setHintText('نطاق البحث والتصفية [أحرف نورانية]: حصر النتائج حصراً على الأحرف النورانية الـ 14 (نص حكيم قاطع له سر)')}
+                onMouseLeave={clearHint}
+                className={`px-2 py-0.5 rounded cursor-pointer transition-none font-bold ${
+                  onlyNoorani
+                    ? 'dos-btn-pressed'
+                    : 'bg-[#000044] text-[#ffff55] hover:bg-[#000088] hover:text-white border border-[#ffff55]/50'
+                }`}
+                title="تصفية النتائج للأحرف النورانية الـ 14 فقط"
+              >
+                {onlyNoorani && '✓ '}أحرف نورانية (14)
               </button>
             </div>
           </div>
-
-          <label
-            onMouseEnter={() => setHintText('تصفية النتائج لتقتصر حصراً على الأحرف النورانية الـ 14 (نص حكيم قاطع له سر)')}
-            onMouseLeave={clearHint}
-            className="inline-flex items-center gap-1 cursor-pointer select-none text-3xs text-[#ffff55] font-bold"
-          >
-            <input
-              type="checkbox"
-              checked={onlyNoorani}
-              onChange={(e) => setOnlyNoorani(e.target.checked)}
-              className="accent-[#55ff55] cursor-pointer"
-            />
-            <span>أحرف نورانية فقط (14 حرفاً)</span>
-          </label>
         </div>
 
         {/* Quranic Orthography & Scan Rules Toggle Bar */}
@@ -2655,7 +2747,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
 
             {/* System Color Distinction Badges / Filter Tabs (Concise Captions) */}
             {matches.length > 0 && (
-              <div className="inline-flex items-center gap-1 rounded border-2 border-[var(--dos-border)] p-1 bg-black/70 text-xs font-mono">
+              <div className="inline-flex items-center gap-1 rounded border-2 border-[var(--dos-border)] p-1 bg-black/70 text-xs font-mono flex-wrap">
                 {/* All */}
                 <button
                   type="button"
@@ -2664,13 +2756,31 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded cursor-pointer transition-none text-xs font-bold ${
                     selectedOriginFilter === 'all'
-                      ? 'bg-white text-black font-black border border-white shadow-xs'
+                      ? 'dos-btn-pressed'
                       : 'bg-[#000044] text-[#ffff55] hover:bg-[#000088] hover:text-white border border-[#55ffff]/50'
                   }`}
                   title="عرض كافة المطابقات في القرآن الكريم"
                 >
-                  الكل ({countsByOrigin.total})
+                  {selectedOriginFilter === 'all' && '✓ '}الكل ({countsByOrigin.total})
                 </button>
+
+                {/* Verbatim Match if found in the Quran */}
+                {countsByOrigin.verbatim > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOriginFilter('verbatim')}
+                    onMouseEnter={() => setHintText(`تصفية الكلمة المبحوثة: عرض النتائج التي وردت فيها الكلمة المبحوثة ذاتها نصياً في القرآن الكريم (${countsByOrigin.verbatim})`)}
+                    onMouseLeave={clearHint}
+                    className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
+                      selectedOriginFilter === 'verbatim'
+                        ? 'dos-btn-pressed'
+                        : 'bg-[#3b003b] text-[#ff77ff] hover:bg-[#550055] border border-[#ff55ff]'
+                    }`}
+                    title="المطابقات النصية الصريحة للكلمة المبحوثة في المصحف"
+                  >
+                    <span>{selectedOriginFilter === 'verbatim' && '✓ '}★ الكلمة المبحوثة ({countsByOrigin.verbatim})</span>
+                  </button>
+                )}
 
                 {/* Common (مشترك) - Emerald */}
                 <button
@@ -2680,13 +2790,13 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
                     selectedOriginFilter === 'common'
-                      ? 'bg-[#00aa00] text-white font-black border border-white shadow-xs'
+                      ? 'dos-btn-pressed'
                       : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]'
                   }`}
                   title="المطابقات المشتركة في النظامين (الشرقي والغربي)"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#55ff55]" />
-                  <span>مشترك ({countsByOrigin.common})</span>
+                  <span>{selectedOriginFilter === 'common' && '✓ '}مشترك ({countsByOrigin.common})</span>
                 </button>
 
                 {/* Maghribi (غربي) - Amber */}
@@ -2697,13 +2807,13 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
                     selectedOriginFilter === 'maghribi'
-                      ? 'bg-[#ffaa00] text-black font-black border border-white shadow-xs'
+                      ? 'dos-btn-pressed'
                       : 'bg-[#331600] text-[#ffbb33] hover:bg-[#4a2200] border border-[#ffaa00]'
                   }`}
                   title="المطابقات وفق الجُمَّل الغربي (المغربي)"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#ffaa00]" />
-                  <span>غربي ({countsByOrigin.maghribi})</span>
+                  <span>{selectedOriginFilter === 'maghribi' && '✓ '}غربي ({countsByOrigin.maghribi})</span>
                 </button>
 
                 {/* Mashriqi (شرقي) - Sky */}
@@ -2714,13 +2824,13 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center gap-1 text-xs transition-none font-bold ${
                     selectedOriginFilter === 'mashriqi'
-                      ? 'bg-[#00e5ff] text-black font-black border border-white shadow-xs'
+                      ? 'dos-btn-pressed'
                       : 'bg-[#001e38] text-[#55ffff] hover:bg-[#002e52] border border-[#00e5ff]'
                   }`}
                   title="المطابقات وفق الجُمَّل الشرقي (المشرقي)"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]" />
-                  <span>شرقي ({countsByOrigin.mashriqi})</span>
+                  <span>{selectedOriginFilter === 'mashriqi' && '✓ '}شرقي ({countsByOrigin.mashriqi})</span>
                 </button>
               </div>
             )}
@@ -2950,7 +3060,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               <span className="text-[#ffff55] font-black shrink-0 ml-1 text-xs font-mono">
                 طول النتيجة:
               </span>
-              <div className="inline-flex items-center gap-1 bg-black/70 p-1 rounded border border-[var(--dos-border)]/70">
+              <div className="inline-flex items-center gap-1 bg-black/70 p-1 rounded border border-[var(--dos-border)]/70 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setMatchLengthFilter('all')}
@@ -2958,11 +3068,11 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded transition-none cursor-pointer text-xs font-bold ${
                     matchLengthFilter === 'all'
-                      ? 'bg-white text-black font-black border border-white shadow-xs'
+                      ? 'dos-btn-pressed'
                       : 'bg-[#000044] text-[#ffff55] hover:bg-[#0000aa] hover:text-white border border-[#55ffff]/40'
                   }`}
                 >
-                  الكل
+                  {matchLengthFilter === 'all' && '✓ '}الكل
                 </button>
                 <button
                   type="button"
@@ -2971,12 +3081,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded transition-none cursor-pointer text-xs font-bold ${
                     matchLengthFilter === 'single'
-                      ? 'bg-[#00aa00] text-white font-black border border-white shadow-xs'
-                      : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]/50'
+                      ? 'dos-btn-pressed'
+                      : 'bg-[#000044] text-[#ffff55] hover:bg-[#0000aa] hover:text-white border border-[#55ffff]/40'
                   }`}
                   title="مفردات بكلمة واحدة فقط"
                 >
-                  مفردة ({countsByLength.single})
+                  {matchLengthFilter === 'single' && '✓ '}مفردة ({countsByLength.single})
                 </button>
                 <button
                   type="button"
@@ -2985,12 +3095,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded transition-none cursor-pointer text-xs font-bold ${
                     matchLengthFilter === 'short'
-                      ? 'bg-[#00aa00] text-white font-black border border-white shadow-xs'
-                      : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]/50'
+                      ? 'dos-btn-pressed'
+                      : 'bg-[#000044] text-[#ffff55] hover:bg-[#0000aa] hover:text-white border border-[#55ffff]/40'
                   }`}
                   title="عبارات قصيرة تتكون من 2 إلى 3 كلمات"
                 >
-                  قصيرة ({countsByLength.short})
+                  {matchLengthFilter === 'short' && '✓ '}قصيرة ({countsByLength.short})
                 </button>
                 <button
                   type="button"
@@ -2999,12 +3109,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded transition-none cursor-pointer text-xs font-bold ${
                     matchLengthFilter === 'medium'
-                      ? 'bg-[#00aa00] text-white font-black border border-white shadow-xs'
-                      : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]/50'
+                      ? 'dos-btn-pressed'
+                      : 'bg-[#000044] text-[#ffff55] hover:bg-[#0000aa] hover:text-white border border-[#55ffff]/40'
                   }`}
                   title="عبارات متوسطة من 4 إلى 6 كلمات"
                 >
-                  متوسطة ({countsByLength.medium})
+                  {matchLengthFilter === 'medium' && '✓ '}متوسطة ({countsByLength.medium})
                 </button>
                 <button
                   type="button"
@@ -3013,12 +3123,12 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   onMouseLeave={clearHint}
                   className={`px-2 py-0.5 rounded transition-none cursor-pointer text-xs font-bold ${
                     matchLengthFilter === 'long'
-                      ? 'bg-[#00aa00] text-white font-black border border-white shadow-xs'
-                      : 'bg-[#00290a] text-[#55ff55] hover:bg-[#004010] border border-[#33ff33]/50'
+                      ? 'dos-btn-pressed'
+                      : 'bg-[#000044] text-[#ffff55] hover:bg-[#0000aa] hover:text-white border border-[#55ffff]/40'
                   }`}
                   title="عبارات وسلاسل طويلة من 7 كلمات فأكثر"
                 >
-                  طويلة ({countsByLength.long})
+                  {matchLengthFilter === 'long' && '✓ '}طويلة ({countsByLength.long})
                 </button>
               </div>
             </div>
@@ -3277,22 +3387,29 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
               const isCopied = copiedId === item.id;
               const surahMuqattaat = getSurahMuqattaat(item.surahNumber, item.surahName);
 
-              // Color Scheme based on System Origin (مشترك / غربي / شرقي)
-              const isCommon = item.systemOrigin === 'common' || item.isIntrinsicCommon;
-              const isMaghribi = item.systemOrigin === 'maghribi' && !item.isIntrinsicCommon;
-              const isMashriqi = item.systemOrigin === 'mashriqi' && !item.isIntrinsicCommon;
+              // Verbatim Match detection (الكلمة المبحوثة ذاتها في المصحف)
+              const isVerbatim = isVerbatimMatch(item.phrase, item.cleanPhrase);
 
-              const cardClasses = isCommon
+              // Color Scheme based on System Origin (مشترك / غربي / شرقي / الكلمة المبحوثة)
+              const isCommon = (item.systemOrigin === 'common' || item.isIntrinsicCommon) && !isVerbatim;
+              const isMaghribi = item.systemOrigin === 'maghribi' && !item.isIntrinsicCommon && !isVerbatim;
+              const isMashriqi = item.systemOrigin === 'mashriqi' && !item.isIntrinsicCommon && !isVerbatim;
+
+              const cardClasses = isVerbatim
+                ? 'dos-card-verbatim ring-1 ring-[#ff55ff]'
+                : isCommon
                 ? 'dos-card-common'
                 : isMaghribi
                 ? 'dos-card-maghribi'
                 : 'dos-card-mashriqi';
 
-              const phraseTextClass = isCommon
-                ? 'text-[#55ff55]'
+              const phraseTextClass = isVerbatim
+                ? 'dos-phrase-verbatim font-black'
+                : isCommon
+                ? 'dos-phrase-common'
                 : isMaghribi
-                ? 'text-[#ffbb33]'
-                : 'text-[#55ffff]';
+                ? 'dos-phrase-maghribi'
+                : 'dos-phrase-mashriqi';
 
               // Calculate total verification equation
               const wordEquation = item.breakdown.map((b) => `${b.word} (${b.value})`).join(' + ');
@@ -3301,15 +3418,25 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                 .map((b) => `[${b.letters.map((l) => `${l.char}=${isMaghribi ? l.magVal : isMashriqi ? l.mashVal : l.magVal}`).join('+')}]`)
                 .join(' + ');
 
+              const targetHighlightWord = resultsFilter.trim() || (committedQuery || inputQuery).trim();
+
               return (
                 <div
                   key={item.id}
                   onClick={() => setExpandedMatchId(isExpanded ? null : item.id)}
                   onMouseEnter={() => {
-                    const sysName = isCommon ? 'مشترك بالنظامين' : isMaghribi ? 'مغربي (غربي)' : 'مشرقي (شرقي)';
+                    const sysName = isVerbatim
+                      ? '★ الكلمة المبحوثة ذاتها نصياً في القرآن الكريم'
+                      : isCommon
+                      ? 'مشترك بالنظامين'
+                      : isMaghribi
+                      ? 'مغربي (غربي)'
+                      : 'مشرقي (شرقي)';
                     const cleanEq = item.breakdown.map((b) => `${b.word}(${b.value})`).join(' + ');
                     const fawatihInfo = surahMuqattaat ? ` ۞ فواتح: [${surahMuqattaat}]` : '';
-                    setHintText(`الآية: «${item.phrase}» ۞ سورة ${item.surahName} [آية ${item.ayahNumber}] ۞ جُمّل: ${item.value} ۞ [${sysName}] ۞ التفكيك: ${cleanEq}${fawatihInfo}`);
+                    const fullAyah = item.fullAyahText ? `«${item.fullAyahText}»` : `«${item.phrase}»`;
+                    const partInfo = item.fullAyahText && item.fullAyahText !== item.phrase ? ` ۞ المقطع: «${item.phrase}»` : '';
+                    setHintText(`الآية الكريمة كاملة: ${fullAyah} ۞ سورة ${item.surahName} [آية ${item.ayahNumber}] ۞ جُمّل: ${item.value} ۞ [${sysName}]${partInfo} ۞ التفكيك: ${cleanEq}${fawatihInfo}`);
                   }}
                   onMouseLeave={clearHint}
                   className={`px-2.5 py-1.5 border shadow-2xs select-none group flex flex-col justify-center gap-1 cursor-pointer transition-none ${cardClasses} ${
@@ -3321,11 +3448,17 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                   <div className="flex items-center justify-between gap-1.5 w-full">
                     {/* Right side: Clickable Full Quranic Phrase (no sum badge, card color identifies system) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {isVerbatim && (
+                        <span className="dos-badge-verbatim text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-black shrink-0 shadow-xs animate-pulse">
+                          ★ الكلمة المبحوثة
+                        </span>
+                      )}
+
                       {!showCaptions ? (
                         <span
                           className={`text-xs sm:text-sm font-bold font-quran leading-normal truncate ${phraseTextClass}`}
                         >
-                          {resultsFilter.trim() ? highlightQuranText(item.phrase, resultsFilter.trim()) : item.phrase}
+                          {targetHighlightWord ? highlightQuranText(item.phrase, targetHighlightWord) : item.phrase}
                         </span>
                       ) : (
                         <a
@@ -3336,7 +3469,7 @@ export function QuranicChainMatcher({ initialQuery = '' }: QuranicChainMatcherPr
                           className={`text-xs sm:text-sm font-bold font-quran leading-normal truncate hover:underline hover:text-white cursor-pointer ${phraseTextClass}`}
                           title={`البحث عن «${item.phrase}» في المصحف الشريف بموقع (qran-top)`}
                         >
-                          {resultsFilter.trim() ? highlightQuranText(item.phrase, resultsFilter.trim()) : item.phrase}
+                          {targetHighlightWord ? highlightQuranText(item.phrase, targetHighlightWord) : item.phrase}
                         </a>
                       )}
 

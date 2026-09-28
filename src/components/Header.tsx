@@ -12,9 +12,17 @@ interface HeaderProps {
   onOpenInstructions?: () => void;
   onGoHome?: () => void;
   onOpenHelp?: () => void;
+  isWideMode?: boolean;
+  toggleWideMode?: () => void;
 }
 
-export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
+export function Header({
+  activeTab,
+  setActiveTab,
+  onOpenHelp,
+  isWideMode = false,
+  toggleWideMode,
+}: HeaderProps) {
   const {
     dosPalette,
     cycleDosPalette,
@@ -25,7 +33,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
     playDosBeep,
   } = useTheme();
 
-  const { label: fontLabel, cycleFontSize } = useFontSize();
+  const { label: fontLabel, cycleFontSize, fontFamilyInfo, cycleFontFamily } = useFontSize();
   const { openDrawer, entries, savedSystems } = useNotebook();
   const { isHintEnabled, toggleHint, hintText, setHintText, clearHint } = useHint();
 
@@ -182,6 +190,44 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           [تلميح:{isHintEnabled ? 'ON' : 'OFF'}]
         </button>
 
+        {/* F7: Font Family Switcher (5 distinct fonts: Tajawal, Amiri, Cairo, DOS 95, Arial) */}
+        <button
+          type="button"
+          onClick={() => {
+            cycleFontFamily();
+            playDosBeep(780, 25);
+          }}
+          onMouseEnter={() => setHintText(`تبديل نوع الخط (F7): الخط الحالي [${fontFamilyInfo.name}] - ${fontFamilyInfo.description}`)}
+          onMouseLeave={clearHint}
+          style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-accent)', color: 'var(--dos-accent)' }}
+          className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap"
+          title="تبديل نوع الخط (F7: تجوال / أميري / كايرو / دوس 95 / إريال)"
+        >
+          [F7 خط:{fontFamilyInfo.name}]
+        </button>
+
+        {/* Wide Screen Expander Toggle (توسيع الشاشة بالكامل) */}
+        {toggleWideMode && (
+          <button
+            type="button"
+            onClick={() => {
+              toggleWideMode();
+              playDosBeep(850, 30);
+            }}
+            onMouseEnter={() => setHintText(`توسيع الشاشة: ${isWideMode ? 'العودة للقياسي' : 'توسيع البرنامج ليملأ عرض الشاشة بالكامل مع هامش صغير'}`)}
+            onMouseLeave={clearHint}
+            style={{
+              backgroundColor: isWideMode ? 'var(--dos-accent)' : 'var(--dos-panel)',
+              borderColor: isWideMode ? '#ffffff' : 'var(--dos-border)',
+              color: isWideMode ? '#000000' : 'var(--dos-border)',
+            }}
+            className="px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap shadow-xs"
+            title="توسيع الشاشة بالعرض الكامل / العرض القياسي"
+          >
+            {isWideMode ? '[▶◀ قياسي]' : '[⛶ عرض واسع]'}
+          </button>
+        )}
+
         {/* Font Size Cycle */}
         <button
           type="button"
@@ -195,7 +241,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#00aaaa] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap"
           title="تغيير مقاس الخط"
         >
-          خط:[{fontLabel}]
+          [حجم:{fontLabel}]
         </button>
 
         {/* Notebook Drawer Trigger */}

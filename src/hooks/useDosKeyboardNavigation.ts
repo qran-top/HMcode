@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useNotebook } from '../context/NotebookContext';
+import { useFontSize } from '../context/FontSizeContext';
+import { useHint } from '../context/HintContext';
 import { AppTabType } from '../components/MobileBottomNav';
 
 interface DosKeyboardOptions {
@@ -14,8 +16,10 @@ export function useDosKeyboardNavigation({
   setActiveTab,
   onRefresh,
 }: DosKeyboardOptions) {
-  const { isDos, cycleTheme, playDosBeep, dosSound } = useTheme();
+  const { isDos, cycleTheme, cycleDosPalette, playDosBeep, dosSound } = useTheme();
   const { openDrawer } = useNotebook();
+  const { cycleFontFamily, fontFamilyInfo } = useFontSize();
+  const { setHintText } = useHint();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [lastKeyPressed, setLastKeyPressed] = useState<string | null>(null);
 
@@ -125,21 +129,22 @@ export function useDosKeyboardNavigation({
         return;
       }
 
-      // 7. F7: Settings
+      // 7. F7: Cycle Arabic Font Family (Tajawal -> Amiri -> Cairo)
       if (e.key === 'F7') {
         e.preventDefault();
-        playDosBeep(880, 40);
-        setActiveTab('settings');
-        setLastKeyPressed('F7: الإعدادات');
+        playDosBeep(780, 35);
+        cycleFontFamily();
+        setLastKeyPressed(`F7: تبديل الخط [${fontFamilyInfo.name}]`);
+        setHintText(`[تبديل نوع الخط F7]: تم التبديل إلى «${fontFamilyInfo.name}» (${fontFamilyInfo.description})`);
         return;
       }
 
-      // 8. F8: Info & Help
+      // 8. F8: Cycle DOS Color Palette
       if (e.key === 'F8') {
         e.preventDefault();
         playDosBeep(900, 40);
-        setActiveTab('info');
-        setLastKeyPressed('F8: المعلومات');
+        cycleDosPalette();
+        setLastKeyPressed('F8: تبديل اللون');
         return;
       }
 
@@ -219,6 +224,10 @@ export function useDosKeyboardNavigation({
     activeTab,
     setActiveTab,
     cycleTheme,
+    cycleDosPalette,
+    cycleFontFamily,
+    fontFamilyInfo,
+    setHintText,
     openDrawer,
     playDosBeep,
     focusSearchInput,

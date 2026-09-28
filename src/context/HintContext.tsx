@@ -7,6 +7,8 @@ interface HintContextType {
   hintText: string;
   setHintText: (text: string) => void;
   clearHint: () => void;
+  currentQuery: string;
+  setCurrentQuery: (q: string) => void;
 }
 
 const HintContext = createContext<HintContextType | undefined>(undefined);
@@ -20,6 +22,14 @@ export function HintProvider({ children }: { children: ReactNode }) {
       return saved !== null ? saved === 'true' : true; // Default ON so hints are immediately useful
     } catch {
       return true;
+    }
+  });
+
+  const [currentQuery, setCurrentQuery] = useState<string>(() => {
+    try {
+      return localStorage.getItem('app-last-query') || '';
+    } catch {
+      return '';
     }
   });
 
@@ -60,6 +70,15 @@ export function HintProvider({ children }: { children: ReactNode }) {
     }, 12000); // 12 seconds persistence so the user can easily read the hint
   };
 
+  const handleSetCurrentQuery = (q: string) => {
+    setCurrentQuery(q);
+    try {
+      localStorage.setItem('app-last-query', q);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <HintContext.Provider
       value={{
@@ -69,6 +88,8 @@ export function HintProvider({ children }: { children: ReactNode }) {
         hintText,
         setHintText,
         clearHint,
+        currentQuery,
+        setCurrentQuery: handleSetCurrentQuery,
       }}
     >
       {children}
