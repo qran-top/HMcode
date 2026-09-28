@@ -20,11 +20,12 @@ import {
   Monitor,
   Volume2,
   VolumeX,
+  Palette,
 } from 'lucide-react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useGematria, ARABIC_28_CANONICAL, MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/GematriaContext';
 import { DEFAULT_CIPHER_LAYERS, LayerInfo } from '../cipherData';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, DOS_PALETTES } from '../context/ThemeContext';
 
 export function SettingsView() {
   const {
@@ -35,6 +36,8 @@ export function SettingsView() {
     setDosScanlines,
     dosSound,
     setDosSound,
+    dosPalette,
+    setDosPalette,
     playDosBeep,
   } = useTheme();
 
@@ -437,6 +440,61 @@ export function SettingsView() {
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* DOS 5 Color Palettes Section */}
+            <div className="pt-2 border-t border-[#0000aa] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[#ffff55] font-bold flex items-center gap-1.5">
+                  <Palette className="w-4 h-4 text-[#55ffff]" />
+                  <span>بالتات ألوان نظام دوس (اضغط F8 للتبديل السريع من أي مكان):</span>
+                </span>
+                <span className="text-3xs text-[#aaaaaa]">[مفتاح الاختصار: F8]</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {DOS_PALETTES.map((pal) => {
+                  const isActive = dosPalette === pal.id;
+                  return (
+                    <button
+                      key={pal.id}
+                      type="button"
+                      onClick={() => {
+                        setDosPalette(pal.id);
+                        playDosBeep(850, 40);
+                      }}
+                      className={`p-2 text-right border-2 transition-none cursor-pointer flex flex-col justify-between ${
+                        isActive
+                          ? 'border-[#ffff55] bg-[#000033] shadow-md'
+                          : 'border-[#555555] bg-[#000066] hover:border-[#55ffff]'
+                      }`}
+                      style={{
+                        backgroundColor: isActive ? pal.bgHex : undefined,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="w-3.5 h-3.5 inline-block border border-white"
+                            style={{ backgroundColor: pal.textHex }}
+                          />
+                          <span className="font-bold text-xs" style={{ color: pal.textHex }}>
+                            {pal.name}
+                          </span>
+                        </div>
+                        {isActive && (
+                          <span className="bg-[#ffff55] text-black px-1 font-black text-3xs">
+                            [نشط]
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-3xs text-[#cccccc] leading-tight font-mono">
+                        {pal.description}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

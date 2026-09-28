@@ -106,7 +106,7 @@ export function DosKeyboardHelpModal({ isOpen, onClose }: DosKeyboardHelpModalPr
 
             <div className="bg-[#000080] border border-[#55ffff] p-2 flex items-center justify-between">
               <span className="bg-[#ffff55] text-[#000000] font-bold px-1.5 py-0.5">F8</span>
-              <span className="text-[#ffffff]">دليل الاستخدام والبيانات النظامية</span>
+              <span className="text-[#ffffff]">تبديل ألوان الدوس (أزرق، فوسفور، كهرمان، أسود، تركواز)</span>
             </div>
 
             <div className="bg-[#000080] border border-[#55ffff] p-2 flex items-center justify-between">

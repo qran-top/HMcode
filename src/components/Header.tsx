@@ -1,6 +1,6 @@
 import React from 'react';
 import { Moon, Sun, Type, Search, Sparkles, Layers, BookMarked, AlertCircle, Settings, Terminal } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, DOS_PALETTES } from '../context/ThemeContext';
 import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
 
@@ -14,9 +14,11 @@ interface HeaderProps {
 }
 
 export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
-  const { theme, isDark, isDos, toggleTheme } = useTheme();
+  const { theme, isDark, isDos, toggleTheme, dosPalette, cycleDosPalette } = useTheme();
   const { fontSize, label: fontLabel, cycleFontSize } = useFontSize();
   const { openDrawer, entries, savedSystems } = useNotebook();
+
+  const currentPalette = DOS_PALETTES.find((p) => p.id === dosPalette) || DOS_PALETTES[0];
 
   const totalSavedCount = (entries?.length || 0) + (savedSystems?.length || 0);
 
@@ -46,7 +48,7 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
           <div className="flex items-center gap-2">
             <span className="bg-[#00aaaa] text-black px-1.5 font-black">[■]</span>
             <span className="text-[#ffff55] tracking-wide">
-              C:\QURAN\GEMATRIA.EXE - MS-DOS Version 6.22
+              C:\QURAN\GEMATRIA.EXE - MS-DOS 6.22 [{currentPalette.name}]
             </span>
           </div>
           <div className="flex items-center gap-2 text-2xs text-[#55ffff]">
@@ -100,6 +102,14 @@ export function Header({ activeTab, setActiveTab, onGoHome }: HeaderProps) {
           </nav>
 
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={cycleDosPalette}
+              className="px-1.5 py-0.5 text-2xs font-bold bg-[#0000aa] text-[#ffff55] hover:bg-[#ffff55] hover:text-black border border-[#ffff55] cursor-pointer"
+              title="تبديل ألوان الدوس (F8): أزرق نورتون، فوسفور أخضر، كهرمان ذهبي، أسود، تركواز"
+            >
+              [F8 لون:{currentPalette.name.split(' ')[0]}]
+            </button>
             <button
               type="button"
               onClick={cycleFontSize}

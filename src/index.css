@@ -92,12 +92,77 @@ code, kbd, samp, pre, .font-mono {
   opacity: 0.65;
 }
 
+/* ========================================================================= */
+/* 📟 1990s MS-DOS RETRO PALETTES & VGA 16-COLOR STYLING                     */
+/* ========================================================================= */
+
+/* 1. Norton Commander Blue (Default) */
+html.theme-dos,
+html.theme-dos[data-dos-palette="norton-blue"] {
+  --dos-bg: #000080;
+  --dos-panel: #0000a8;
+  --dos-border: #55ffff;
+  --dos-text: #ffffff;
+  --dos-accent: #ffff55;
+  --dos-header: #0000aa;
+  --dos-input-bg: #000044;
+  --dos-btn-bg: #000080;
+}
+
+/* 2. Green Phosphor CRT (IBM 5151 / Matrix) */
+html.theme-dos[data-dos-palette="green-phosphor"] {
+  --dos-bg: #031406;
+  --dos-panel: #06230b;
+  --dos-border: #33ff33;
+  --dos-text: #55ff55;
+  --dos-accent: #aaff55;
+  --dos-header: #041a08;
+  --dos-input-bg: #020c04;
+  --dos-btn-bg: #072e0e;
+}
+
+/* 3. Amber CRT Monochrome */
+html.theme-dos[data-dos-palette="amber-crt"] {
+  --dos-bg: #150900;
+  --dos-panel: #291200;
+  --dos-border: #ffaa00;
+  --dos-text: #ffcc66;
+  --dos-accent: #ffff55;
+  --dos-header: #210d00;
+  --dos-input-bg: #100600;
+  --dos-btn-bg: #381900;
+}
+
+/* 4. DOS Command Prompt Pure Black (C:\>) */
+html.theme-dos[data-dos-palette="dos-black"] {
+  --dos-bg: #000000;
+  --dos-panel: #111111;
+  --dos-border: #aaaaaa;
+  --dos-text: #ffffff;
+  --dos-accent: #ffff55;
+  --dos-header: #1a1a1a;
+  --dos-input-bg: #050505;
+  --dos-btn-bg: #222222;
+}
+
+/* 5. WordStar / Borland Deep Teal */
+html.theme-dos[data-dos-palette="wordstar-teal"] {
+  --dos-bg: #00222a;
+  --dos-panel: #003642;
+  --dos-border: #00e5ff;
+  --dos-text: #ffffff;
+  --dos-accent: #ffff55;
+  --dos-header: #002c36;
+  --dos-input-bg: #00171d;
+  --dos-btn-bg: #004554;
+}
+
 /* Global MS-DOS Mode Transformations */
 html.theme-dos,
 html.theme-dos body {
   color-scheme: dark;
-  background-color: #000080 !important; /* Iconic MS-DOS Navy Blue */
-  color: #ffffff !important;
+  background-color: var(--dos-bg) !important;
+  color: var(--dos-text) !important;
   font-family: 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
   letter-spacing: 0.02em;
   overflow-x: hidden !important;
@@ -107,12 +172,12 @@ html.theme-dos body {
 /* Force Monospace everywhere and strip modern roundings */
 html.theme-dos * {
   font-family: 'Courier New', Courier, Consolas, Monaco, ui-monospace, monospace !important;
-  border-radius: 0px !important; /* Strict 90s zero-radius rule */
+  border-radius: 0px !important;
   box-shadow: none !important;
   text-shadow: none !important;
 }
 
-/* NO HORIZONTAL SCROLLING IN DOS: Wrap all elements & chips cleanly */
+/* Prevent horizontal overflow */
 html.theme-dos .overflow-x-auto,
 html.theme-dos .overflow-x-scroll,
 html.theme-dos [class*="overflow-x-"] {
@@ -130,8 +195,7 @@ html.theme-dos .whitespace-nowrap {
   white-space: normal !important;
 }
 
-/* NO MODERN SPINNING BADGES OR CIRCLES IN DOS:
-   In pure DOS 1995, there are NO spinning SVGs or round loaders. */
+/* Substitute modern spinning loaders with retro [WAIT] badge */
 html.theme-dos .animate-spin {
   animation: none !important;
   transform: none !important;
@@ -146,7 +210,6 @@ html.theme-dos [class*="animate-pulse"] {
   animation: none !important;
 }
 
-/* Substitute DOS loader text indicator when spinning is triggered */
 html.theme-dos .animate-spin::before {
   content: "[WAIT]" !important;
   font-family: monospace !important;
@@ -158,13 +221,12 @@ html.theme-dos .animate-spin::before {
   animation: dos-cursor-blink 0.5s step-end infinite !important;
 }
 
-/* PURE DOS ASCII BLOCK PROGRESS BARS:
-   Transform every progress bar track into discrete retro EGA block chunks */
+/* DOS ASCII Block Progress Bars */
 html.theme-dos [class*="rounded-full"][class*="h-1"],
 html.theme-dos [class*="rounded-full"][class*="h-1.5"],
 html.theme-dos [class*="rounded-full"][class*="h-2"] {
-  background-color: #000044 !important;
-  border: 1px solid #55ffff !important;
+  background-color: var(--dos-input-bg) !important;
+  border: 1px solid var(--dos-border) !important;
   height: 14px !important;
   border-radius: 0px !important;
   overflow: hidden !important;
@@ -178,38 +240,29 @@ html.theme-dos [class*="rounded-full"][class*="h-2"] > div {
     90deg,
     #55ff55 0px,
     #55ff55 8px,
-    #000044 8px,
-    #000044 11px
+    var(--dos-input-bg) 8px,
+    var(--dos-input-bg) 11px
   ) !important;
   border-radius: 0px !important;
   height: 100% !important;
   transition: none !important;
 }
 
-/* DOS BADGES & PILLS: Convert modern rounded pills to ASCII bracket boxes */
-html.theme-dos [class*="rounded-full"] {
-  border-radius: 0px !important;
-  border: 1px solid #55ffff !important;
-  background-color: #000055 !important;
-  color: #55ff55 !important;
-  font-weight: bold !important;
-  text-transform: uppercase !important;
-}
-
-/* DOS Hard Block Shadows for Modals and Drawers */
+/* DOS Modals and Drawers */
 html.theme-dos [role="dialog"],
 html.theme-dos .fixed[class*="z-"] > div {
   box-shadow: 6px 6px 0px #000000 !important;
-  border: 2px solid #55ffff !important;
+  border: 2px solid var(--dos-border) !important;
+  background-color: var(--dos-panel) !important;
 }
 
-/* DOS Inputs & Textareas with Blinking Cursor */
+/* DOS Inputs, Textareas & Selects */
 html.theme-dos input,
 html.theme-dos textarea,
 html.theme-dos select {
-  background-color: #000044 !important;
-  color: #55ff55 !important; /* Phosphor Green text */
-  border: 2px solid #55ffff !important; /* Cyan DOS frame */
+  background-color: var(--dos-input-bg) !important;
+  color: #55ff55 !important;
+  border: 2px solid var(--dos-border) !important;
   caret-color: #55ff55 !important;
   caret-shape: block !important;
   font-weight: bold !important;
@@ -218,17 +271,12 @@ html.theme-dos select {
 html.theme-dos input:focus,
 html.theme-dos textarea:focus {
   background-color: #000022 !important;
-  color: #ffff55 !important; /* Bright Yellow text on focus */
-  border: 2px solid #ffff55 !important;
-  outline: 2px dashed #ffff55 !important;
+  color: var(--dos-accent) !important;
+  border: 2px solid var(--dos-accent) !important;
+  outline: 2px dashed var(--dos-accent) !important;
   outline-offset: 2px !important;
-  caret-color: #ffff55 !important;
+  caret-color: var(--dos-accent) !important;
   caret-shape: block !important;
-}
-
-/* Visual blinking prompt marker on focused DOS inputs */
-html.theme-dos .dos-input-focused {
-  position: relative;
 }
 
 /* DOS Card Containers & Surfaces */
@@ -242,25 +290,21 @@ html.theme-dos .bg-stone-200,
 html.theme-dos .bg-stone-800,
 html.theme-dos .bg-stone-850,
 html.theme-dos .bg-stone-900,
-html.theme-dos .bg-stone-950,
-html.theme-dos [class*="bg-amber-"],
-html.theme-dos [class*="bg-emerald-"] {
-  background-color: #0000a8 !important; /* Norton Commander / Borland Blue */
-  border-color: #55ffff !important;
-  color: #ffffff !important;
+html.theme-dos .bg-stone-950 {
+  background-color: var(--dos-panel) !important;
+  border-color: var(--dos-border) !important;
+  color: var(--dos-text) !important;
 }
 
 /* DOS Panels & High-Contrast Boxes */
 html.theme-dos .border,
-html.theme-dos [class*="border-stone-"],
-html.theme-dos [class*="border-amber-"],
-html.theme-dos [class*="border-emerald-"] {
-  border-color: #55ffff !important;
+html.theme-dos [class*="border-stone-"] {
+  border-color: var(--dos-border) !important;
 }
 
 /* DOS Interactive Buttons: Classic 90s 3D beveled block look */
 html.theme-dos button:not([class*="bg-amber-600"]):not([class*="bg-red-"]):not([class*="bg-rose-"]) {
-  background-color: #000080 !important;
+  background-color: var(--dos-btn-bg) !important;
   color: #ffffff !important;
   border-top: 2px solid #ffffff !important;
   border-left: 2px solid #ffffff !important;
@@ -271,7 +315,7 @@ html.theme-dos button:not([class*="bg-amber-600"]):not([class*="bg-red-"]):not([
 
 html.theme-dos button:hover,
 html.theme-dos button:focus-visible {
-  background-color: #ffff55 !important;
+  background-color: var(--dos-accent) !important;
   color: #000000 !important;
   border-top: 2px solid #000000 !important;
   border-left: 2px solid #000000 !important;
@@ -289,26 +333,125 @@ html.theme-dos button:active {
   border-right: 2px solid #ffffff !important;
 }
 
-/* Active Tabs and Highlighted States */
-html.theme-dos .bg-amber-600,
-html.theme-dos .bg-emerald-600 {
-  background-color: #ffff55 !important;
-  color: #000000 !important;
-  border-color: #ffffff !important;
-  font-weight: bold !important;
+/* ========================================================================= */
+/* 🎨 VIBRANT VGA 16-COLOR PALETTE FOR BADGES, RESULTS & ICONS               */
+/* ========================================================================= */
+
+/* Emerald / Green Results & Matches */
+html.theme-dos [class*="bg-emerald-"],
+html.theme-dos [class*="bg-green-"] {
+  background-color: #003810 !important;
+  border: 1px solid #55ff55 !important;
+  color: #55ff55 !important;
 }
 
-/* DOS Headings */
+/* Amber / Yellow Numerical Results & Values */
+html.theme-dos [class*="bg-amber-"],
+html.theme-dos [class*="bg-yellow-"] {
+  background-color: #382800 !important;
+  border: 1px solid #ffff55 !important;
+  color: #ffff55 !important;
+}
+
+/* Purple / Magenta Noorani & Special Badges */
+html.theme-dos [class*="bg-purple-"],
+html.theme-dos [class*="bg-violet-"],
+html.theme-dos [class*="bg-fuchsia-"] {
+  background-color: #3a003a !important;
+  border: 1px solid #ff55ff !important;
+  color: #ff55ff !important;
+}
+
+/* Cyan / Sky / Blue Informational Chips */
+html.theme-dos [class*="bg-cyan-"],
+html.theme-dos [class*="bg-sky-"],
+html.theme-dos [class*="bg-teal-"] {
+  background-color: #002f3a !important;
+  border: 1px solid #55ffff !important;
+  color: #55ffff !important;
+}
+
+/* Rose / Red Exclusions & Warnings */
+html.theme-dos [class*="bg-rose-"],
+html.theme-dos [class*="bg-red-"] {
+  background-color: #3f0000 !important;
+  border: 1px solid #ff5555 !important;
+  color: #ff5555 !important;
+}
+
+/* Blue Layers & Headers */
+html.theme-dos [class*="bg-blue-"] {
+  background-color: #001f5c !important;
+  border: 1px solid #55aaff !important;
+  color: #ffffff !important;
+}
+
+/* Vibrant VGA Icons (SVGs) */
+html.theme-dos svg.text-amber-500,
+html.theme-dos svg.text-amber-400,
+html.theme-dos svg.text-amber-600,
+html.theme-dos svg.text-yellow-500,
+html.theme-dos svg.text-yellow-400,
+html.theme-dos [class*="text-amber-"] svg,
+html.theme-dos [class*="text-yellow-"] svg {
+  color: #ffff55 !important;
+  stroke: #ffff55 !important;
+}
+
+html.theme-dos svg.text-emerald-500,
+html.theme-dos svg.text-emerald-400,
+html.theme-dos svg.text-emerald-600,
+html.theme-dos svg.text-green-500,
+html.theme-dos [class*="text-emerald-"] svg,
+html.theme-dos [class*="text-green-"] svg {
+  color: #55ff55 !important;
+  stroke: #55ff55 !important;
+}
+
+html.theme-dos svg.text-purple-500,
+html.theme-dos svg.text-purple-400,
+html.theme-dos svg.text-fuchsia-500,
+html.theme-dos [class*="text-purple-"] svg,
+html.theme-dos [class*="text-violet-"] svg {
+  color: #ff55ff !important;
+  stroke: #ff55ff !important;
+}
+
+html.theme-dos svg.text-cyan-500,
+html.theme-dos svg.text-cyan-400,
+html.theme-dos svg.text-sky-500,
+html.theme-dos [class*="text-cyan-"] svg,
+html.theme-dos [class*="text-sky-"] svg {
+  color: #55ffff !important;
+  stroke: #55ffff !important;
+}
+
+html.theme-dos svg.text-rose-500,
+html.theme-dos svg.text-red-500,
+html.theme-dos [class*="text-rose-"] svg,
+html.theme-dos [class*="text-red-"] svg {
+  color: #ff5555 !important;
+  stroke: #ff5555 !important;
+}
+
+html.theme-dos svg.text-blue-500,
+html.theme-dos svg.text-blue-400,
+html.theme-dos [class*="text-blue-"] svg {
+  color: #55aaff !important;
+  stroke: #55aaff !important;
+}
+
+/* Headings in DOS */
 html.theme-dos h1,
 html.theme-dos h2,
 html.theme-dos h3,
 html.theme-dos h4 {
-  color: #ffff55 !important; /* DOS Yellow for headings */
+  color: var(--dos-accent) !important;
   font-weight: bold !important;
   letter-spacing: 0.04em !important;
 }
 
-/* DOS Text Color Adaptations */
+/* Text Colors */
 html.theme-dos .text-stone-400,
 html.theme-dos .text-stone-500,
 html.theme-dos .text-stone-600,
@@ -328,31 +471,42 @@ html.theme-dos .text-emerald-600 {
   color: #55ff55 !important;
 }
 
-/* High Contrast Header in DOS Mode */
-html.theme-dos header {
-  background-color: #000080 !important;
-  border-bottom: 2px solid #55ffff !important;
+html.theme-dos .text-purple-400,
+html.theme-dos .text-purple-500 {
+  color: #ff55ff !important;
 }
 
-/* DOS Vertical Scrollbars (Strict Block Elevator) */
+html.theme-dos .text-cyan-400,
+html.theme-dos .text-cyan-500 {
+  color: #55ffff !important;
+}
+
+/* High Contrast Header in DOS Mode */
+html.theme-dos header {
+  background-color: var(--dos-header) !important;
+  border-bottom: 2px solid var(--dos-border) !important;
+}
+
+/* DOS Vertical Scrollbars */
 html.theme-dos ::-webkit-scrollbar {
   width: 14px;
   height: 14px;
-  background: #000055;
+  background: #000033;
 }
 
 html.theme-dos ::-webkit-scrollbar-track {
-  background: #000044;
-  border: 1px solid #55ffff;
+  background: var(--dos-bg);
+  border: 1px solid var(--dos-border);
 }
 
 html.theme-dos ::-webkit-scrollbar-thumb {
   background: #aaaaaa;
-  border: 2px solid #000080;
+  border: 2px solid var(--dos-border);
 }
 
 html.theme-dos ::-webkit-scrollbar-thumb:hover {
-  background: #ffff55;
+  background: var(--dos-accent);
 }
+
 
 
