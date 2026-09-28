@@ -225,6 +225,7 @@ html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):not([cl
   border-bottom: 2px solid #000000;
   border-right: 2px solid #000000;
   transition: none;
+  font-weight: bold;
 }
 
 html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):hover,
@@ -236,6 +237,31 @@ html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):focus-v
   border-bottom: 2px solid #ffffff;
   border-right: 2px solid #ffffff;
   outline: none;
+}
+
+/* Ensure button text is never washed out or hidden by grey classes */
+html.theme-dos button span[class*="text-stone-"],
+html.theme-dos button span[class*="text-gray-"],
+html.theme-dos button div[class*="text-stone-"],
+html.theme-dos button div[class*="text-gray-"] {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* Overrule faint grey backgrounds on buttons to ensure crisp DOS visibility */
+html.theme-dos button[class*="bg-stone-"],
+html.theme-dos button[class*="bg-gray-"],
+html.theme-dos button[class*="bg-white"] {
+  background-color: var(--dos-panel) !important;
+  color: #ffffff !important;
+  border-color: var(--dos-border) !important;
+}
+
+html.theme-dos button[class*="bg-stone-"]:hover,
+html.theme-dos button[class*="bg-gray-"]:hover,
+html.theme-dos button[class*="bg-white"]:hover {
+  background-color: var(--dos-accent) !important;
+  color: #000000 !important;
 }
 
 /* ========================================================================= */

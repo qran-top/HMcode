@@ -2,6 +2,7 @@ import React from 'react';
 import { useTheme, DOS_PALETTES } from '../context/ThemeContext';
 import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
+import { useHint } from '../context/HintContext';
 
 export type HeaderTabType = 'gematria' | 'search' | 'settings' | 'info';
 
@@ -26,6 +27,7 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
 
   const { label: fontLabel, cycleFontSize } = useFontSize();
   const { openDrawer, entries, savedSystems } = useNotebook();
+  const { isHintEnabled, toggleHint, hintText, setHintText, clearHint } = useHint();
 
   const currentPalette = DOS_PALETTES.find((p) => p.id === dosPalette) || DOS_PALETTES[0];
   const totalSavedCount = (entries?.length || 0) + (savedSystems?.length || 0);
@@ -48,6 +50,11 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
     playDosBeep(650, 30);
   };
 
+  const handleToggleHint = () => {
+    toggleHint();
+    playDosBeep(900, 30);
+  };
+
   return (
     <header
       style={{ backgroundColor: 'var(--dos-bg)', borderColor: 'var(--dos-border)' }}
@@ -61,7 +68,11 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
         className="text-[#ffffff] px-2 py-1 border-b flex items-center justify-between gap-1 flex-wrap text-xs font-bold"
       >
         {/* System Title */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div
+          className="flex items-center gap-1.5 shrink-0 cursor-default"
+          onMouseEnter={() => setHintText('نظام التشفير وحساب الجُمّل القرآني الشامل (MS-DOS 6.22 Retro Edition)')}
+          onMouseLeave={clearHint}
+        >
           <span className="bg-[#00aaaa] text-black px-1 font-black text-2xs shadow-xs">[■]</span>
           <span className="text-[#ffff55] tracking-wide font-black text-xs sm:text-sm">
             C:\QURAN\CIPHER.EXE
@@ -71,15 +82,17 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           </span>
         </div>
 
-        {/* Top Control Buttons (Sound, Palette, CRT, Font, Notebook, Help) */}
+        {/* Top Control Buttons (Palette, Sound, CRT, Hint, Font, Notebook, Help) */}
         <div className="flex items-center gap-1 flex-wrap shrink-0">
           {/* F8: Color Palette Switcher */}
           <button
             type="button"
             onClick={cycleDosPalette}
+            onMouseEnter={() => setHintText(`تبديل باليتة ألوان الدوس (F8): النمط الحالي [${currentPalette.name}]`)}
+            onMouseLeave={clearHint}
             style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-accent)', color: 'var(--dos-accent)' }}
             className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none"
-            title="تبديل باليتة ألوان الدوس (F8): نورتون أزرق، فوسفور أخضر، كهرمان ذهبي، موجه أسود، بورلاند تركواز"
+            title="تبديل باليتة ألوان الدوس (F8)"
           >
             [F8 لون:{currentPalette.name.split(' ')[0]}]
           </button>
@@ -88,6 +101,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={toggleSound}
+            onMouseEnter={() => setHintText(`مؤثرات بيب نظام دوس الصوتية التفاعلية: ${dosSound ? 'مفعلة' : 'مكتومة'}`)}
+            onMouseLeave={clearHint}
             className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none ${
               dosSound
                 ? 'bg-[#003300] text-[#55ff55] border-[#55ff55]'
@@ -102,6 +117,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={toggleScanlines}
+            onMouseEnter={() => setHintText(`تأثير خطوط مسح أنبوب الأشعة المهبطية CRT: ${dosScanlines ? 'مفعل' : 'معطل'}`)}
+            onMouseLeave={clearHint}
             style={{ borderColor: 'var(--dos-border)' }}
             className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none hidden sm:inline-block ${
               dosScanlines
@@ -113,6 +130,22 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
             [CRT:{dosScanlines ? 'ON' : 'OFF'}]
           </button>
 
+          {/* HINT: Show / Hide Toggle Button */}
+          <button
+            type="button"
+            onClick={handleToggleHint}
+            onMouseEnter={() => setHintText('زر إظهار أو إخفاء شريط التلميحات الفورية DOS HINT BAR')}
+            onMouseLeave={clearHint}
+            className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none ${
+              isHintEnabled
+                ? 'bg-[#002b20] text-[#55ff55] border-[#55ff55]'
+                : 'bg-[#222222] text-[#aaaaaa] border-[#666666]'
+            }`}
+            title="إظهار / إخفاء شريط التلميحات وشرح العناصر"
+          >
+            [💡تلميح:{isHintEnabled ? 'ON' : 'OFF'}]
+          </button>
+
           {/* Font Size Cycle */}
           <button
             type="button"
@@ -120,9 +153,11 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
               cycleFontSize();
               playDosBeep(700, 20);
             }}
+            onMouseEnter={() => setHintText(`تغيير مقاس الخط العام: المقاس الحالي [${fontLabel}]`)}
+            onMouseLeave={clearHint}
             style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-border)', color: 'var(--dos-border)' }}
             className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#00aaaa] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none"
-            title="تغيير مقاس الخط (صغير، متوسط، كبير)"
+            title="تغيير مقاس الخط"
           >
             خط:[{fontLabel}]
           </button>
@@ -134,6 +169,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
               openDrawer('entries');
               playDosBeep(850, 30);
             }}
+            onMouseEnter={() => setHintText(`فتح المفكرة: تحتوي على ${totalSavedCount} عنصر محفوظ`)}
+            onMouseLeave={clearHint}
             style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-text)', color: 'var(--dos-text)' }}
             className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none"
             title="فتح مفكرة التشفير والجُمّل المحفوظة"
@@ -146,6 +183,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
             <button
               type="button"
               onClick={onOpenHelp}
+              onMouseEnter={() => setHintText('عرض دليل اختصارات لوحة المفاتيح F1-F10 ونظام DOS')}
+              onMouseLeave={clearHint}
               className="px-1.5 py-0.5 text-2xs font-bold bg-[#ffff55] text-black hover:bg-white border border-white cursor-pointer active:translate-y-0.5 transition-none font-black"
               title="دليل اختصارات لوحة المفاتيح ونظام DOS (F1)"
             >
@@ -164,6 +203,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={() => handleTabClick('gematria')}
+            onMouseEnter={() => setHintText('مطابق السلاسل القرآنية المدمج: مسح المصحف كاملاً وحساب الجُمّل المشرقي والمغربي وتوليد الفواتح')}
+            onMouseLeave={clearHint}
             style={
               activeTab === 'gematria'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
@@ -178,6 +219,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={() => handleTabClick('search')}
+            onMouseEnter={() => setHintText('باحث الأوامر والمترجم المزدوج: تشفير وفك تشفير النصوص بحساب الجُمّل')}
+            onMouseLeave={clearHint}
             style={
               activeTab === 'search'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
@@ -192,6 +235,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={() => handleTabClick('settings')}
+            onMouseEnter={() => setHintText('الجداول والتخصيص: إدارة قواعد رسم المصحف وقيم الأبجديات الشرقية والغربية')}
+            onMouseLeave={clearHint}
             style={
               activeTab === 'settings'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
@@ -206,6 +251,8 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           <button
             type="button"
             onClick={() => handleTabClick('info')}
+            onMouseEnter={() => setHintText('الدليل والتوثيق: مراجع حساب الجُمّل والفواتح الـ 14 وتاريخ المنهجيتين')}
+            onMouseLeave={clearHint}
             style={
               activeTab === 'info'
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
@@ -218,6 +265,31 @@ export function Header({ activeTab, setActiveTab, onOpenHelp }: HeaderProps) {
           </button>
         </nav>
       </div>
+
+      {/* 3. Dynamic DOS Hint Bar: High-contrast, useful, doesn't shift layout, toggleable */}
+      {isHintEnabled && (
+        <div
+          style={{ backgroundColor: 'var(--dos-input-bg)', borderColor: 'var(--dos-border)' }}
+          className="px-2 py-1 border-b text-xs font-mono flex items-center justify-between gap-2 overflow-hidden shadow-inner select-none transition-none"
+        >
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <span className="text-[#ffff55] font-black shrink-0 text-2xs sm:text-xs">
+              C:\DOS\HINT&gt;
+            </span>
+            <span className="text-[#55ffff] font-bold text-2xs sm:text-xs truncate">
+              {hintText || 'مرر المؤشر فوق أي زر أو نتيجة بالصفحة لعرض شرح فوري أو تفاصيل النتيجة الكاملة...'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleHint}
+            className="text-4xs text-[#aaaaaa] hover:text-[#ff5555] shrink-0 font-mono px-1 py-0.2 border border-[#444444] cursor-pointer"
+            title="إخفاء شريط الهنت (يمكنك إعادة إظهاره من زر تلميح بالأعلى)"
+          >
+            [إخفاء ✕]
+          </button>
+        </div>
+      )}
     </header>
   );
 }

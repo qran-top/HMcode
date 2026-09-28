@@ -576,11 +576,8 @@ export class InverseQuranicScanner {
         }
 
         if (currentSurah <= totalSurahs && matches.length < maxResults) {
-          if (typeof requestAnimationFrame !== 'undefined') {
-            requestAnimationFrame(step);
-          } else {
-            setTimeout(step, 0);
-          }
+          // Cooperative timeout ensures browser event loop breathes and React renders without freezing
+          setTimeout(step, 2);
         } else {
           this.isScanning = false;
           if (onProgress) {
@@ -596,8 +593,11 @@ export class InverseQuranicScanner {
               isCancelled: false,
             });
           }
-          if (onComplete) onComplete(matches, false);
-          resolve(matches);
+          // Yield to browser before triggering onComplete so 100% UI is rendered first
+          setTimeout(() => {
+            if (onComplete) onComplete(matches, false);
+            resolve(matches);
+          }, 15);
         }
       };
 

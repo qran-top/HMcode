@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { FontSizeProvider } from './context/FontSizeContext';
 import { NotebookProvider } from './context/NotebookContext';
 import { GematriaProvider } from './context/GematriaContext';
+import { HintProvider } from './context/HintContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
         <CipherLayersProvider>
           <GematriaProvider>
             <NotebookProvider>
-              <App />
+              <HintProvider>
+                <App />
+              </HintProvider>
             </NotebookProvider>
           </GematriaProvider>
         </CipherLayersProvider>

@@ -83,12 +83,15 @@ interface ThemeContextType {
   cycleDosPalette: () => void;
   activeHint: string;
   setManualHint: (hint: string) => void;
+  showDosHint: boolean;
+  setShowDosHint: (show: boolean) => void;
+  toggleDosHint: () => void;
   playDosBeep: (frequency?: number, durationMs?: number, type?: OscillatorType) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const DEFAULT_DOS_HINT = 'C:\\QURAN\\GEMATRIA> النظام جاهز للعمل | [F1: مساعدة] [F8: تغيير لون الدوس] [F9: تبديل الثيم]';
+const DEFAULT_DOS_HINT = 'C:\\QURAN\\GEMATRIA> النظام جاهز | مرر الفأرة فوق أي عنصر أو نتيجة لعرض تفاصيلها المباشرة [F1 مساعدة]';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // 1. Theme state: Permanently DOS!
@@ -123,6 +126,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // 5. Global Real-Time Hint System (Top/Status Hint Display)
   const [activeHint, setActiveHint] = useState<string>(DEFAULT_DOS_HINT);
+
+  // 6. Show / Hide DOS Hint Bar Toggle
+  const [showDosHint, setShowDosHintState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('app-show-dos-hint');
+      if (saved !== null) return saved === 'true';
+    }
+    return true; // Visible by default, can be toggled via F7 or UI button
+  });
+
+  const setShowDosHint = (show: boolean) => {
+    setShowDosHintState(show);
+    localStorage.setItem('app-show-dos-hint', String(show));
+  };
+
+  const toggleDosHint = useCallback(() => {
+    setShowDosHintState((prev) => {
+      const next = !prev;
+      localStorage.setItem('app-show-dos-hint', String(next));
+      return next;
+    });
+  }, []);
 
   const isDark = true;
   const isDos = true;
@@ -364,6 +389,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         cycleDosPalette,
         activeHint,
         setManualHint,
+        showDosHint,
+        setShowDosHint,
+        toggleDosHint,
         playDosBeep,
       }}
     >
