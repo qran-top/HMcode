@@ -180,7 +180,7 @@ export function Header({
           onClick={handleToggleHint}
           onMouseEnter={() => setHintText('إظهار أو إخفاء شريط التلميحات الفورية السفلي')}
           onMouseLeave={clearHint}
-          className={`px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap ${
+          className={`px-2 py-0.5 h-7 min-w-[76px] text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center ${
             isHintEnabled
               ? 'bg-[#002b20] text-[#55ff55] border-[#55ff55]'
               : 'bg-[#222222] text-[#aaaaaa] border-[#666666]'
@@ -190,7 +190,7 @@ export function Header({
           [تلميح:{isHintEnabled ? 'ON' : 'OFF'}]
         </button>
 
-        {/* F7: Font Family Switcher (5 distinct fonts: Tajawal, Amiri, Cairo, DOS 95, Arial) */}
+        {/* F7: Font Family Switcher (Alyamama / Markazi Text / Handjet) */}
         <button
           type="button"
           onClick={() => {
@@ -200,13 +200,13 @@ export function Header({
           onMouseEnter={() => setHintText(`تبديل نوع الخط (F7): الخط الحالي [${fontFamilyInfo.name}] - ${fontFamilyInfo.description}`)}
           onMouseLeave={clearHint}
           style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-accent)', color: 'var(--dos-accent)' }}
-          className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap"
-          title="تبديل نوع الخط (F7: تجوال / أميري / كايرو / دوس 95 / إريال)"
+          className="px-2 py-0.5 h-7 min-w-[95px] text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center"
+          title="تبديل نوع الخط (F7: اليمامة / مركزي / هاندجت)"
         >
           [F7 خط:{fontFamilyInfo.name}]
         </button>
 
-        {/* Wide Screen Expander Toggle (توسيع الشاشة بالكامل) */}
+        {/* Wide Screen Expander Toggle */}
         {toggleWideMode && (
           <button
             type="button"
@@ -221,10 +221,10 @@ export function Header({
               borderColor: isWideMode ? '#ffffff' : 'var(--dos-border)',
               color: isWideMode ? '#000000' : 'var(--dos-border)',
             }}
-            className="px-1.5 py-0.5 text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap shadow-xs"
+            className="px-2 py-0.5 h-7 min-w-[85px] text-2xs font-bold border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap shadow-xs inline-flex items-center justify-center text-center"
             title="توسيع الشاشة بالعرض الكامل / العرض القياسي"
           >
-            {isWideMode ? '[▶◀ قياسي]' : '[⛶ عرض واسع]'}
+            {isWideMode ? '[▶◀ قياسي]' : '[⛶ واسع]'}
           </button>
         )}
 
@@ -238,7 +238,7 @@ export function Header({
           onMouseEnter={() => setHintText(`تغيير مقاس الخط: المقاس الحالي [${fontLabel}]`)}
           onMouseLeave={clearHint}
           style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-border)', color: 'var(--dos-border)' }}
-          className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#00aaaa] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap"
+          className="px-2 py-0.5 h-7 min-w-[76px] text-2xs font-bold hover:bg-[#00aaaa] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center"
           title="تغيير مقاس الخط"
         >
           [حجم:{fontLabel}]
@@ -254,7 +254,7 @@ export function Header({
           onMouseEnter={() => setHintText(`فتح المفكرة: تحتوي على ${totalSavedCount} عنصر محفوظ`)}
           onMouseLeave={clearHint}
           style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-text)', color: 'var(--dos-text)' }}
-          className="px-1.5 py-0.5 text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap"
+          className="px-2 py-0.5 h-7 min-w-[85px] text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center"
           title="فتح مفكرة التشفير والجُمّل المحفوظة"
         >
           [المفكرة:{totalSavedCount}]
@@ -267,7 +267,7 @@ export function Header({
             onClick={onOpenHelp}
             onMouseEnter={() => setHintText('دليل اختصارات لوحة المفاتيح ونظام DOS (F1)')}
             onMouseLeave={clearHint}
-            className="px-1.5 py-0.5 text-2xs font-bold bg-[#ffff55] text-black hover:bg-white border border-white cursor-pointer active:translate-y-0.5 transition-none font-black shrink-0 whitespace-nowrap"
+            className="px-2 py-0.5 h-7 min-w-[85px] text-2xs font-bold bg-[#ffff55] text-black hover:bg-white border border-white cursor-pointer active:translate-y-0.5 transition-none font-black shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center"
             title="دليل اختصارات لوحة المفاتيح ونظام DOS (F1)"
           >
             [F1 مساعدة]
@@ -275,12 +275,12 @@ export function Header({
         )}
       </div>
 
-      {/* 3. Primary Tabs Navigation Ribbon (F1-F4) */}
+      {/* 3. Primary Tabs Navigation Ribbon (F1-F4) with Equal Fixed Sizes */}
       <div
         style={{ backgroundColor: 'var(--dos-bg)', borderColor: 'var(--dos-header)' }}
         className="px-1.5 py-1 flex items-center justify-between gap-1 flex-wrap border-b"
       >
-        <nav className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1 w-full" aria-label="أقسام نظام DOS">
+        <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full" aria-label="أقسام نظام DOS">
           <button
             type="button"
             onClick={() => handleTabClick('gematria')}
@@ -291,10 +291,10 @@ export function Header({
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
+            className="px-2 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
             title="مطابق السلاسل القرآنية وحساب الجُمّل المدمج (F1)"
           >
-            [<span className={activeTab === 'gematria' ? 'text-black' : 'text-[#ffff55] font-black'}>F1</span>] مطابق السلاسل
+            [<span className={activeTab === 'gematria' ? 'text-black' : 'text-[#ffff55] font-black'}>F1</span>] السلاسل
           </button>
 
           <button
@@ -307,10 +307,10 @@ export function Header({
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
+            className="px-2 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
             title="باحث الأوامر والمترجم المزدوج والتشفير (F2)"
           >
-            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] باحث الأوامر
+            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] الباحث
           </button>
 
           <button
@@ -323,10 +323,10 @@ export function Header({
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
+            className="px-2 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
             title="تخصيص قواعد الحساب والجداول المرجعية (F3)"
           >
-            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] الجداول والقواعد
+            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] الجداول
           </button>
 
           <button
@@ -339,10 +339,10 @@ export function Header({
                 ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
-            className="px-2 sm:px-2.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate"
+            className="px-2 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
             title="دليل النظام وتوثيق حساب الجمل القرآني (F4)"
           >
-            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الدليل والتوثيق
+            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الدليل
           </button>
         </nav>
       </div>

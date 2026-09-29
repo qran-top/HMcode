@@ -4,49 +4,35 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: var(--font-app, 'Tajawal'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: var(--font-app, 'Tajawal'), sans-serif;
-  --font-quran: var(--font-app, 'Tajawal'), sans-serif;
+  --font-sans: var(--font-app, 'Alyamama'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-app, 'Markazi Text'), serif;
+  --font-quran: var(--font-app, 'Alyamama'), sans-serif;
 }
 
 :root {
-  --font-app: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-app: 'Alyamama', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 5 Distinct Arabic Font Options (Tajawal / Amiri / Cairo / DOS 95 / Arial) */
-html[data-font-family="tajawal"] {
-  --font-app: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-sans: 'Tajawal', sans-serif;
-  --font-serif: 'Tajawal', sans-serif;
-  --font-quran: 'Tajawal', sans-serif;
+/* 3 Distinct Arabic Font Options (Alyamama / Markazi Text / Handjet) */
+html[data-font-family="alyamama"] {
+  --font-app: 'Alyamama', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Alyamama', sans-serif;
+  --font-serif: 'Alyamama', sans-serif;
+  --font-quran: 'Alyamama', sans-serif;
 }
 
-html[data-font-family="amiri"] {
-  --font-app: 'Amiri', 'Amiri Quran', serif;
-  --font-sans: 'Amiri', serif;
-  --font-serif: 'Amiri', serif;
-  --font-quran: 'Amiri', serif;
+html[data-font-family="markazi"] {
+  --font-app: 'Markazi Text', Georgia, serif;
+  --font-sans: 'Markazi Text', serif;
+  --font-serif: 'Markazi Text', serif;
+  --font-quran: 'Markazi Text', serif;
 }
 
-html[data-font-family="cairo"] {
-  --font-app: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-sans: 'Cairo', sans-serif;
-  --font-serif: 'Cairo', sans-serif;
-  --font-quran: 'Cairo', sans-serif;
-}
-
-html[data-font-family="dos_arabic"] {
-  --font-app: 'Courier New', Courier, Consolas, Monaco, 'Simplified Arabic Fixed', monospace;
-  --font-sans: 'Courier New', Courier, monospace;
-  --font-serif: 'Courier New', Courier, monospace;
-  --font-quran: 'Courier New', Courier, monospace;
-}
-
-html[data-font-family="arial"] {
-  --font-app: Arial, 'Segoe UI', Tahoma, -apple-system, sans-serif;
-  --font-sans: Arial, 'Segoe UI', Tahoma, sans-serif;
-  --font-serif: Arial, 'Segoe UI', Tahoma, sans-serif;
-  --font-quran: Arial, 'Segoe UI', Tahoma, sans-serif;
+html[data-font-family="handjet"] {
+  --font-app: 'Handjet', 'Courier New', monospace;
+  --font-sans: 'Handjet', monospace;
+  --font-serif: 'Handjet', monospace;
+  --font-quran: 'Handjet', monospace;
 }
 
 html.dark, html.dark body {
@@ -257,7 +243,7 @@ html.theme-dos textarea:focus {
   caret-shape: block !important;
 }
 
-/* DOS Interactive Buttons: Classic 90s 3D beveled block look */
+/* DOS Interactive Buttons: Classic 90s 3D beveled block look with fixed authentic discipline */
 html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):not([class*="bg-amber-600"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]) {
   background-color: var(--dos-btn-bg);
   color: #ffffff;
@@ -267,6 +253,8 @@ html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):not([cl
   border-right: 2px solid #000000;
   transition: none;
   font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
 }
 
 html.theme-dos button:not([class*="dos-card"]):not([class*="dos-badge"]):hover,
@@ -378,6 +366,23 @@ html.theme-dos button[class*="bg-white"]:hover {
   font-weight: bold !important;
 }
 
+/* 5. الجفر (Jafr: بسط الحروف وأسماؤها) - Mystical Purple / Fuchsia (#d946ef) */
+.dos-card-jafr {
+  background-color: #2a0836 !important;
+  border: 2px solid #d946ef !important;
+  color: #f5d0fe !important;
+}
+.dos-card-jafr:hover {
+  background-color: #3f0c52 !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-jafr {
+  background-color: #4a0459 !important;
+  color: #f5d0fe !important;
+  border: 1px solid #d946ef !important;
+  font-weight: bold !important;
+}
+
 /* ========================================================================= */
 /* 📟 F8 PALETTE-AWARE CARD OVERRIDES: Transform ALL Results with Palette     */
 /* ========================================================================= */
@@ -483,6 +488,9 @@ html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-verbatim {
 }
 .dos-phrase-mashriqi {
   color: #55ffff !important;
+}
+.dos-phrase-jafr {
+  color: #f5d0fe !important;
 }
 .dos-phrase-verbatim {
   color: #ff77ff !important;

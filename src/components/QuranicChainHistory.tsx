@@ -24,6 +24,8 @@ export interface QuranicChainHistoryItem {
   multiplier?: number;
   matchesCount?: number;
   isFavorite?: boolean;
+  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros';
+  targetJafr?: number;
 }
 
 interface QuranicChainHistoryProps {
@@ -265,7 +267,7 @@ export function QuranicChainHistory({
                     <span className="px-1.5 py-0.2 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-mono">
                       {item.isIdentical
                         ? `قيمة = ${item.targetMaghribi}`
-                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}`}
+                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}${item.targetJafr ? ` | جفر = ${item.targetJafr}` : ''}`}
                     </span>
 
                     {/* Multiplier Badge */}

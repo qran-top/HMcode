@@ -11,7 +11,7 @@ import {
 } from './gematriaEngine';
 import { NOORANI_LETTERS_SET } from '../cipherData';
 import { getQuranTopSearchUrl, SURAH_NAMES } from './quranicDictionary';
-import { MAGHRIBI_VALUES, MASHRIQI_VALUES } from '../context/GematriaContext';
+import { MAGHRIBI_VALUES, MASHRIQI_VALUES, JAFR_VALUES } from '../context/GematriaContext';
 
 export interface QuranAyahItem {
   sn: number; // Surah number (1-114)
@@ -27,8 +27,9 @@ export interface InverseQuranicMatch {
   value: number; // matched target value
   maghribiValue: number;
   mashriqiValue: number;
-  systemOrigin: 'common' | 'maghribi' | 'mashriqi'; // 'common' = matching in both or matching target in both!
-  systemLabel: string; // 'مشترك' | 'غربي' | 'شرقي'
+  jafrValue?: number;
+  systemOrigin: 'common' | 'maghribi' | 'mashriqi' | 'jafr';
+  systemLabel: string; // 'مشترك' | 'غربي' | 'شرقي' | 'جفر'
   isIntrinsicCommon: boolean; // maghribiValue === mashriqiValue
   wordCount: number;
   letterCount: number;
@@ -44,7 +45,8 @@ export interface InverseQuranicMatch {
     value: number;
     magVal: number;
     mashVal: number;
-    letters: { char: string; magVal: number; mashVal: number }[];
+    jafrVal?: number;
+    letters: { char: string; magVal: number; mashVal: number; jafrVal?: number }[];
   }[];
   quranUrl: string;
 }
@@ -62,9 +64,10 @@ export interface ScannerProgress {
 }
 
 export interface ScannerOptions {
-  mode?: 'dual' | 'maghribi' | 'mashriqi' | string;
+  mode?: 'dual' | 'maghribi' | 'mashriqi' | 'jafr' | string;
   targetMaghribi: number;
   targetMashriqi: number;
+  targetJafr?: number;
   calcOptions?: Partial<GematriaCalculationOptions>;
   scope: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words';
   onlyNoorani?: boolean;
@@ -216,7 +219,8 @@ export class InverseQuranicScanner {
   public async scan(
     targetMaghribi: number,
     targetMashriqi: number,
-    options: Omit<ScannerOptions, 'targetMaghribi' | 'targetMashriqi'>
+    options: Omit<ScannerOptions, 'targetMaghribi' | 'targetMashriqi'>,
+    targetJafr?: number
   ): Promise<InverseQuranicMatch[]> {
     this.stop();
     this.isScanning = true;
@@ -235,9 +239,11 @@ export class InverseQuranicScanner {
       onComplete,
     } = options;
 
+    const effectiveTargetJafr = targetJafr ?? options.targetJafr ?? 0;
     const magTargetsSet = new Set<number>([targetMaghribi, ...alternateTargets]);
     const mashTargetsSet = new Set<number>([targetMashriqi, ...alternateTargets]);
-    const maxTarget = Math.max(targetMaghribi, targetMashriqi, ...alternateTargets);
+    const jafrTargetsSet = effectiveTargetJafr > 0 ? new Set<number>([effectiveTargetJafr, ...alternateTargets]) : new Set<number>();
+    const maxTarget = Math.max(targetMaghribi, targetMashriqi, effectiveTargetJafr, ...alternateTargets);
 
     if (onProgress) {
       onProgress({
@@ -312,7 +318,7 @@ export class InverseQuranicScanner {
             const rawTokens = ayah.t.split(/\s+/).filter(Boolean);
             if (rawTokens.length === 0) continue;
 
-            // Calculate clean words and word values in BOTH Maghribi and Mashriqi
+            // Calculate clean words and word values in Maghribi, Mashriqi, and Jafr
             // CRITICAL FIX: Pass rawTokens (not cleanTokens) so dagger alifs (\u0670), shaddahs, and Uthmani orthography are preserved!
             const cleanTokens = rawTokens.map((w) => cleanArabicTextForGematria(w));
             const magWordVals = rawTokens.map((w) =>
@@ -321,6 +327,9 @@ export class InverseQuranicScanner {
             const mashWordVals = rawTokens.map((w) =>
               calculateGematriaWithOptions(w, calcOptions, MASHRIQI_VALUES)
             );
+            const jafrWordVals = rawTokens.map((w) =>
+              calculateGematriaWithOptions(w, calcOptions, JAFR_VALUES)
+            );
 
             const n = rawTokens.length;
 
@@ -328,11 +337,13 @@ export class InverseQuranicScanner {
             for (let i = 0; i < n; i++) {
               let currentMagSum = 0;
               let currentMashSum = 0;
+              let currentJafrSum = 0;
               const limit = Math.min(n, i + maxWords);
 
               for (let j = i; j < limit; j++) {
                 currentMagSum += magWordVals[j];
                 currentMashSum += mashWordVals[j];
+                currentJafrSum += jafrWordVals[j];
                 const phraseLength = j - i + 1;
 
                 if (phraseLength >= minWords && phraseLength <= maxWords) {
@@ -340,9 +351,10 @@ export class InverseQuranicScanner {
 
                   const isMaghribiMatch = magTargetsSet.has(currentMagSum);
                   const isMashriqiMatch = mashTargetsSet.has(currentMashSum);
-                  const isIntrinsicCommon = currentMagSum === currentMashSum;
+                  const isJafrMatch = effectiveTargetJafr > 0 && jafrTargetsSet.has(currentJafrSum);
+                  const isIntrinsicCommon = currentMagSum === currentMashSum && (!effectiveTargetJafr || currentMagSum === currentJafrSum);
 
-                  if (isMaghribiMatch || isMashriqiMatch) {
+                  if (isMaghribiMatch || isMashriqiMatch || isJafrMatch) {
                     const phraseWords = rawTokens.slice(i, j + 1);
                     const phraseText = phraseWords.join(' ');
                     const cleanPhrase = cleanTokens.slice(i, j + 1).join(' ');
@@ -356,21 +368,24 @@ export class InverseQuranicScanner {
                       if (!isAllNoorani) continue;
                     }
 
-                    // Determine system origin and labeling with strict accuracy:
-                    // If there is a difference between Eastern and Western search targets (targetMaghribi !== targetMashriqi),
-                    // then no result can be "مشترك" (Common) because each match corresponds to either the Eastern or Western target number.
-                    // Only when search targets are identical in both systems (targetMaghribi === targetMashriqi) is the result Common (مشترك).
-                    const isTargetDiffering = targetMaghribi !== targetMashriqi;
+                    // Determine system origin and labeling with strict accuracy across the 3 systems:
+                    const isTargetDiffering = (targetMaghribi !== targetMashriqi) || (effectiveTargetJafr > 0 && (targetMaghribi !== effectiveTargetJafr || targetMashriqi !== effectiveTargetJafr));
                     let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'common';
                     let systemLabel = 'مشترك';
 
                     if (isTargetDiffering) {
-                      if (isMashriqiMatch && !isMaghribiMatch) {
+                      if (isJafrMatch && !isMashriqiMatch && !isMaghribiMatch) {
+                        systemOrigin = 'jafr';
+                        systemLabel = 'جفر';
+                      } else if (isMashriqiMatch && !isMaghribiMatch && !isJafrMatch) {
                         systemOrigin = 'mashriqi';
                         systemLabel = 'شرقي';
-                      } else if (isMaghribiMatch && !isMashriqiMatch) {
+                      } else if (isMaghribiMatch && !isMashriqiMatch && !isJafrMatch) {
                         systemOrigin = 'maghribi';
                         systemLabel = 'غربي';
+                      } else if (isJafrMatch) {
+                        systemOrigin = 'jafr';
+                        systemLabel = 'جفر';
                       } else if (isMashriqiMatch) {
                         systemOrigin = 'mashriqi';
                         systemLabel = 'شرقي';
@@ -396,16 +411,19 @@ export class InverseQuranicScanner {
                         const cleanW = cleanTokens[i + pidx];
                         const magVal = magWordVals[i + pidx];
                         const mashVal = mashWordVals[i + pidx];
+                        const jafrVal = jafrWordVals[i + pidx];
                         const letters = cleanW.split('').map((c) => ({
                           char: c,
                           magVal: MAGHRIBI_VALUES[c] ?? MAGHRIBI_VALUES[normalizeAbjadChar(c)] ?? 0,
                           mashVal: MASHRIQI_VALUES[c] ?? MASHRIQI_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          jafrVal: JAFR_VALUES[c] ?? JAFR_VALUES[normalizeAbjadChar(c)] ?? 0,
                         }));
                         return {
                           word: pw,
-                          value: isMaghribiMatch ? magVal : mashVal,
+                          value: isJafrMatch ? jafrVal : isMaghribiMatch ? magVal : mashVal,
                           magVal,
                           mashVal,
+                          jafrVal,
                           letters,
                         };
                       });
@@ -449,9 +467,10 @@ export class InverseQuranicScanner {
                         id: `match_${sNum}_${ayah.a}_${i}_${j}_${systemOrigin}_${Date.now()}`,
                         phrase: phraseText,
                         cleanPhrase,
-                        value: isMaghribiMatch ? currentMagSum : currentMashSum,
+                        value: isJafrMatch ? currentJafrSum : isMaghribiMatch ? currentMagSum : currentMashSum,
                         maghribiValue: currentMagSum,
                         mashriqiValue: currentMashSum,
+                        jafrValue: currentJafrSum,
                         systemOrigin,
                         systemLabel,
                         isIntrinsicCommon,

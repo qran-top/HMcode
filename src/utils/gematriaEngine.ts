@@ -38,9 +38,10 @@ export const ABJAD_VALUES: Record<string, number> = {
   'غ': 1000,
 };
 
-export const NOORANI_LETTERS_LIST = [
-  'ا', 'ه', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر'
-];
+export const NOORANI_14_LETTERS = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن'];
+export const NOORANI_14_SET = new Set(NOORANI_14_LETTERS);
+
+export const NOORANI_LETTERS_LIST = [...NOORANI_14_LETTERS];
 
 export const NOORANI_LETTERS_SORTED_DESC = [...NOORANI_LETTERS_LIST].sort(
   (a, b) => (ABJAD_VALUES[b] || 0) - (ABJAD_VALUES[a] || 0)
@@ -49,6 +50,30 @@ export const NOORANI_LETTERS_SORTED_DESC = [...NOORANI_LETTERS_LIST].sort(
 export const ALL_ARABIC_LETTERS_SORTED_DESC = Object.keys(ABJAD_VALUES)
   .filter((c) => ['ء', 'أ', 'إ', 'آ', 'ئ', 'ؤ', 'هـ', 'ة', 'ى'].indexOf(c) === -1)
   .sort((a, b) => (ABJAD_VALUES[b] || 0) - (ABJAD_VALUES[a] || 0));
+
+/**
+ * Checks whether an Arabic character belongs to the 14 Quranic initial letters (الحروف النورانية)
+ */
+export function isNooraniChar(char: string, taMarbutaHa: boolean = true): boolean {
+  if (!char) return false;
+  if (NOORANI_14_SET.has(char)) return true;
+  if (['أ', 'إ', 'آ', 'ٱ'].includes(char)) return true;
+  if (char === 'ى') return true;
+  if (char === 'ة' || char === 'ۃ') return taMarbutaHa;
+  return false;
+}
+
+/**
+ * Strips all trailing zeros from a positive number (e.g. 400 -> 4, 80 -> 8, 1000 -> 1, 90 -> 9)
+ */
+export function stripTrailingZeros(val: number): number {
+  if (val <= 0) return 0;
+  let num = val;
+  while (num > 0 && num % 10 === 0) {
+    num = Math.floor(num / 10);
+  }
+  return num;
+}
 
 export interface GematriaCalculationOptions {
   /** احتساب الألف الخنجرية / الصغيرة (ٰ) بقيمة 1 أو إهمالها */
@@ -71,6 +96,10 @@ export interface GematriaCalculationOptions {
   uthmaniWawMode?: 'as_waw_6' | 'as_alif_1';
   /** ألف التفريق الزائدة بعد واو الجماعة مثل قالوا، آمنوا (رسم = 1 / لفظ مهمل = 0) */
   silentAlifMode?: 'count_as_1' | 'ignore_0';
+  /** احتساب الحروف النورانية فقط وإسقاط الحروف الظلمانية (0) */
+  nooraniOnlyMode?: boolean;
+  /** شطب أصفار الحروف غير النورانية (الظلمانية) مثل ت=4 بدلاً من 400 */
+  stripNonNooraniZerosMode?: boolean;
 }
 
 export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
@@ -247,6 +276,19 @@ export function calculateGematriaWithOptions(
       charVal = tableValues[char] || tableValues[normalizeAbjadChar(char)] || 0;
     }
 
+    const isTaHa = opts.taMarbuta !== 'ta_400';
+    const isNoorani = isNooraniChar(char, isTaHa);
+
+    if (opts.nooraniOnlyMode) {
+      if (!isNoorani) {
+        charVal = 0;
+      }
+    } else if (opts.stripNonNooraniZerosMode) {
+      if (!isNoorani) {
+        charVal = stripTrailingZeros(charVal);
+      }
+    }
+
     const multiplier = isShaddah ? 2 : 1;
     sum += charVal * multiplier;
   }
@@ -255,7 +297,9 @@ export function calculateGematriaWithOptions(
   if (opts.silentWawMode === 'ignore_0') {
     const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
     if (/^(أولو|أولي|أولئك|أولات|عمرو|أولاء)$/.test(cleanWord)) {
-      sum -= (tableValues['و'] || 6);
+      if (!opts.nooraniOnlyMode) {
+        sum -= (tableValues['و'] || 6);
+      }
     }
   }
 
@@ -263,8 +307,13 @@ export function calculateGematriaWithOptions(
   if (opts.uthmaniWawMode === 'as_alif_1') {
     const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
     if (/^(الصلوة|صلوة|الزكوة|زكوة|الحيوة|حيوة|الربوا|ربوا|مشكوة|النجوة|الغدوة)$/.test(cleanWord)) {
-      // Waw is counted as 1 (Alif) instead of 6 (Waw), so delta = -5
-      sum -= ((tableValues['و'] || 6) - (tableValues['ا'] || 1));
+      if (opts.nooraniOnlyMode) {
+        // Waw was 0 because non-Noorani, but as Alif (Noorani) it gains 1
+        sum += (tableValues['ا'] || 1);
+      } else {
+        // Waw is counted as 1 (Alif) instead of 6 (Waw), so delta = -5
+        sum -= ((tableValues['و'] || 6) - (tableValues['ا'] || 1));
+      }
     }
   }
 

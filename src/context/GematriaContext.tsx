@@ -105,6 +105,38 @@ export const MAGHRIBI_ORDER = [
   'ق', 'ر', 'س', 'ت', 'ث', 'خ', 'ذ', 'ظ', 'غ', 'ش'
 ];
 
+// 3. Jafr (حساب الجفر الكبير / بسط الحروف بأسماء حروفها)
+export const JAFR_VALUES: Record<string, number> = {
+  'ا': 111, 'أ': 111, 'إ': 111, 'آ': 111, 'ء': 111,
+  'ب': 3,
+  'ت': 401,
+  'ث': 501,
+  'ج': 53,
+  'ح': 9,
+  'خ': 601,
+  'د': 35,
+  'ذ': 731,
+  'ر': 201,
+  'ز': 18,
+  'س': 120,
+  'ش': 360,
+  'ص': 95,
+  'ض': 805,
+  'ط': 10,
+  'ظ': 901,
+  'ع': 130,
+  'غ': 1060,
+  'ف': 81,
+  'ق': 181,
+  'ك': 101,
+  'ل': 71,
+  'م': 90,
+  'ن': 106,
+  'ه': 6, 'هـ': 6, 'ة': 6,
+  'و': 13, 'ؤ': 13,
+  'ي': 11, 'ى': 11, 'ئ': 11,
+};
+
 export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
   {
     id: 'mashriqi',
@@ -121,6 +153,14 @@ export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
     isPreset: true,
     values: MAGHRIBI_VALUES,
     letterOrder: MAGHRIBI_ORDER,
+  },
+  {
+    id: 'jafr',
+    name: 'حساب الجفر (بسط الحروف)',
+    description: 'حساب بسط الحروف وأسمائها: ا=111، ب=3، ج=53، د=35... غ=1060',
+    isPreset: true,
+    values: JAFR_VALUES,
+    letterOrder: MASHRIQI_ORDER,
   },
 ];
 

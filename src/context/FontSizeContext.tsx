@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 
 export type FontSizeLevel = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
-export type ArabicFontFamily = 'tajawal' | 'amiri' | 'cairo' | 'dos_arabic' | 'arial';
+export type ArabicFontFamily = 'alyamama' | 'markazi' | 'handjet';
 
 export interface ArabicFontInfo {
   id: ArabicFontFamily;
@@ -14,45 +14,29 @@ export interface ArabicFontInfo {
 }
 
 export const ARABIC_FONTS: Record<ArabicFontFamily, ArabicFontInfo> = {
-  tajawal: {
-    id: 'tajawal',
-    name: 'تجوال',
-    nameEn: 'Tajawal',
-    description: 'خط عربي حديث فائق الوضوح والتناسق',
-    next: 'amiri',
-    cssFamily: "'Tajawal', -apple-system, BlinkMacSystemFont, sans-serif",
+  alyamama: {
+    id: 'alyamama',
+    name: 'اليمامة',
+    nameEn: 'Alyamama',
+    description: 'خط نسخي نقي عالي التباين وشديد الوضوح',
+    next: 'markazi',
+    cssFamily: "'Alyamama', -apple-system, BlinkMacSystemFont, sans-serif",
   },
-  amiri: {
-    id: 'amiri',
-    name: 'أميري',
-    nameEn: 'Amiri',
-    description: 'خط المصحف الشريف العثماني التراثي الأصيل',
-    next: 'cairo',
-    cssFamily: "'Amiri', 'Amiri Quran', serif",
+  markazi: {
+    id: 'markazi',
+    name: 'مركزي',
+    nameEn: 'Markazi',
+    description: 'خط مقروء أنيق مستوحى من خطوط النشر والطباعة الكلاسيكية',
+    next: 'handjet',
+    cssFamily: "'Markazi Text', Georgia, serif",
   },
-  cairo: {
-    id: 'cairo',
-    name: 'كايرو',
-    nameEn: 'Cairo',
-    description: 'خط هندسي عريض كوفي الطابع واضح المعالم',
-    next: 'dos_arabic',
-    cssFamily: "'Cairo', sans-serif",
-  },
-  dos_arabic: {
-    id: 'dos_arabic',
-    name: 'دوس 95 العربي',
-    nameEn: 'MS-DOS Arabic 1995',
-    description: 'خط نظام دوس العربي الكلاسيكي الأصلي لعام 1995 (VGA Monospace)',
-    next: 'arial',
-    cssFamily: "'Courier New', Courier, Consolas, Monaco, 'Simplified Arabic Fixed', monospace",
-  },
-  arial: {
-    id: 'arial',
-    name: 'إريال',
-    nameEn: 'Arial',
-    description: 'خط إريال القياسي الواضح والشائع في كافة الأنظمة',
-    next: 'tajawal',
-    cssFamily: "Arial, 'Segoe UI', Tahoma, sans-serif",
+  handjet: {
+    id: 'handjet',
+    name: 'هاندجت',
+    nameEn: 'Handjet',
+    description: 'خط مصفوفي نقطي متناسق مع شاشات دوس وريترو',
+    next: 'alyamama',
+    cssFamily: "'Handjet', 'Courier New', monospace",
   },
 };
 
@@ -92,7 +76,7 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem('app-font-family') as ArabicFontFamily | null;
       if (saved && ARABIC_FONTS[saved]) return saved;
     }
-    return 'tajawal';
+    return 'alyamama';
   });
 
   useEffect(() => {
@@ -120,7 +104,7 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
   };
 
   const cycleFontFamily = () => {
-    setFontFamilyState((prev) => ARABIC_FONTS[prev]?.next || 'tajawal');
+    setFontFamilyState((prev) => ARABIC_FONTS[prev]?.next || 'alyamama');
   };
 
   const setFontFamily = (family: ArabicFontFamily) => {
@@ -138,7 +122,7 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
         setFontSize,
         cycleFontSize,
         fontFamily,
-        fontFamilyInfo: ARABIC_FONTS[fontFamily] || ARABIC_FONTS.tajawal,
+        fontFamilyInfo: ARABIC_FONTS[fontFamily] || ARABIC_FONTS.alyamama,
         setFontFamily,
         cycleFontFamily,
       }}

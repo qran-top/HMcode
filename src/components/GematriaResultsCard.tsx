@@ -40,14 +40,14 @@ export function GematriaResultsCard({
     findQuranicMatches,
   } = useGematria();
 
-  const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'noorani'>('all');
+  const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'jafr' | 'noorani'>('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const cleanWord = useMemo(() => (word || query || '').trim(), [word, query]);
   const isDirectNumber = useMemo(() => /^[0-9]+$/.test(cleanWord), [cleanWord]);
 
-  // 1. Dual Gematria calculations: Mashriqi (شرقي) and Maghribi (غربي)
+  // 1. Triple Gematria calculations: Mashriqi (شرقي), Maghribi (غربي), and Jafr (جفر)
   const mashriqiValue = useMemo(() => {
     if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
     return calculateWordGematria(cleanWord, 'mashriqi');
@@ -58,9 +58,14 @@ export function GematriaResultsCard({
     return calculateWordGematria(cleanWord, 'maghribi');
   }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  const isIdentical = mashriqiValue === maghribiValue;
+  const jafrValue = useMemo(() => {
+    if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
+    return calculateWordGematria(cleanWord, 'jafr');
+  }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  // Breakdown of letters for both systems
+  const isIdentical = mashriqiValue === maghribiValue && mashriqiValue === jafrValue;
+
+  // Breakdown of letters for all 3 systems
   const breakdownMashriqi = useMemo(() => {
     if (isDirectNumber || !cleanWord) return [];
     return getLetterBreakdown(cleanWord, 'mashriqi');
@@ -71,6 +76,11 @@ export function GematriaResultsCard({
     return getLetterBreakdown(cleanWord, 'maghribi');
   }, [cleanWord, isDirectNumber, getLetterBreakdown]);
 
+  const breakdownJafr = useMemo(() => {
+    if (isDirectNumber || !cleanWord) return [];
+    return getLetterBreakdown(cleanWord, 'jafr');
+  }, [cleanWord, isDirectNumber, getLetterBreakdown]);
+
   // Letters that differ between systems in this word (e.g. س or ص)
   const differingLetters = useMemo(() => {
     if (isIdentical || isDirectNumber || !cleanWord) return new Set<string>();
@@ -79,14 +89,13 @@ export function GematriaResultsCard({
       const char = breakdownMashriqi[i]?.char;
       const mashVal = breakdownMashriqi[i]?.value;
       const magVal = breakdownMaghribi[i]?.value;
-      if (mashVal !== magVal && char) {
+      const jafrVal = breakdownJafr[i]?.value;
+      if ((mashVal !== magVal || mashVal !== jafrVal) && char) {
         diff.add(char);
       }
     }
     return diff;
-  }, [isIdentical, isDirectNumber, cleanWord, breakdownMashriqi, breakdownMaghribi]);
-
-
+  }, [isIdentical, isDirectNumber, cleanWord, breakdownMashriqi, breakdownMaghribi, breakdownJafr]);
 
   // 4. Quranic Words Matches
   const matchesMashriqi = useMemo(() => {
@@ -99,6 +108,11 @@ export function GematriaResultsCard({
     return findQuranicMatches(maghribiValue, { filterType: 'all', maxResults: 100 });
   }, [maghribiValue, isIdentical, findQuranicMatches]);
 
+  const matchesJafr = useMemo(() => {
+    if (!jafrValue || jafrValue <= 0 || isIdentical) return [];
+    return findQuranicMatches(jafrValue, { filterType: 'all', maxResults: 100 });
+  }, [jafrValue, isIdentical, findQuranicMatches]);
+
   // Merged Quranic matches list with system origin tags
   const displayedQuranMatches = useMemo(() => {
     if (isIdentical) {
@@ -108,14 +122,25 @@ export function GematriaResultsCard({
 
     if (quranFilter === 'mashriqi') return matchesMashriqi;
     if (quranFilter === 'maghribi') return matchesMaghribi;
+    if (quranFilter === 'jafr') return matchesJafr;
     if (quranFilter === 'noorani') {
       const mashNoorani = matchesMashriqi.filter((m) => m.isNooraniOnly);
       const magNoorani = matchesMaghribi.filter((m) => m.isNooraniOnly);
+      const jafrNoorani = matchesJafr.filter((m) => m.isNooraniOnly);
       const seen = new Set<string>();
       const combined = [...mashNoorani];
       mashNoorani.forEach((m) => seen.add(m.text));
       magNoorani.forEach((m) => {
-        if (!seen.has(m.text)) combined.push(m);
+        if (!seen.has(m.text)) {
+          seen.add(m.text);
+          combined.push(m);
+        }
+      });
+      jafrNoorani.forEach((m) => {
+        if (!seen.has(m.text)) {
+          seen.add(m.text);
+          combined.push(m);
+        }
       });
       return combined;
     }
@@ -133,8 +158,14 @@ export function GematriaResultsCard({
         combined.push(m);
       }
     });
+    matchesJafr.forEach((m) => {
+      if (!seen.has(m.text)) {
+        seen.add(m.text);
+        combined.push(m);
+      }
+    });
     return combined;
-  }, [isIdentical, quranFilter, matchesMashriqi, matchesMaghribi]);
+  }, [isIdentical, quranFilter, matchesMashriqi, matchesMaghribi, matchesJafr]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -429,6 +460,70 @@ export function GematriaResultsCard({
                 <ExternalLink className="w-2.5 h-2.5 opacity-80" />
               </button>
             </div>
+
+            {/* 3. Jafr Strip (Fuchsia/Purple Theme) */}
+            <div className="px-2.5 py-1.5 rounded-lg bg-fuchsia-50/70 dark:bg-fuchsia-950/30 border border-fuchsia-300 dark:border-fuchsia-800/80 flex items-center justify-between gap-1.5 flex-wrap text-xs shadow-2xs">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="font-quran font-bold text-xs text-fuchsia-950 dark:text-fuchsia-200 shrink-0">
+                  {cleanWord} (جفر)
+                </span>
+                <span className="text-stone-400 font-mono select-none">:</span>
+
+                {!isDirectNumber && breakdownJafr.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {breakdownJafr.map((item, idx) => {
+                      const isDiff = differingLetters.has(item.char);
+                      return (
+                        <React.Fragment key={`breakdown_jafr_${idx}`}>
+                          <div
+                            className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md border shadow-2xs text-xs ${
+                              isDiff
+                                ? 'bg-fuchsia-100/90 dark:bg-fuchsia-900/60 border-fuchsia-400 dark:border-fuchsia-600 ring-1 ring-fuchsia-400/50'
+                                : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'
+                            }`}
+                            title={`الحرف [${item.char}] = ${item.value} بالجفر (بسط الحروف)`}
+                          >
+                            <span
+                              className={`w-5 h-5 rounded font-normal text-xs font-quran flex items-center justify-center shrink-0 shadow-2xs ${
+                                isDiff ? 'bg-fuchsia-600 text-white font-bold' : 'bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200'
+                              }`}
+                            >
+                              {item.char}
+                            </span>
+                            <span
+                              className={`h-5 min-w-[20px] px-1 rounded font-mono font-medium text-xs flex items-center justify-center shrink-0 ${
+                                isDiff ? 'bg-fuchsia-200/80 dark:bg-fuchsia-950 text-fuchsia-950 dark:text-fuchsia-100 font-bold' : 'bg-stone-100 dark:bg-stone-700/80 text-stone-800 dark:text-stone-200'
+                              }`}
+                            >
+                              {item.value}
+                            </span>
+                          </div>
+                          {idx < breakdownJafr.length - 1 && (
+                            <span className="text-stone-400 font-mono text-xs px-0.5 select-none">+</span>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                    <span className="text-stone-400 font-mono text-xs px-0.5 select-none">=</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total Jafr Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const q = encodeURIComponent(`ما هي قواسم العدد ${jafrValue}`);
+                  window.open(`https://www.google.com/search?q=${q}`, '_blank', 'noopener,noreferrer');
+                }}
+                className="h-6 min-w-[34px] px-2 rounded-md bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-mono font-bold text-xs flex items-center justify-center gap-1 shrink-0 shadow-2xs border border-fuchsia-700 cursor-pointer transition-transform active:scale-95"
+                title={`المجموع بالجفر: ${jafrValue} - انقر للبحث عن قواسمه في جوجل`}
+              >
+                <span>{jafrValue}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-80" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -502,6 +597,18 @@ export function GematriaResultsCard({
                     title={`مفردات مطابقة لوزن المغربي (= ${maghribiValue})`}
                   >
                     غربي ({matchesMaghribi.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuranFilter('jafr')}
+                    className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                      quranFilter === 'jafr'
+                        ? 'bg-fuchsia-600 text-white shadow-2xs font-bold'
+                        : 'text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100'
+                    }`}
+                    title={`مفردات مطابقة لوزن الجفر (= ${jafrValue})`}
+                  >
+                    جفر ({matchesJafr.length})
                   </button>
                 </>
               )}

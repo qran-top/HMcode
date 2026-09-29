@@ -129,7 +129,7 @@ export function useDosKeyboardNavigation({
         return;
       }
 
-      // 7. F7: Cycle Arabic Font Family (Tajawal -> Amiri -> Cairo)
+      // 7. F7: Cycle Arabic Font Family (Alyamama -> Markazi -> Handjet)
       if (e.key === 'F7') {
         e.preventDefault();
         playDosBeep(780, 35);
