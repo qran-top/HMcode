@@ -40,14 +40,14 @@ export function GematriaResultsCard({
     findQuranicMatches,
   } = useGematria();
 
-  const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'jafr' | 'noorani'>('all');
+  const [quranFilter, setQuranFilter] = useState<'all' | 'mashriqi' | 'maghribi' | 'jafr' | 'bayat' | 'noorani'>('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const cleanWord = useMemo(() => (word || query || '').trim(), [word, query]);
   const isDirectNumber = useMemo(() => /^[0-9]+$/.test(cleanWord), [cleanWord]);
 
-  // 1. Triple Gematria calculations: Mashriqi (شرقي), Maghribi (غربي), and Jafr (جفر)
+  // 1. Quad Gematria calculations: Mashriqi (شرقي), Maghribi (غربي), Jafr (جفر), and Bayat (بيات)
   const mashriqiValue = useMemo(() => {
     if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
     return calculateWordGematria(cleanWord, 'mashriqi');
@@ -63,9 +63,14 @@ export function GematriaResultsCard({
     return calculateWordGematria(cleanWord, 'jafr');
   }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  const isIdentical = mashriqiValue === maghribiValue && mashriqiValue === jafrValue;
+  const bayatValue = useMemo(() => {
+    if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
+    return calculateWordGematria(cleanWord, 'bayat');
+  }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  // Breakdown of letters for all 3 systems
+  const isIdentical = mashriqiValue === maghribiValue && mashriqiValue === jafrValue && mashriqiValue === bayatValue;
+
+  // Breakdown of letters for all 4 systems
   const breakdownMashriqi = useMemo(() => {
     if (isDirectNumber || !cleanWord) return [];
     return getLetterBreakdown(cleanWord, 'mashriqi');
@@ -81,7 +86,12 @@ export function GematriaResultsCard({
     return getLetterBreakdown(cleanWord, 'jafr');
   }, [cleanWord, isDirectNumber, getLetterBreakdown]);
 
-  // Letters that differ between systems in this word (e.g. س or ص)
+  const breakdownBayat = useMemo(() => {
+    if (isDirectNumber || !cleanWord) return [];
+    return getLetterBreakdown(cleanWord, 'bayat');
+  }, [cleanWord, isDirectNumber, getLetterBreakdown]);
+
+  // Letters that differ between systems in this word
   const differingLetters = useMemo(() => {
     if (isIdentical || isDirectNumber || !cleanWord) return new Set<string>();
     const diff = new Set<string>();
@@ -90,12 +100,13 @@ export function GematriaResultsCard({
       const mashVal = breakdownMashriqi[i]?.value;
       const magVal = breakdownMaghribi[i]?.value;
       const jafrVal = breakdownJafr[i]?.value;
-      if ((mashVal !== magVal || mashVal !== jafrVal) && char) {
+      const bayatVal = breakdownBayat[i]?.value;
+      if ((mashVal !== magVal || mashVal !== jafrVal || mashVal !== bayatVal) && char) {
         diff.add(char);
       }
     }
     return diff;
-  }, [isIdentical, isDirectNumber, cleanWord, breakdownMashriqi, breakdownMaghribi, breakdownJafr]);
+  }, [isIdentical, isDirectNumber, cleanWord, breakdownMashriqi, breakdownMaghribi, breakdownJafr, breakdownBayat]);
 
   // 4. Quranic Words Matches
   const matchesMashriqi = useMemo(() => {
@@ -113,6 +124,11 @@ export function GematriaResultsCard({
     return findQuranicMatches(jafrValue, { filterType: 'all', maxResults: 100 });
   }, [jafrValue, isIdentical, findQuranicMatches]);
 
+  const matchesBayat = useMemo(() => {
+    if (!bayatValue || bayatValue <= 0 || isIdentical) return [];
+    return findQuranicMatches(bayatValue, { filterType: 'all', maxResults: 100 });
+  }, [bayatValue, isIdentical, findQuranicMatches]);
+
   // Merged Quranic matches list with system origin tags
   const displayedQuranMatches = useMemo(() => {
     if (isIdentical) {
@@ -123,10 +139,12 @@ export function GematriaResultsCard({
     if (quranFilter === 'mashriqi') return matchesMashriqi;
     if (quranFilter === 'maghribi') return matchesMaghribi;
     if (quranFilter === 'jafr') return matchesJafr;
+    if (quranFilter === 'bayat') return matchesBayat;
     if (quranFilter === 'noorani') {
       const mashNoorani = matchesMashriqi.filter((m) => m.isNooraniOnly);
       const magNoorani = matchesMaghribi.filter((m) => m.isNooraniOnly);
       const jafrNoorani = matchesJafr.filter((m) => m.isNooraniOnly);
+      const bayatNoorani = matchesBayat.filter((m) => m.isNooraniOnly);
       const seen = new Set<string>();
       const combined = [...mashNoorani];
       mashNoorani.forEach((m) => seen.add(m.text));
@@ -137,6 +155,12 @@ export function GematriaResultsCard({
         }
       });
       jafrNoorani.forEach((m) => {
+        if (!seen.has(m.text)) {
+          seen.add(m.text);
+          combined.push(m);
+        }
+      });
+      bayatNoorani.forEach((m) => {
         if (!seen.has(m.text)) {
           seen.add(m.text);
           combined.push(m);
@@ -524,6 +548,70 @@ export function GematriaResultsCard({
                 <ExternalLink className="w-2.5 h-2.5 opacity-80" />
               </button>
             </div>
+
+            {/* 4. Bayat Strip (Teal Theme) */}
+            <div className="px-2.5 py-1.5 rounded-lg bg-teal-50/70 dark:bg-teal-950/30 border border-teal-300 dark:border-teal-800/80 flex items-center justify-between gap-1.5 flex-wrap text-xs shadow-2xs">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="font-quran font-bold text-xs text-teal-950 dark:text-teal-200 shrink-0">
+                  {cleanWord} (بيات)
+                </span>
+                <span className="text-stone-400 font-mono select-none">:</span>
+
+                {!isDirectNumber && breakdownBayat.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {breakdownBayat.map((item, idx) => {
+                      const isDiff = differingLetters.has(item.char);
+                      return (
+                        <React.Fragment key={`breakdown_bayat_${idx}`}>
+                          <div
+                            className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md border shadow-2xs text-xs ${
+                              isDiff
+                                ? 'bg-teal-100/90 dark:bg-teal-900/60 border-teal-400 dark:border-teal-600 ring-1 ring-teal-400/50'
+                                : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'
+                            }`}
+                            title={`الحرف [${item.char}] = ${item.value} بحساب البيات المخصوص`}
+                          >
+                            <span
+                              className={`w-5 h-5 rounded font-normal text-xs font-quran flex items-center justify-center shrink-0 shadow-2xs ${
+                                isDiff ? 'bg-teal-600 text-white font-bold' : 'bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200'
+                              }`}
+                            >
+                              {item.char}
+                            </span>
+                            <span
+                              className={`h-5 min-w-[20px] px-1 rounded font-mono font-medium text-xs flex items-center justify-center shrink-0 ${
+                                isDiff ? 'bg-teal-200/80 dark:bg-teal-950 text-teal-950 dark:text-teal-100 font-bold' : 'bg-stone-100 dark:bg-stone-700/80 text-stone-800 dark:text-stone-200'
+                              }`}
+                            >
+                              {item.value}
+                            </span>
+                          </div>
+                          {idx < breakdownBayat.length - 1 && (
+                            <span className="text-stone-400 font-mono text-xs px-0.5 select-none">+</span>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                    <span className="text-stone-400 font-mono text-xs px-0.5 select-none">=</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total Bayat Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const q = encodeURIComponent(`ما هي قواسم العدد ${bayatValue}`);
+                  window.open(`https://www.google.com/search?q=${q}`, '_blank', 'noopener,noreferrer');
+                }}
+                className="h-6 min-w-[34px] px-2 rounded-md bg-teal-600 hover:bg-teal-700 text-white font-mono font-bold text-xs flex items-center justify-center gap-1 shrink-0 shadow-2xs border border-teal-700 cursor-pointer transition-transform active:scale-95"
+                title={`المجموع بحساب البيات: ${bayatValue} - انقر للبحث عن قواسمه في جوجل`}
+              >
+                <span>{bayatValue}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-80" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -609,6 +697,18 @@ export function GematriaResultsCard({
                     title={`مفردات مطابقة لوزن الجفر (= ${jafrValue})`}
                   >
                     جفر ({matchesJafr.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuranFilter('bayat')}
+                    className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                      quranFilter === 'bayat'
+                        ? 'bg-teal-600 text-white shadow-2xs font-bold'
+                        : 'text-teal-700 dark:text-teal-300 hover:bg-teal-100'
+                    }`}
+                    title={`مفردات مطابقة لوزن البيات (= ${bayatValue})`}
+                  >
+                    بيات ({matchesBayat.length})
                   </button>
                 </>
               )}

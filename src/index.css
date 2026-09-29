@@ -5,7 +5,7 @@
 
 @theme {
   --font-sans: var(--font-app, 'Alyamama'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: var(--font-app, 'Markazi Text'), serif;
+  --font-serif: var(--font-app, 'Scheherazade New'), serif;
   --font-quran: var(--font-app, 'Alyamama'), sans-serif;
   --font-mono: var(--font-app, 'Alyamama'), monospace;
 }
@@ -14,7 +14,7 @@
   --font-app: 'Alyamama', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 3 Distinct Arabic Font Options (Alyamama / Markazi Text / Handjet) */
+/* 3 Distinct Arabic Font Options (Alyamama / IBM Plex Sans Arabic / Scheherazade New) */
 html[data-font-family="alyamama"] {
   --font-app: 'Alyamama', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-sans: 'Alyamama', sans-serif;
@@ -23,20 +23,20 @@ html[data-font-family="alyamama"] {
   --font-mono: 'Alyamama', sans-serif;
 }
 
-html[data-font-family="markazi"] {
-  --font-app: 'Markazi Text', Georgia, serif;
-  --font-sans: 'Markazi Text', serif;
-  --font-serif: 'Markazi Text', serif;
-  --font-quran: 'Markazi Text', serif;
-  --font-mono: 'Markazi Text', serif;
+html[data-font-family="ibm_plex"] {
+  --font-app: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'IBM Plex Sans Arabic', sans-serif;
+  --font-serif: 'IBM Plex Sans Arabic', sans-serif;
+  --font-quran: 'IBM Plex Sans Arabic', sans-serif;
+  --font-mono: 'IBM Plex Sans Arabic', sans-serif;
 }
 
-html[data-font-family="handjet"] {
-  --font-app: 'Handjet', monospace;
-  --font-sans: 'Handjet', monospace;
-  --font-serif: 'Handjet', monospace;
-  --font-quran: 'Handjet', monospace;
-  --font-mono: 'Handjet', monospace;
+html[data-font-family="scheherazade"] {
+  --font-app: 'Scheherazade New', serif;
+  --font-sans: 'Scheherazade New', serif;
+  --font-serif: 'Scheherazade New', serif;
+  --font-quran: 'Scheherazade New', serif;
+  --font-mono: 'Scheherazade New', serif;
 }
 
 html.dark, html.dark body {
@@ -51,12 +51,40 @@ html.dark, html.dark body {
   color-scheme: dark;
 }
 
-body, button, input, textarea, select {
+*,
+*::before,
+*::after {
   font-family: var(--font-app) !important;
 }
 
-* {
-  font-family: var(--font-app);
+body,
+button,
+input,
+textarea,
+select,
+optgroup,
+option,
+label,
+span,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+a,
+kbd,
+code,
+pre,
+samp,
+table,
+th,
+td,
+div,
+blockquote,
+svg text {
+  font-family: var(--font-app) !important;
 }
 
 .font-sans,
@@ -64,10 +92,6 @@ body, button, input, textarea, select {
 .font-quran,
 .font-mono {
   font-family: var(--font-app) !important;
-}
-
-code, kbd, samp, pre {
-  font-family: var(--font-app), monospace !important;
 }
 
 /* ========================================================================= */
@@ -391,6 +415,23 @@ html.theme-dos button[class*="bg-white"]:hover {
   font-weight: bold !important;
 }
 
+/* 6. البيات (Bayat: جدول البيات المخصوص) - Teal / Emerald Cyan (#14b8a6) */
+.dos-card-bayat {
+  background-color: #002b28 !important;
+  border: 2px solid #14b8a6 !important;
+  color: #99f6e4 !important;
+}
+.dos-card-bayat:hover {
+  background-color: #00403c !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-bayat {
+  background-color: #004d47 !important;
+  color: #99f6e4 !important;
+  border: 1px solid #14b8a6 !important;
+  font-weight: bold !important;
+}
+
 /* ========================================================================= */
 /* 📟 F8 PALETTE-AWARE CARD OVERRIDES: Transform ALL Results with Palette     */
 /* ========================================================================= */
@@ -499,6 +540,9 @@ html.theme-dos[data-dos-palette="wordstar-teal"] .dos-card-verbatim {
 }
 .dos-phrase-jafr {
   color: #f5d0fe !important;
+}
+.dos-phrase-bayat {
+  color: #2dd4bf !important;
 }
 .dos-phrase-verbatim {
   color: #ff77ff !important;

@@ -21,11 +21,13 @@ import {
   Volume2,
   VolumeX,
   Palette,
+  Calendar,
 } from 'lucide-react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useGematria, ARABIC_28_CANONICAL, MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/GematriaContext';
 import { DEFAULT_CIPHER_LAYERS, LayerInfo } from '../cipherData';
 import { useTheme, DOS_PALETTES } from '../context/ThemeContext';
+import { getCurrentHijriLunarDay } from '../utils/gematriaEngine';
 
 export function SettingsView() {
   const {
@@ -869,6 +871,87 @@ export function SettingsView() {
                 <option value="ignore_0">إهمال الواو = 0</option>
               </select>
             </div>
+
+            {/* Jabir Scale Mode */}
+            <div className="space-y-1">
+              <label className="text-3xs text-stone-500">ميزان جابر بن حيان (الموقع):</label>
+              <select
+                value={calculationOptions.jabirScaleMode ? 'active' : 'inactive'}
+                onChange={(e) =>
+                  updateCalculationOptions({ jabirScaleMode: e.target.value === 'active' })
+                }
+                className="w-full px-2 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-bold text-purple-700 dark:text-purple-300"
+              >
+                <option value="inactive">تعطيل (الحساب القياسي)</option>
+                <option value="active">تفعيل ميزان جابر (الحرف × موقعه بالكلمة)</option>
+              </select>
+            </div>
+
+            {/* Lunar Scale Mode (الميزان الزماني القمري) */}
+            <div className="space-y-1">
+              <label className="text-3xs text-stone-500">الميزان الزماني القمري (الشرف والمحو):</label>
+              <select
+                value={calculationOptions.lunarScaleMode ? 'active' : 'inactive'}
+                onChange={(e) =>
+                  updateCalculationOptions({ lunarScaleMode: e.target.value === 'active' })
+                }
+                className="w-full px-2 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-bold text-indigo-700 dark:text-indigo-300"
+              >
+                <option value="inactive">تعطيل (الحساب المعتاد)</option>
+                <option value="active">تفعيل الميزان القمري (حساب الشرف والمحو)</option>
+              </select>
+            </div>
+
+            {/* Lunar Day Selector & Real-time Sync if active */}
+            {calculationOptions.lunarScaleMode && (() => {
+              const todayHijri = getCurrentHijriLunarDay();
+              const isSynced = (calculationOptions.lunarDay || todayHijri.lunarDay) === todayHijri.lunarDay;
+
+              return (
+                <div className="space-y-1 sm:col-span-2 p-2.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-center justify-between gap-1 text-3xs text-indigo-950 dark:text-indigo-200 mb-1">
+                    <span className="flex items-center gap-1 font-bold">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>تاريخ اليوم هجرياً:</span>
+                      <strong className="text-indigo-900 dark:text-indigo-100 bg-white dark:bg-stone-900 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-700 font-mono">
+                        {todayHijri.formattedHijriDate}
+                      </strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateCalculationOptions({ lunarDay: todayHijri.lunarDay, autoDetectLunarDay: true })}
+                      className={`px-1.5 py-0.5 rounded text-4xs font-bold transition-all cursor-pointer ${
+                        isSynced
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      {isSynced ? '✓ مطابق لليوم' : `مزامنة مع اليوم (${todayHijri.lunarDay})`}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-3xs text-stone-500 shrink-0">اليوم القمري المعتمد:</label>
+                    <select
+                      value={calculationOptions.lunarDay || todayHijri.lunarDay}
+                      onChange={(e) =>
+                        updateCalculationOptions({
+                          lunarDay: parseInt(e.target.value, 10),
+                          autoDetectLunarDay: parseInt(e.target.value, 10) === todayHijri.lunarDay,
+                        })
+                      }
+                      className="w-full px-2 py-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-mono font-bold"
+                    >
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>
+                          اليوم {d} {d === todayHijri.lunarDay ? '(تاريخ اليوم الحالي ⭐)' : ''} {d <= 14 ? '— فترة الشرف والنور ☀️' : `— فترة المحو والظلمة 🌑 (÷ ${d - 14})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

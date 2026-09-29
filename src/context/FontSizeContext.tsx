@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 
 export type FontSizeLevel = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
-export type ArabicFontFamily = 'alyamama' | 'markazi' | 'handjet';
+export type ArabicFontFamily = 'alyamama' | 'ibm_plex' | 'scheherazade';
 
 export interface ArabicFontInfo {
   id: ArabicFontFamily;
@@ -19,24 +19,24 @@ export const ARABIC_FONTS: Record<ArabicFontFamily, ArabicFontInfo> = {
     name: 'اليمامة',
     nameEn: 'Alyamama',
     description: 'خط نسخي نقي عالي التباين وشديد الوضوح',
-    next: 'markazi',
+    next: 'ibm_plex',
     cssFamily: "'Alyamama', -apple-system, BlinkMacSystemFont, sans-serif",
   },
-  markazi: {
-    id: 'markazi',
-    name: 'مركزي',
-    nameEn: 'Markazi',
-    description: 'خط مقروء أنيق مستوحى من خطوط النشر والطباعة الكلاسيكية',
-    next: 'handjet',
-    cssFamily: "'Markazi Text', Georgia, serif",
+  ibm_plex: {
+    id: 'ibm_plex',
+    name: 'IBM Plex',
+    nameEn: 'IBM Plex Sans Arabic',
+    description: 'خط تقني حديث فائق الهندسة والوضوح للشاشات الرقمية',
+    next: 'scheherazade',
+    cssFamily: "'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif",
   },
-  handjet: {
-    id: 'handjet',
-    name: 'هاندجت',
-    nameEn: 'Handjet',
-    description: 'خط مصفوفي نقطي متناسق مع شاشات دوس وريترو',
+  scheherazade: {
+    id: 'scheherazade',
+    name: 'شهرزاد',
+    nameEn: 'Scheherazade New',
+    description: 'خط نسخي تراثي أصيل غني بجماليات رسم المصحف والأدب',
     next: 'alyamama',
-    cssFamily: "'Handjet', 'Courier New', monospace",
+    cssFamily: "'Scheherazade New', serif",
   },
 };
 

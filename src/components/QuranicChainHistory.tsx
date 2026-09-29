@@ -24,8 +24,9 @@ export interface QuranicChainHistoryItem {
   multiplier?: number;
   matchesCount?: number;
   isFavorite?: boolean;
-  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros';
+  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale';
   targetJafr?: number;
+  targetBayat?: number;
 }
 
 interface QuranicChainHistoryProps {
@@ -267,8 +268,25 @@ export function QuranicChainHistory({
                     <span className="px-1.5 py-0.2 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-mono">
                       {item.isIdentical
                         ? `قيمة = ${item.targetMaghribi}`
-                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}${item.targetJafr ? ` | جفر = ${item.targetJafr}` : ''}`}
+                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}${item.targetJafr ? ` | جفر = ${item.targetJafr}` : ''}${item.targetBayat ? ` | بيات = ${item.targetBayat}` : ''}`}
                     </span>
+
+                    {/* Mode Badge */}
+                    {item.nooraniQueryMode === 'jabir_scale' && (
+                      <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-bold">
+                        ميزان جابر
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'noorani_only' && (
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold">
+                        نوراني فقط
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'strip_non_noorani_zeros' && (
+                      <span className="px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
+                        شطب الأصفار
+                      </span>
+                    )}
 
                     {/* Multiplier Badge */}
                     {item.multiplier && item.multiplier > 1 && (

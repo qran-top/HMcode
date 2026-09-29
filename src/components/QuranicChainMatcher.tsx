@@ -28,8 +28,11 @@ import {
   Eye,
   EyeOff,
   Scissors,
+  Scale,
+  Moon,
+  Calendar,
 } from 'lucide-react';
-import { useGematria, MAGHRIBI_VALUES, MASHRIQI_VALUES, JAFR_VALUES } from '../context/GematriaContext';
+import { useGematria, MAGHRIBI_VALUES, MASHRIQI_VALUES, JAFR_VALUES, BAYAT_VALUES } from '../context/GematriaContext';
 import { useTheme } from '../context/ThemeContext';
 import {
   parseNumericQuery,
@@ -49,6 +52,7 @@ import {
   isNooraniChar,
   stripTrailingZeros,
   NOORANI_14_SET,
+  getCurrentHijriLunarDay,
 } from '../utils/gematriaEngine';
 import { useNooraniClassifier } from '../hooks/useNooraniClassifier';
 import { useHint } from '../context/HintContext';
@@ -204,7 +208,7 @@ export function QuranicChainMatcher({
   const [selectedScope, setSelectedScope] = useState<'all' | 'verses_and_chains' | 'chains_only' | 'single_words'>('all');
   const [onlyNoorani, setOnlyNoorani] = useState<boolean>(false);
   const [isFilterUnique, setIsFilterUnique] = useState<boolean>(true);
-  const [selectedOriginFilter, setSelectedOriginFilter] = useState<'all' | 'common' | 'maghribi' | 'mashriqi' | 'jafr' | 'verbatim'>('all');
+  const [selectedOriginFilter, setSelectedOriginFilter] = useState<'all' | 'common' | 'maghribi' | 'mashriqi' | 'jafr' | 'bayat' | 'verbatim'>('all');
   const [resultsFilter, setResultsFilter] = useState<string>('');
   const [searchInFullAyah, setSearchInFullAyah] = useState<boolean>(true);
 
@@ -247,6 +251,7 @@ export function QuranicChainMatcher({
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState<boolean>(false);
+  const [copiedPure, setCopiedPure] = useState<boolean>(false);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const scannerRef = useRef<InverseQuranicScanner | null>(null);
 
@@ -285,32 +290,47 @@ export function QuranicChainMatcher({
   // 'standard' = حساب الجُمّل الاعتيادي
   // 'noorani_only' = حساب النوراني فقط (إسقاط الحروف الظلمانية = 0)
   // 'strip_non_noorani_zeros' = شطب أصفار الظلماني (ت=4 بدلاً من 400)
-  const [nooraniQueryMode, setNooraniQueryMode] = useState<'standard' | 'noorani_only' | 'strip_non_noorani_zeros'>('standard');
+  // 'jabir_scale' = ميزان جابر بن حيان (ضرب كل حرف بترتيبه في الكلمة مع تصفير العداد لكل كلمة)
+  // 'lunar_scale' = الميزان القمري الزماني (تزايد النور في النصف الأول 1-14 والمحو في النصف الثاني 15-28)
+  const todayHijriInfo = useMemo(() => getCurrentHijriLunarDay(), []);
+  const [nooraniQueryMode, setNooraniQueryMode] = useState<'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale' | 'lunar_scale'>('standard');
+  const [lunarDay, setLunarDay] = useState<number>(() => {
+    return calculationOptions?.lunarDay || getCurrentHijriLunarDay().lunarDay;
+  });
+  const [lunarCeilFraction, setLunarCeilFraction] = useState<boolean>(true);
 
   useEffect(() => {
     setVisibleLimit(90);
-  }, [committedQuery, multiplier, selectedScope, selectedOriginFilter, resultsFilter, matchLengthFilter, onlyFawatihSurahs, nooraniQueryMode]);
+  }, [committedQuery, multiplier, selectedScope, selectedOriginFilter, resultsFilter, matchLengthFilter, onlyFawatihSurahs, nooraniQueryMode, lunarDay]);
 
-  // Computed Target Information
   // Computed Target Information
   interface ComputedTargetInfo {
     isDirectNumber: boolean;
     baseMaghribi?: number;
     baseMashriqi?: number;
     baseJafr?: number;
+    baseBayat?: number;
     multiplier?: number;
     targetMaghribi: number;
     targetMashriqi: number;
     targetJafr: number;
+    targetBayat: number;
+    rawFractionMaghribi?: number;
+    rawFractionMashriqi?: number;
+    rawFractionJafr?: number;
+    rawFractionBayat?: number;
+    hasFractionCeiled?: boolean;
+    lunarDay?: number;
     isIdentical: boolean;
     alternateTargets: number[];
     queryText: string;
     cleanText: string;
-    magBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number }[];
-    mashBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number }[];
-    jafrBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number }[];
+    magBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number; charIndexInWord?: number; wordIndex?: number }[];
+    mashBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number; charIndexInWord?: number; wordIndex?: number }[];
+    jafrBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number; charIndexInWord?: number; wordIndex?: number }[];
+    bayatBreakdown: { char: string; val: number; isNoorani?: boolean; originalVal?: number; charIndexInWord?: number; wordIndex?: number }[];
     isPureNoorani: boolean;
-    calcMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros';
+    calcMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale' | 'lunar_scale';
   }
 
   // Helper to compute target info on demand (including multiplier and calculation options)
@@ -333,10 +353,12 @@ export function QuranicChainMatcher({
         baseMaghribi: baseVal,
         baseMashriqi: baseVal,
         baseJafr: baseVal,
+        baseBayat: baseVal,
         multiplier: safeMult,
         targetMaghribi: targetVal,
         targetMashriqi: targetVal,
         targetJafr: targetVal,
+        targetBayat: targetVal,
         isIdentical: true,
         alternateTargets: [] as number[],
         queryText: trimmed,
@@ -344,6 +366,7 @@ export function QuranicChainMatcher({
         magBreakdown: [],
         mashBreakdown: [],
         jafrBreakdown: [],
+        bayatBreakdown: [],
         isPureNoorani: false,
         calcMode: nooraniQueryMode,
       };
@@ -353,9 +376,11 @@ export function QuranicChainMatcher({
     const baseMag = calculateGematriaWithOptions(trimmed, rules, MAGHRIBI_VALUES);
     const baseMash = calculateGematriaWithOptions(trimmed, rules, MASHRIQI_VALUES);
     const baseJafr = calculateGematriaWithOptions(trimmed, rules, JAFR_VALUES);
+    const baseBayat = calculateGematriaWithOptions(trimmed, rules, BAYAT_VALUES);
     const magVal = baseMag * safeMult;
     const mashVal = baseMash * safeMult;
     const jafrVal = baseJafr * safeMult;
+    const bayatVal = baseBayat * safeMult;
 
     // Compute alternate targets when flexibleOrthography is enabled
     const altTargets: number[] = [];
@@ -368,6 +393,7 @@ export function QuranicChainMatcher({
       altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MAGHRIBI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, MASHRIQI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, JAFR_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altDagger, BAYAT_VALUES) * safeMult);
 
       // 2. Alternate silent waw (أولو / أولئك)
       const altWaw: GematriaCalculationOptions = {
@@ -377,6 +403,7 @@ export function QuranicChainMatcher({
       altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MAGHRIBI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, MASHRIQI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, JAFR_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altWaw, BAYAT_VALUES) * safeMult);
 
       // 3. Alternate uthmani waw (الصلوة / الزكوة)
       const altUthmaniWaw: GematriaCalculationOptions = {
@@ -386,75 +413,132 @@ export function QuranicChainMatcher({
       altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MAGHRIBI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, MASHRIQI_VALUES) * safeMult);
       altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, JAFR_VALUES) * safeMult);
+      altTargets.push(calculateGematriaWithOptions(trimmed, altUthmaniWaw, BAYAT_VALUES) * safeMult);
     }
-    const alternateTargets = Array.from(new Set(altTargets)).filter((v) => v > 0 && v !== magVal && v !== mashVal && v !== jafrVal);
+    const alternateTargets = Array.from(new Set(altTargets)).filter((v) => v > 0 && v !== magVal && v !== mashVal && v !== jafrVal && v !== bayatVal);
 
-    const chars = clean.split('').filter((c) => c !== ' ');
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const parsedChars: { char: string; wordIndex: number; charIndexInWord: number }[] = [];
+    words.forEach((w, wIdx) => {
+      const wClean = cleanArabicTextForGematria(w);
+      const wLetters = wClean.split('').filter((c) => c !== ' ');
+      wLetters.forEach((ch, cIdx) => {
+        parsedChars.push({ char: ch, wordIndex: wIdx, charIndexInWord: cIdx + 1 });
+      });
+    });
+
     const isTaHa = rules.taMarbuta !== 'ta_400';
-    const isPure = chars.every((c) => isNooraniChar(c, isTaHa));
+    const isPure = parsedChars.every((p) => isNooraniChar(p.char, isTaHa));
 
     const getOriginalCharVal = (c: string, table: Record<string, number>) => {
       if (c === 'ة' || c === 'ۃ') {
-        return rules.taMarbuta === 'ta_400' ? (table['ت'] || 400) : (table['ه'] || table['ة'] || (table === JAFR_VALUES ? 6 : 5));
+        return rules.taMarbuta === 'ta_400' ? (table['ت'] || 400) : (table['ه'] || table['ة'] || (table === JAFR_VALUES ? 6 : table === BAYAT_VALUES ? 1 : 5));
       }
       if (c === 'ى') {
-        return rules.alifMaqsura === 'alif_1' ? (table['ا'] || (table === JAFR_VALUES ? 111 : 1)) : (table['ي'] || table['ى'] || (table === JAFR_VALUES ? 11 : 10));
+        return rules.alifMaqsura === 'alif_1' ? (table['ا'] || (table === JAFR_VALUES ? 111 : table === BAYAT_VALUES ? 110 : 1)) : (table['ي'] || table['ى'] || (table === JAFR_VALUES ? 11 : table === BAYAT_VALUES ? 1 : 10));
       }
       if (['أ', 'إ', 'آ', 'ٱ'].includes(c)) {
-        return table['ا'] || (table === JAFR_VALUES ? 111 : 1);
+        return table['ا'] || (table === JAFR_VALUES ? 111 : table === BAYAT_VALUES ? 110 : 1);
       }
       return table[c] ?? 0;
     };
 
-    const getAdjustedCharVal = (c: string, table: Record<string, number>) => {
+    const getAdjustedCharVal = (c: string, posInWord: number, table: Record<string, number>) => {
       const orig = getOriginalCharVal(c, table);
       const isNoorani = isNooraniChar(c, isTaHa);
+      let val = orig;
       if (rules.nooraniOnlyMode) {
-        return isNoorani ? orig : 0;
+        val = isNoorani ? orig : 0;
+      } else if (rules.stripNonNooraniZerosMode) {
+        val = isNoorani ? orig : stripTrailingZeros(orig);
       }
-      if (rules.stripNonNooraniZerosMode) {
-        return isNoorani ? orig : stripTrailingZeros(orig);
+      if (rules.jabirScaleMode) {
+        val = val * posInWord;
       }
-      return orig;
+      if (rules.lunarScaleMode) {
+        const day = Math.min(28, Math.max(1, Math.round(rules.lunarDay ?? 14)));
+        if (day <= 14) {
+          if (isNoorani) {
+            val = val * day;
+          }
+        } else {
+          if (!isNoorani) {
+            const divisor = day - 14;
+            val = divisor > 0 ? val / divisor : val;
+          }
+        }
+      }
+      return val;
     };
 
-    const magBreakdown = chars.map((c) => ({
-      char: c,
-      val: getAdjustedCharVal(c, MAGHRIBI_VALUES),
-      isNoorani: isNooraniChar(c, isTaHa),
-      originalVal: getOriginalCharVal(c, MAGHRIBI_VALUES),
+    const magBreakdown = parsedChars.map((p) => ({
+      char: p.char,
+      val: getAdjustedCharVal(p.char, p.charIndexInWord, MAGHRIBI_VALUES),
+      isNoorani: isNooraniChar(p.char, isTaHa),
+      originalVal: getOriginalCharVal(p.char, MAGHRIBI_VALUES),
+      charIndexInWord: p.charIndexInWord,
+      wordIndex: p.wordIndex,
     }));
 
-    const mashBreakdown = chars.map((c) => ({
-      char: c,
-      val: getAdjustedCharVal(c, MASHRIQI_VALUES),
-      isNoorani: isNooraniChar(c, isTaHa),
-      originalVal: getOriginalCharVal(c, MASHRIQI_VALUES),
+    const mashBreakdown = parsedChars.map((p) => ({
+      char: p.char,
+      val: getAdjustedCharVal(p.char, p.charIndexInWord, MASHRIQI_VALUES),
+      isNoorani: isNooraniChar(p.char, isTaHa),
+      originalVal: getOriginalCharVal(p.char, MASHRIQI_VALUES),
+      charIndexInWord: p.charIndexInWord,
+      wordIndex: p.wordIndex,
     }));
 
-    const jafrBreakdown = chars.map((c) => ({
-      char: c,
-      val: getAdjustedCharVal(c, JAFR_VALUES),
-      isNoorani: isNooraniChar(c, isTaHa),
-      originalVal: getOriginalCharVal(c, JAFR_VALUES),
+    const jafrBreakdown = parsedChars.map((p) => ({
+      char: p.char,
+      val: getAdjustedCharVal(p.char, p.charIndexInWord, JAFR_VALUES),
+      isNoorani: isNooraniChar(p.char, isTaHa),
+      originalVal: getOriginalCharVal(p.char, JAFR_VALUES),
+      charIndexInWord: p.charIndexInWord,
+      wordIndex: p.wordIndex,
     }));
+
+    const bayatBreakdown = parsedChars.map((p) => ({
+      char: p.char,
+      val: getAdjustedCharVal(p.char, p.charIndexInWord, BAYAT_VALUES),
+      isNoorani: isNooraniChar(p.char, isTaHa),
+      originalVal: getOriginalCharVal(p.char, BAYAT_VALUES),
+      charIndexInWord: p.charIndexInWord,
+      wordIndex: p.wordIndex,
+    }));
+
+    const rawMag = magBreakdown.reduce((s, i) => s + i.val, 0) * safeMult;
+    const rawMash = mashBreakdown.reduce((s, i) => s + i.val, 0) * safeMult;
+    const rawJafr = jafrBreakdown.reduce((s, i) => s + i.val, 0) * safeMult;
+    const rawBayat = bayatBreakdown.reduce((s, i) => s + i.val, 0) * safeMult;
+
+    const hasFractionCeiled = rules.lunarScaleMode && (!Number.isInteger(rawMag) || !Number.isInteger(rawMash) || !Number.isInteger(rawJafr) || !Number.isInteger(rawBayat));
 
     return {
       isDirectNumber: false,
       baseMaghribi: baseMag,
       baseMashriqi: baseMash,
       baseJafr: baseJafr,
+      baseBayat: baseBayat,
       multiplier: safeMult,
       targetMaghribi: magVal,
       targetMashriqi: mashVal,
       targetJafr: jafrVal,
-      isIdentical: magVal === mashVal && magVal === jafrVal,
+      targetBayat: bayatVal,
+      rawFractionMaghribi: rawMag,
+      rawFractionMashriqi: rawMash,
+      rawFractionJafr: rawJafr,
+      rawFractionBayat: rawBayat,
+      hasFractionCeiled,
+      lunarDay: rules.lunarDay,
+      isIdentical: magVal === mashVal && magVal === jafrVal && magVal === bayatVal,
       alternateTargets,
       queryText: trimmed,
       cleanText: clean,
       magBreakdown,
       mashBreakdown,
       jafrBreakdown,
+      bayatBreakdown,
       isPureNoorani: isPure,
       calcMode: nooraniQueryMode,
     };
@@ -465,8 +549,12 @@ export function QuranicChainMatcher({
       ...localRules,
       nooraniOnlyMode: nooraniQueryMode === 'noorani_only',
       stripNonNooraniZerosMode: nooraniQueryMode === 'strip_non_noorani_zeros',
+      jabirScaleMode: nooraniQueryMode === 'jabir_scale',
+      lunarScaleMode: nooraniQueryMode === 'lunar_scale',
+      lunarDay: lunarDay,
+      lunarCeilFraction: lunarCeilFraction,
     };
-  }, [localRules, nooraniQueryMode]);
+  }, [localRules, nooraniQueryMode, lunarDay, lunarCeilFraction]);
 
   const computedTarget = useMemo<ComputedTargetInfo | null>(() => {
     return computeTargetInfo(committedQuery, effectiveRules, flexibleOrthography, multiplier);
@@ -755,8 +843,9 @@ export function QuranicChainMatcher({
     isIdenticalVal: boolean,
     matchesTotal?: number,
     mult: number = 1,
-    mode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros',
-    targetJafrVal?: number
+    mode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale',
+    targetJafrVal?: number,
+    targetBayatVal?: number
   ) => {
     if (!queryText.trim()) return;
     const activeMode = mode !== undefined ? mode : nooraniQueryMode;
@@ -774,6 +863,7 @@ export function QuranicChainMatcher({
         targetMaghribi: targetMag,
         targetMashriqi: targetMash,
         targetJafr: targetJafrVal,
+        targetBayat: targetBayatVal,
         isIdentical: isIdenticalVal,
         multiplier: mult,
         matchesCount: matchesTotal !== undefined ? matchesTotal : existing?.matchesCount,
@@ -813,6 +903,7 @@ export function QuranicChainMatcher({
     const targetMag = targetDetails ? targetDetails.targetMaghribi : 0;
     const targetMash = targetDetails ? targetDetails.targetMashriqi : 0;
     const targetJafr = targetDetails ? targetDetails.targetJafr : 0;
+    const targetBayat = targetDetails ? targetDetails.targetBayat : 0;
     const isIdenticalVal = targetDetails ? targetDetails.isIdentical : true;
 
     setProgress({
@@ -821,13 +912,13 @@ export function QuranicChainMatcher({
       totalCount: 114,
       matchesCount: 0,
       itemsPerSecond: 0,
-      currentSurahOrPhase: 'المرحلة 2: بدء المسح القرآني المدمج (الشرقي + الغربي + الجفر)...',
+      currentSurahOrPhase: 'المرحلة 2: بدء المسح القرآني المدمج (الشرقي + الغربي + الجفر + البيات)...',
       isRunning: true,
       isCompleted: false,
       isCancelled: false,
     });
 
-    recordSearchInHistory(q, scopeToUse, nooraniToUse, targetMag, targetMash, isIdenticalVal, undefined, multToUse, nooraniQueryMode, targetJafr);
+    recordSearchInHistory(q, scopeToUse, nooraniToUse, targetMag, targetMash, isIdenticalVal, undefined, multToUse, nooraniQueryMode, targetJafr, targetBayat);
 
     let matchBatch: InverseQuranicMatch[] = [];
     let lastFlushTime = Date.now();
@@ -844,6 +935,7 @@ export function QuranicChainMatcher({
           maxPhraseLength: 16,
           alternateTargets: targetDetails?.alternateTargets || [],
           targetJafr,
+          targetBayat,
           onProgress: (p) => {
             setProgress(p);
           },
@@ -880,7 +972,9 @@ export function QuranicChainMatcher({
               isIdenticalVal,
               allMatches.length,
               multToUse,
-              nooraniQueryMode
+              nooraniQueryMode,
+              targetJafr,
+              targetBayat
             );
 
             // Step 2: Instant Display Ready (100% Completed)
@@ -901,7 +995,9 @@ export function QuranicChainMatcher({
               // ignore
             }
           },
-        }
+        },
+        targetJafr,
+        targetBayat
       );
     } catch (err) {
       console.error('Scan error:', err);
@@ -915,7 +1011,7 @@ export function QuranicChainMatcher({
     multiplier?: number;
     scope?: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words';
     onlyNoorani?: boolean;
-    nooraniMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros';
+    nooraniMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale';
   }) => {
     const activeQuery = overrideParams?.query !== undefined ? overrideParams.query : inputQuery;
     const activeMult = overrideParams?.multiplier !== undefined ? overrideParams.multiplier : multiplier;
@@ -1077,12 +1173,16 @@ export function QuranicChainMatcher({
     let maghribi = 0;
     let mashriqi = 0;
     let jafr = 0;
+    let bayat = 0;
     let verbatim = 0;
 
     for (const m of matches) {
       if (isVerbatimMatch(m.phrase, m.cleanPhrase)) verbatim++;
       if (isTargetDiffering) {
-        // When targets differ, results belong to Eastern, Western, or Jafr
+        // When targets differ, results belong to Eastern, Western, Jafr, or Bayat
+        if (computedTarget && computedTarget.targetBayat > 0 && m.bayatValue === computedTarget.targetBayat) {
+          bayat++;
+        }
         if (computedTarget && computedTarget.targetJafr > 0 && m.jafrValue === computedTarget.targetJafr) {
           jafr++;
         }
@@ -1098,9 +1198,10 @@ export function QuranicChainMatcher({
         maghribi++;
         mashriqi++;
         jafr++;
+        bayat++;
       }
     }
-    return { common, maghribi, mashriqi, jafr, verbatim, total: matches.length };
+    return { common, maghribi, mashriqi, jafr, bayat, verbatim, total: matches.length };
   }, [matches, computedTarget, isTargetDiffering, isVerbatimMatch]);
 
   // Statistics by result length / word count (مفردة، قصيرة، متوسطة، طويلة)
@@ -1136,7 +1237,7 @@ export function QuranicChainMatcher({
   const filteredMatches = useMemo(() => {
     let list = matches;
 
-    // 1. Filter by Origin tab (الكل / الكلمة المبحوثة / مغربي / شرقي / جفر)
+    // 1. Filter by Origin tab (الكل / الكلمة المبحوثة / مغربي / شرقي / جفر / بيات)
     if (selectedOriginFilter !== 'all') {
       if (selectedOriginFilter === 'verbatim') {
         list = list.filter((m) => isVerbatimMatch(m.phrase, m.cleanPhrase));
@@ -1157,6 +1258,12 @@ export function QuranicChainMatcher({
           computedTarget && computedTarget.targetJafr > 0
             ? m.jafrValue === computedTarget.targetJafr
             : m.systemOrigin === 'jafr'
+        );
+      } else if (selectedOriginFilter === 'bayat') {
+        list = list.filter((m) =>
+          computedTarget && computedTarget.targetBayat > 0
+            ? m.bayatValue === computedTarget.targetBayat
+            : m.systemOrigin === 'bayat'
         );
       }
     }
@@ -1325,6 +1432,18 @@ export function QuranicChainMatcher({
     setSearchInFullAyah(true);
   };
 
+
+  const handleCopyPure = () => {
+    if (filteredMatches.length === 0) return;
+    // Extract pure, clean phrases/words only, one per line, without any numbering, headers, or details
+    const purePhrases = filteredMatches.map((m) => m.phrase.trim()).filter(Boolean);
+    const pureText = purePhrases.join('\n');
+
+    navigator.clipboard.writeText(pureText);
+    setCopiedPure(true);
+    setTimeout(() => setCopiedPure(false), 2500);
+  };
+
   const handleCopyAll = () => {
     if (filteredMatches.length === 0) return;
     const targetDesc = computedTarget
@@ -1423,6 +1542,29 @@ export function QuranicChainMatcher({
             {computedTarget ? (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 dark:bg-stone-850/80 border border-stone-200 dark:border-stone-800 text-3xs font-mono flex-wrap self-start sm:self-auto max-w-full overflow-hidden shadow-2xs">
                 {/* Active Mode Indicator Badge */}
+                {nooraniQueryMode === 'jabir_scale' && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold border border-purple-300 dark:border-purple-700 text-3xs shrink-0 select-none shadow-2xs"
+                    title="ميزان جابر بن حيان: ضرب قيمة كل حرف بترتيبه في الكلمة مع تصفير العداد عند كل كلمة جديدة (مثال: ع×1 + ل×2 + م×3)"
+                  >
+                    <Scale className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400" />
+                    <span>ميزان جابر بن حيان</span>
+                  </span>
+                )}
+                {nooraniQueryMode === 'lunar_scale' && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-bold border border-indigo-300 dark:border-indigo-700 text-3xs shrink-0 select-none shadow-2xs"
+                    title={`الميزان الزماني القمري (اليوم ${lunarDay} من 28): ${lunarDay <= 14 ? `فترة تزايد النور (الشرف ☀️) - النوراني × ${lunarDay}` : `فترة المحو (الظلمة 🌑) - الظلماني ÷ (${lunarDay} - 14 = ${lunarDay - 14})`} مع جبر الكسور`}
+                  >
+                    <Moon className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>الميزان القمري (اليوم {lunarDay} • {lunarDay <= 14 ? 'الشرف' : 'المحو'})</span>
+                    {computedTarget?.hasFractionCeiled && (
+                      <span className="text-4xs bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 px-1 rounded font-mono" title="تم جبر الكسور للناتج الصحيح">
+                        جبر كسور
+                      </span>
+                    )}
+                  </span>
+                )}
                 {nooraniQueryMode === 'noorani_only' && (
                   <span
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700 text-3xs shrink-0 select-none"
@@ -1448,17 +1590,39 @@ export function QuranicChainMatcher({
                     {computedTarget.magBreakdown.map((item, idx) => {
                       const mashVal = computedTarget.mashBreakdown[idx]?.val ?? item.val;
                       const jafrVal = computedTarget.jafrBreakdown[idx]?.val ?? item.val;
+                      const bayatVal = computedTarget.bayatBreakdown[idx]?.val ?? item.val;
                       const origMagVal = item.originalVal ?? item.val;
                       const origMashVal = computedTarget.mashBreakdown[idx]?.originalVal ?? origMagVal;
                       const origJafrVal = computedTarget.jafrBreakdown[idx]?.originalVal ?? origMagVal;
-                      const isDiff = item.val !== mashVal || item.val !== jafrVal;
+                      const origBayatVal = computedTarget.bayatBreakdown[idx]?.originalVal ?? origMagVal;
+                      const isDiff = item.val !== mashVal || item.val !== jafrVal || item.val !== bayatVal;
                       const isNoorani = item.isNoorani;
 
-                      let hint = `حرف [${item.char}] ۞ غربي: ${item.val} | شرقي: ${mashVal} | جفر: ${jafrVal}`;
-                      if (nooraniQueryMode === 'noorani_only' && !isNoorani) {
-                        hint = `حرف [${item.char}] ظلماني (غير نوراني): أُسقط من الحساب = 0 (أصله: غربي=${origMagVal}، شرقي=${origMashVal}، جفر=${origJafrVal})`;
-                      } else if (nooraniQueryMode === 'strip_non_noorani_zeros' && !isNoorani && (origMagVal !== item.val || origMashVal !== mashVal || origJafrVal !== jafrVal)) {
-                        hint = `حرف [${item.char}] ظلماني شُطبت أصفاره: غربي = ${item.val} (أصله: ${origMagVal}) | شرقي = ${mashVal} (أصله: ${origMashVal}) | جفر = ${jafrVal} (أصله: ${origJafrVal})`;
+                      let hint = `حرف [${item.char}] ۞ غربي: ${item.val} | شرقي: ${mashVal} | جفر: ${jafrVal} | بيات: ${bayatVal}`;
+                      if (nooraniQueryMode === 'jabir_scale') {
+                        const pos = item.charIndexInWord ?? (idx + 1);
+                        hint = `حرف [${item.char}] (موقع الحرف في الكلمة: ${pos}) ۞ غربي: ${origMagVal} × ${pos} = ${item.val} | شرقي: ${origMashVal} × ${pos} = ${mashVal} | جفر: ${origJafrVal} × ${pos} = ${jafrVal} | بيات: ${origBayatVal} × ${pos} = ${bayatVal}`;
+                      } else if (nooraniQueryMode === 'lunar_scale') {
+                        if (lunarDay <= 14) {
+                          if (isNoorani) {
+                            hint = `حرف [${item.char}] نوراني (فترة الشرف والنور - اليوم ${lunarDay}): غربي = ${origMagVal} × ${lunarDay} = ${item.val} | شرقي = ${origMashVal} × ${lunarDay} = ${mashVal} | جفر = ${origJafrVal} × ${lunarDay} = ${jafrVal} | بيات = ${origBayatVal} × ${lunarDay} = ${bayatVal}`;
+                          } else {
+                            hint = `حرف [${item.char}] ظلماني (فترة الشرف): خامل لا يتغير = غربي: ${item.val} | شرقي: ${mashVal} | جفر: ${jafrVal} | بيات: ${bayatVal}`;
+                          }
+                        } else {
+                          const divisor = lunarDay - 14;
+                          if (isNoorani) {
+                            hint = `حرف [${item.char}] نوراني (فترة المحو والظلمة): ثابت لا يتغير = غربي: ${item.val} | شرقي: ${mashVal} | جفر: ${jafrVal} | بيات: ${bayatVal}`;
+                          } else {
+                            const formattedMag = Number.isInteger(item.val) ? item.val : item.val.toFixed(2).replace(/\.?0+$/, '');
+                            const formattedMash = Number.isInteger(mashVal) ? mashVal : mashVal.toFixed(2).replace(/\.?0+$/, '');
+                            hint = `حرف [${item.char}] ظلماني (فترة المحو وتزايد الظلمة - اليوم ${lunarDay}): غربي = ${origMagVal} ÷ ${divisor} = ${formattedMag} | شرقي = ${origMashVal} ÷ ${divisor} = ${formattedMash} (تم جبر الكسر الكلي)`;
+                          }
+                        }
+                      } else if (nooraniQueryMode === 'noorani_only' && !isNoorani) {
+                        hint = `حرف [${item.char}] ظلماني (غير نوراني): أُسقط من الحساب = 0 (أصله: غربي=${origMagVal}، شرقي=${origMashVal}، جفر=${origJafrVal}، بيات=${origBayatVal})`;
+                      } else if (nooraniQueryMode === 'strip_non_noorani_zeros' && !isNoorani && (origMagVal !== item.val || origMashVal !== mashVal || origJafrVal !== jafrVal || origBayatVal !== bayatVal)) {
+                        hint = `حرف [${item.char}] ظلماني شُطبت أصفاره: غربي = ${item.val} (أصله: ${origMagVal}) | شرقي = ${mashVal} (أصله: ${origMashVal}) | جفر = ${jafrVal} (أصله: ${origJafrVal}) | بيات = ${bayatVal} (أصله: ${origBayatVal})`;
                       }
 
                       return (
@@ -1469,6 +1633,12 @@ export function QuranicChainMatcher({
                           className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded border text-3xs ${
                             nooraniQueryMode === 'noorani_only' && !isNoorani
                               ? 'bg-stone-100/50 dark:bg-stone-850/50 border-dashed border-stone-300 dark:border-stone-700 opacity-60'
+                              : nooraniQueryMode === 'jabir_scale'
+                              ? 'bg-purple-50/70 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800'
+                              : nooraniQueryMode === 'lunar_scale'
+                              ? isNoorani
+                                ? (lunarDay <= 14 ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700' : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-650')
+                                : (lunarDay > 14 ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700' : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-650')
                               : isDiff
                               ? 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-600'
                               : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-750'
@@ -1478,17 +1648,29 @@ export function QuranicChainMatcher({
                           <span className={`font-quran font-medium ${nooraniQueryMode === 'noorani_only' && !isNoorani ? 'line-through text-stone-400' : 'text-stone-900 dark:text-stone-100'}`}>
                             {item.char}
                           </span>
+                          {nooraniQueryMode === 'jabir_scale' && (
+                            <span className="text-purple-600 dark:text-purple-400 font-mono text-5xs font-bold select-none">
+                              ×{item.charIndexInWord ?? (idx + 1)}
+                            </span>
+                          )}
+                          {nooraniQueryMode === 'lunar_scale' && (
+                            <span className={`font-mono text-5xs font-bold select-none ${isNoorani ? (lunarDay <= 14 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400') : (lunarDay > 14 ? 'text-indigo-600 dark:text-indigo-400' : 'text-stone-400')}`}>
+                              {isNoorani ? (lunarDay <= 14 ? `×${lunarDay}` : '•نور') : (lunarDay > 14 ? `÷${lunarDay - 14}` : '•ظلم')}
+                            </span>
+                          )}
                           {isDiff ? (
                             <span className="flex items-center gap-0.5 text-4xs">
-                              <span className="text-amber-600 dark:text-amber-400 font-bold" title="غربي">{item.val}</span>
+                              <span className="text-amber-600 dark:text-amber-400 font-bold" title="غربي">{Number.isInteger(item.val) ? item.val : item.val.toFixed(1)}</span>
                               <span className="text-stone-300">/</span>
-                              <span className="text-sky-600 dark:text-sky-400 font-bold" title="شرقي">{mashVal}</span>
+                              <span className="text-sky-600 dark:text-sky-400 font-bold" title="شرقي">{Number.isInteger(mashVal) ? mashVal : mashVal.toFixed(1)}</span>
                               <span className="text-stone-300">/</span>
-                              <span className="text-fuchsia-600 dark:text-fuchsia-400 font-bold" title="جفر">{jafrVal}</span>
+                              <span className="text-fuchsia-600 dark:text-fuchsia-400 font-bold" title="جفر">{Number.isInteger(jafrVal) ? jafrVal : jafrVal.toFixed(1)}</span>
+                              <span className="text-stone-300">/</span>
+                              <span className="text-teal-600 dark:text-teal-400 font-bold" title="بيات">{Number.isInteger(bayatVal) ? bayatVal : bayatVal.toFixed(1)}</span>
                             </span>
                           ) : (
-                            <span className={`font-bold text-4xs ${nooraniQueryMode === 'noorani_only' && !isNoorani ? 'text-stone-400' : nooraniQueryMode === 'strip_non_noorani_zeros' && !isNoorani && origMagVal !== item.val ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                              {item.val}
+                            <span className={`font-bold text-4xs ${nooraniQueryMode === 'noorani_only' && !isNoorani ? 'text-stone-400' : nooraniQueryMode === 'strip_non_noorani_zeros' && !isNoorani && origMagVal !== item.val ? 'text-amber-600 dark:text-amber-400' : nooraniQueryMode === 'jabir_scale' ? 'text-purple-700 dark:text-purple-300' : nooraniQueryMode === 'lunar_scale' ? 'text-indigo-700 dark:text-indigo-300' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                              {Number.isInteger(item.val) ? item.val : item.val.toFixed(1)}
                             </span>
                           )}
                           {nooraniQueryMode === 'strip_non_noorani_zeros' && !isNoorani && origMagVal !== item.val && (
@@ -1502,7 +1684,7 @@ export function QuranicChainMatcher({
                   </div>
                 )}
 
-                {/* Totals in distinct Western (Amber), Eastern (Sky), and Jafr (Fuchsia) colors with explicit labels */}
+                {/* Totals in distinct Western (Amber), Eastern (Sky), Jafr (Fuchsia), and Bayat (Teal) colors with explicit labels */}
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {computedTarget.multiplier && computedTarget.multiplier > 1 && (
                     <span
@@ -1515,14 +1697,14 @@ export function QuranicChainMatcher({
 
                   {computedTarget.isIdentical ? (
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap font-mono">
-                      {/* Western, Eastern & Jafr Identical */}
+                      {/* All Systems Identical */}
                       <div
-                        onMouseEnter={() => setHintText(`المجموع متطابق ومشترك في كافة الأنظمة (شرقي وغربي وجفر): ${computedTarget.targetMaghribi}`)}
+                        onMouseEnter={() => setHintText(`المجموع متطابق ومشترك في كافة الأنظمة (شرقي وغربي وجفر وبيات): ${computedTarget.targetMaghribi}`)}
                         onMouseLeave={clearHint}
                         className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-sm bg-[#00290a] text-[#55ff55] border-2 border-[#33ff33] shadow-sm select-text"
                         title="المجموع متطابق ومشترك في كافة الأنظمة"
                       >
-                        <span className="text-[#ffff55] font-black text-xs sm:text-sm">مشترك (شرقي وغربي وجفر):</span>
+                        <span className="text-[#ffff55] font-black text-xs sm:text-sm">مشترك (شرقي وغربي وجفر وبيات):</span>
                         <strong className="text-xl sm:text-2xl md:text-3xl text-white font-black tracking-wide font-mono">
                           {computedTarget.targetMaghribi}
                         </strong>
@@ -1570,6 +1752,21 @@ export function QuranicChainMatcher({
                         <span className="text-[#f5d0fe] font-black text-xs sm:text-sm">جفر:</span>
                         <strong className="text-xl sm:text-2xl md:text-3xl text-white font-black tracking-wide font-mono">
                           {computedTarget.targetJafr}
+                        </strong>
+                      </div>
+
+                      <span className="text-stone-400 font-bold text-lg hidden sm:inline">|</span>
+
+                      {/* Bayat (بيات) */}
+                      <div
+                        onMouseEnter={() => setHintText(`المجموع بحساب البيات المخصوص: ${computedTarget.targetBayat}`)}
+                        onMouseLeave={clearHint}
+                        className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-sm bg-[#002b28] text-[#2dd4bf] border-2 border-[#14b8a6] shadow-sm select-text"
+                        title={`المجموع وفق حساب البيات: ${computedTarget.targetBayat}`}
+                      >
+                        <span className="text-[#99f6e4] font-black text-xs sm:text-sm">بيات:</span>
+                        <strong className="text-xl sm:text-2xl md:text-3xl text-white font-black tracking-wide font-mono">
+                          {computedTarget.targetBayat}
                         </strong>
                       </div>
                     </div>
@@ -1785,7 +1982,208 @@ export function QuranicChainMatcher({
               <span>شطب الأصفار</span>
               {nooraniQueryMode === 'strip_non_noorani_zeros' && <span className="text-2xs leading-none">✓</span>}
             </button>
+
+            {/* Option 3: جابر بن حيان */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextMode = nooraniQueryMode === 'jabir_scale' ? 'standard' : 'jabir_scale';
+                setNooraniQueryMode(nextMode);
+                if (isDos) playDosBeep(nextMode === 'jabir_scale' ? 880 : 440, 20);
+              }}
+              onMouseEnter={() => setHintText('ميزان جابر بن حيان: ضرب قيمة كل حرف بترتيبه في الكلمة (الحرف 1 × 1، الحرف 2 × 2، الحرف 3 × 3...) مع تصفير العداد عند كل كلمة جديدة (مثال: عِلْم = 250، عَمَل = 240)')}
+              onMouseLeave={clearHint}
+              className={`px-2 py-1 h-7 min-w-[110px] rounded-lg text-3xs font-medium border transition-all cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs ${
+                nooraniQueryMode === 'jabir_scale'
+                  ? 'bg-purple-600 text-white border-purple-700 font-bold shadow-xs'
+                  : 'bg-stone-100 dark:bg-stone-850 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-750'
+              }`}
+              title="ميزان جابر بن حيان: ضرب قيمة كل حرف بترتيبه في الكلمة (الحرف 1 × 1، الحرف 2 × 2، الحرف 3 × 3...) وتصفير العداد لكل كلمة جديدة"
+            >
+              <Scale className={`w-2.5 h-2.5 ${nooraniQueryMode === 'jabir_scale' ? 'text-white' : 'text-purple-500'}`} />
+              <span>جابر بن حيان</span>
+              {nooraniQueryMode === 'jabir_scale' && <span className="text-2xs leading-none">✓</span>}
+            </button>
+
+            {/* Option 4: الميزان القمري (حساب الشرف والمحو) */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextMode = nooraniQueryMode === 'lunar_scale' ? 'standard' : 'lunar_scale';
+                setNooraniQueryMode(nextMode);
+                if (isDos) playDosBeep(nextMode === 'lunar_scale' ? 980 : 440, 20);
+              }}
+              onMouseEnter={() => setHintText('الميزان الزماني القمري (حساب الشرف والمحو): تزايد النور في النصف الأول 1-14 (النوراني × اليوم)، وتزايد الظلمة والمحو في النصف الثاني 15-28 (الظلماني ÷ (اليوم - 14)) مع جبر الكسور')}
+              onMouseLeave={clearHint}
+              className={`px-2 py-1 h-7 min-w-[110px] rounded-lg text-3xs font-medium border transition-all cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs ${
+                nooraniQueryMode === 'lunar_scale'
+                  ? 'bg-indigo-600 text-white border-indigo-700 font-bold shadow-xs'
+                  : 'bg-stone-100 dark:bg-stone-850 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-750'
+              }`}
+              title="الميزان الزماني القمري: حساب الشرف للنور في الأيام 1-14، وحساب المحو للظلمة في الأيام 15-28 مع جبر الكسور"
+            >
+              <Moon className={`w-2.5 h-2.5 ${nooraniQueryMode === 'lunar_scale' ? 'text-white' : 'text-indigo-500'}`} />
+              <span>الميزان القمري</span>
+              {nooraniQueryMode === 'lunar_scale' && <span className="text-2xs leading-none">✓</span>}
+            </button>
           </div>
+
+          {/* Dedicated Interactive Lunar Day Control Panel when Lunar Scale is active */}
+          {nooraniQueryMode === 'lunar_scale' && (
+            <div className="p-2.5 sm:p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/70 space-y-2 animate-in fade-in duration-150">
+              {/* Today's Real-time Hijri Hint & Auto-Sync Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 p-2 rounded-lg bg-indigo-100/70 dark:bg-indigo-900/40 border border-indigo-250 dark:border-indigo-800 text-3xs">
+                <div className="flex items-center gap-1.5 flex-wrap text-indigo-950 dark:text-indigo-200">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>تاريخ اليوم هجرياً:</span>
+                  <strong className="font-bold text-indigo-900 dark:text-indigo-100 bg-white/80 dark:bg-stone-900/80 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-700">
+                    {todayHijriInfo.formattedHijriDate}
+                  </strong>
+                  <span className="text-stone-500 dark:text-stone-400">
+                    (اليوم {todayHijriInfo.lunarDay} • {todayHijriInfo.phaseLabel})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLunarDay(todayHijriInfo.lunarDay);
+                      if (isDos) playDosBeep(880, 20);
+                    }}
+                    className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                      lunarDay === todayHijriInfo.lunarDay
+                        ? 'bg-emerald-600 text-white border border-emerald-700 cursor-default'
+                        : 'bg-white dark:bg-stone-900 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/60'
+                    }`}
+                    title="ضبط العداد تلقائياً ليتطابق مع رقم اليوم القمري الفعلي للتاريخ الحالي"
+                  >
+                    {lunarDay === todayHijriInfo.lunarDay ? (
+                      <>
+                        <Check className="w-3 h-3 text-white" />
+                        <span>مُطابق لليوم الفعلي ({todayHijriInfo.lunarDay})</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        <span>مزامنة مع اليوم الفعلي ({todayHijriInfo.lunarDay})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>تعديل اليوم القمري (1 - 28):</span>
+                  </span>
+
+                  {/* Day Stepper Selector */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-stone-900 border border-indigo-300 dark:border-indigo-700 rounded-lg px-1 py-0.5 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setLunarDay((prev) => Math.max(1, prev - 1))}
+                      disabled={lunarDay <= 1}
+                      className="px-2 py-0.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      title="اليوم السابق"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono font-bold text-sm px-2 text-indigo-950 dark:text-indigo-100 min-w-[28px] text-center">
+                      {lunarDay}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLunarDay((prev) => Math.min(28, prev + 1))}
+                      disabled={lunarDay >= 28}
+                      className="px-2 py-0.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      title="اليوم التالي"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Slider Control */}
+                  <input
+                    type="range"
+                    min="1"
+                    max="28"
+                    step="1"
+                    value={lunarDay}
+                    onChange={(e) => setLunarDay(parseInt(e.target.value, 10))}
+                    className="w-28 sm:w-36 h-2 bg-indigo-200 dark:bg-indigo-900 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    title={`اليوم القمري: ${lunarDay}`}
+                  />
+
+                  {lunarDay !== todayHijriInfo.lunarDay && (
+                    <span className="text-4xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800">
+                      تخصيص يدوي
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Phase Tag */}
+                <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+                  {lunarDay <= 14 ? (
+                    <span className="inline-flex items-center gap-1 text-3xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      <span>☀️ النصف الأول: فترة تزايد النور (حساب الشَرَف)</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-3xs font-bold px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-950 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700">
+                      <span>🌑 النصف الثاني: فترة المحو وتزايد الظلمة (حساب المَحْو)</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Dynamic Formula Explanation Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-3xs text-indigo-900 dark:text-indigo-300 bg-white/70 dark:bg-stone-900/70 p-2 rounded-lg border border-indigo-200/80 dark:border-indigo-800/50">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {lunarDay <= 14 ? (
+                    <span>
+                      القاعدة (اليوم {lunarDay}): الحرف النوراني يُضرب في <strong className="text-amber-700 dark:text-amber-300 font-mono">({lunarDay})</strong> والظلماني يبقى بقيمته الأصلية دون تغيير.
+                    </span>
+                  ) : (
+                    <span>
+                      القاعدة (اليوم {lunarDay}): الحرف النوراني يبقى ثابتاً، والظلماني يُقسم على <strong className="text-indigo-700 dark:text-indigo-300 font-mono">({lunarDay} - 14 = {lunarDay - 14})</strong>.
+                    </span>
+                  )}
+                  {computedTarget?.hasFractionCeiled && (
+                    <span className="font-bold text-amber-700 dark:text-amber-300">
+                      (تنبيه: العملية تشتمل على جبر للكسور للأعداد الصحيحة).
+                    </span>
+                  )}
+                </div>
+
+                {/* Day Presets Buttons */}
+                <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                  <span className="text-stone-400">أيام معيارية:</span>
+                  {[
+                    { day: 1, label: '1 (هلال)' },
+                    { day: 10, label: '10 (شرف)' },
+                    { day: 14, label: '14 (بدر)' },
+                    { day: 24, label: '24 (محو)' },
+                    { day: 28, label: '28 (محاق)' },
+                  ].map((p) => (
+                    <button
+                      key={p.day}
+                      type="button"
+                      onClick={() => setLunarDay(p.day)}
+                      className={`px-1.5 py-0.5 rounded text-4xs font-mono font-bold transition-all cursor-pointer ${
+                        lunarDay === p.day
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-indigo-100/70 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-200'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick History Pills Row (Smooth swipable, 1-tap re-scan) */}
@@ -2838,6 +3236,23 @@ export function QuranicChainMatcher({
                       <span className="w-1.5 h-1.5 rounded-full bg-[#d946ef]" />
                       <span>{selectedOriginFilter === 'jafr' && '✓ '}جفر ({countsByOrigin.jafr})</span>
                     </button>
+
+                    {/* Bayat (بيات) - Teal */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOriginFilter('bayat')}
+                      onMouseEnter={() => setHintText(`تصفية النتائج: عرض المطابقات الخاصة بحساب البيات فقط (${countsByOrigin.bayat})`)}
+                      onMouseLeave={clearHint}
+                      className={`px-2 py-0.5 rounded cursor-pointer inline-flex items-center justify-center text-center gap-1 text-xs transition-none font-bold min-w-[85px] sm:min-w-[95px] ${
+                        selectedOriginFilter === 'bayat'
+                          ? 'dos-btn-pressed'
+                          : 'bg-[#002b28] text-[#99f6e4] hover:bg-[#00403c] border border-[#14b8a6]'
+                      }`}
+                      title="المطابقات وفق حساب البيات"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#14b8a6]" />
+                      <span>{selectedOriginFilter === 'bayat' && '✓ '}بيات ({countsByOrigin.bayat})</span>
+                    </button>
                   </>
                 )}
               </div>
@@ -2864,29 +3279,57 @@ export function QuranicChainMatcher({
               </button>
             )}
 
-            {/* Copy Button (Short Caption: نسخ) */}
+            {/* 1. Pure Copy Button (نسخ مجرد: العبارات والمفردات فقط صافية) */}
+            {matches.length > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyPure}
+                onMouseEnter={() => setHintText(`نسخ مجرد: نسخ العبارات والمفردات القرآنية المكتشفة (${filteredMatches.length}) فقط صافية دون أي أرقام أو تفاصيل إضافية`)}
+                onMouseLeave={clearHint}
+                className={`px-2.5 py-1 rounded-lg text-3xs font-bold border transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 ${
+                  copiedPure
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                    : 'bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 dark:hover:bg-emerald-900 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 shadow-2xs'
+                }`}
+                title="نسخ العبارات والمفردات القرآنية فقط صافية بدون تفاصيل أو أرقام أو أسماء السور"
+              >
+                {copiedPure ? (
+                  <>
+                    <Check className="w-3 h-3 text-white" />
+                    <span>تم نسخ المجرد ({filteredMatches.length})</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span>نسخ مجرد ({filteredMatches.length})</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* 2. Detailed Copy Button (نسخ مفصل مع الحسابات والسور) */}
             {matches.length > 0 && (
               <button
                 type="button"
                 onClick={handleCopyAll}
-                onMouseEnter={() => setHintText(`نسخ الحافظة: نسخ كافة النتائج المكتشفة (${filteredMatches.length}) مرتبة مع حساباتها`)}
+                onMouseEnter={() => setHintText(`نسخ مفصل: نسخ كافة النتائج المكتشفة (${filteredMatches.length}) مع أسماء السور وأرقام الآيات والقيم الحسابية`)}
                 onMouseLeave={clearHint}
                 className={`px-2 py-1 rounded-lg text-3xs font-medium border transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 ${
                   copiedAll
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 shadow-2xs'
+                    ? 'bg-stone-200 dark:bg-stone-700 border-stone-400 text-stone-900 dark:text-stone-100 shadow-xs font-bold'
                     : 'bg-stone-50 dark:bg-stone-800/80 hover:bg-stone-100 dark:hover:bg-stone-750 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 shadow-2xs'
                 }`}
-                title="نسخ جميع النتائج المكتشفة مع تصنيفها إلى الحافظة"
+                title="نسخ جميع النتائج المكتشفة مفصلة مع السور والآيات والقيم الحسابية"
               >
                 {copiedAll ? (
                   <>
                     <Check className="w-3 h-3 text-emerald-600" />
-                    <span>تم النسخ ({filteredMatches.length})</span>
+                    <span>تم النسخ المفصل</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3 h-3 text-stone-500" />
-                    <span>نسخ ({filteredMatches.length})</span>
+                    <span>نسخ مفصل</span>
                   </>
                 )}
               </button>
@@ -3404,14 +3847,17 @@ export function QuranicChainMatcher({
               // When targets are identical (isTargetDiffering is false):
               // ALL non-verbatim matches have uniform common/unified color.
               const isCommon = !isTargetDiffering && !isVerbatim;
-              const isJafr = isTargetDiffering && !isVerbatim && (computedTarget && computedTarget.targetJafr > 0 ? item.jafrValue === computedTarget.targetJafr : item.systemOrigin === 'jafr');
-              const isMaghribi = !isJafr && isTargetDiffering && !isVerbatim && (computedTarget ? item.maghribiValue === computedTarget.targetMaghribi : item.systemOrigin === 'maghribi');
-              const isMashriqi = !isJafr && isTargetDiffering && !isVerbatim && (computedTarget ? item.mashriqiValue === computedTarget.targetMashriqi : item.systemOrigin === 'mashriqi');
+              const isBayat = isTargetDiffering && !isVerbatim && (computedTarget && computedTarget.targetBayat > 0 ? item.bayatValue === computedTarget.targetBayat : item.systemOrigin === 'bayat');
+              const isJafr = !isBayat && isTargetDiffering && !isVerbatim && (computedTarget && computedTarget.targetJafr > 0 ? item.jafrValue === computedTarget.targetJafr : item.systemOrigin === 'jafr');
+              const isMaghribi = !isBayat && !isJafr && isTargetDiffering && !isVerbatim && (computedTarget ? item.maghribiValue === computedTarget.targetMaghribi : item.systemOrigin === 'maghribi');
+              const isMashriqi = !isBayat && !isJafr && isTargetDiffering && !isVerbatim && (computedTarget ? item.mashriqiValue === computedTarget.targetMashriqi : item.systemOrigin === 'mashriqi');
 
               const cardClasses = isVerbatim
                 ? 'dos-card-verbatim ring-1 ring-[#ff55ff]'
                 : isCommon
                 ? 'dos-card-common'
+                : isBayat
+                ? 'dos-card-bayat'
                 : isJafr
                 ? 'dos-card-jafr'
                 : isMaghribi
@@ -3422,6 +3868,8 @@ export function QuranicChainMatcher({
                 ? 'dos-phrase-verbatim font-black'
                 : isCommon
                 ? 'dos-phrase-common'
+                : isBayat
+                ? 'dos-phrase-bayat font-bold'
                 : isJafr
                 ? 'dos-phrase-jafr font-bold'
                 : isMaghribi
@@ -3432,7 +3880,7 @@ export function QuranicChainMatcher({
               const wordEquation = item.breakdown.map((b) => `${b.word} (${b.value})`).join(' + ');
               const numSumEquation = item.breakdown.map((b) => b.value).join(' + ');
               const letterFullEquation = item.breakdown
-                .map((b) => `[${b.letters.map((l) => `${l.char}=${isJafr ? (l.jafrVal ?? l.magVal) : isMaghribi ? l.magVal : isMashriqi ? l.mashVal : l.magVal}`).join('+')}]`)
+                .map((b) => `[${b.letters.map((l) => `${l.char}=${isBayat ? (l.bayatVal ?? l.magVal) : isJafr ? (l.jafrVal ?? l.magVal) : isMaghribi ? l.magVal : isMashriqi ? l.mashVal : l.magVal}`).join('+')}]`)
                 .join(' + ');
 
               const targetHighlightWord = resultsFilter.trim() || (committedQuery || inputQuery).trim();
@@ -3445,7 +3893,9 @@ export function QuranicChainMatcher({
                     const sysName = isVerbatim
                       ? '★ الكلمة المبحوثة ذاتها نصياً في القرآن الكريم'
                       : !isTargetDiffering
-                      ? 'حساب موحد (متطابق بالأنظمة الثلاثة)'
+                      ? 'حساب موحد (متطابق بكافة الأنظمة)'
+                      : isBayat
+                      ? 'بيات (حساب البيات المخصوص)'
                       : isJafr
                       ? 'جفر (بسط الحروف)'
                       : isMaghribi
@@ -3706,6 +4156,14 @@ export function QuranicChainMatcher({
                                   <span className="text-white">|</span>
                                   <span className="text-[#f5d0fe] font-bold">
                                     جفر: {item.jafrValue}
+                                  </span>
+                                </>
+                              )}
+                              {item.bayatValue !== undefined && (
+                                <>
+                                  <span className="text-white">|</span>
+                                  <span className="text-[#99f6e4] font-bold">
+                                    بيات: {item.bayatValue}
                                   </span>
                                 </>
                               )}

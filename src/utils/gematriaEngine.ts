@@ -41,6 +41,9 @@ export const ABJAD_VALUES: Record<string, number> = {
 export const NOORANI_14_LETTERS = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن'];
 export const NOORANI_14_SET = new Set(NOORANI_14_LETTERS);
 
+export const ZULMANI_14_LETTERS = ['ب', 'ت', 'ث', 'ج', 'خ', 'د', 'ذ', 'ز', 'ش', 'ض', 'ظ', 'غ', 'ف', 'و'];
+export const ZULMANI_14_SET = new Set(ZULMANI_14_LETTERS);
+
 export const NOORANI_LETTERS_LIST = [...NOORANI_14_LETTERS];
 
 export const NOORANI_LETTERS_SORTED_DESC = [...NOORANI_LETTERS_LIST].sort(
@@ -61,6 +64,14 @@ export function isNooraniChar(char: string, taMarbutaHa: boolean = true): boolea
   if (char === 'ى') return true;
   if (char === 'ة' || char === 'ۃ') return taMarbutaHa;
   return false;
+}
+
+/**
+ * Checks whether an Arabic character belongs to the 14 Dark letters (الحروف الظلمانية)
+ */
+export function isZulmaniChar(char: string, taMarbutaHa: boolean = true): boolean {
+  if (!char) return false;
+  return !isNooraniChar(char, taMarbutaHa);
 }
 
 /**
@@ -100,6 +111,73 @@ export interface GematriaCalculationOptions {
   nooraniOnlyMode?: boolean;
   /** شطب أصفار الحروف غير النورانية (الظلمانية) مثل ت=4 بدلاً من 400 */
   stripNonNooraniZerosMode?: boolean;
+  /** ميزان جابر بن حيان: ضرب قيمة كل حرف بترتيبه وموقعه في الكلمة (الحرف 1 × 1، الحرف 2 × 2، الحرف 3 × 3...) مع تصفير العداد عند كل كلمة جديدة */
+  jabirScaleMode?: boolean;
+  /** الميزان الزماني القمري (حساب الشرف والمحو): تزايد النور في النصف الأول (1-14) والمحو في النصف الثاني (15-28) */
+  lunarScaleMode?: boolean;
+  /** رقم اليوم في الشهر القمري (1 إلى 28) */
+  lunarDay?: number;
+  /** التحديد التلقائي لليوم القمري بناءً على التاريخ الهجري الحالي */
+  autoDetectLunarDay?: boolean;
+  /** جبر الكسور في الميزان القمري للناتج النهائي */
+  lunarCeilFraction?: boolean;
+}
+
+export interface HijriLunarDateInfo {
+  lunarDay: number; // 1 to 28 for Lunar Scale
+  rawHijriDay: number; // 1 to 30
+  formattedHijriDate: string;
+  isNoorPhase: boolean;
+  phaseLabel: string;
+  phaseIcon: string;
+}
+
+/**
+ * Calculates current real-time Hijri date and resolves the lunar day (1-28)
+ */
+export function getCurrentHijriLunarDay(date: Date = new Date()): HijriLunarDateInfo {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+    }).formatToParts(date);
+
+    let rawDay = 14;
+    for (const p of parts) {
+      if (p.type === 'day') {
+        const val = parseInt(p.value, 10);
+        if (!isNaN(val) && val >= 1) rawDay = val;
+      }
+    }
+
+    const arabicFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const formattedHijriDate = arabicFormatter.format(date);
+    const lunarDay = Math.min(28, Math.max(1, rawDay));
+    const isNoorPhase = lunarDay <= 14;
+
+    return {
+      lunarDay,
+      rawHijriDay: rawDay,
+      formattedHijriDate,
+      isNoorPhase,
+      phaseLabel: isNoorPhase ? 'فترة تزايد النور (الشَرَف ☀️)' : 'فترة تزايد الظلمة (المَحْو 🌑)',
+      phaseIcon: isNoorPhase ? '☀️' : '🌑',
+    };
+  } catch {
+    return {
+      lunarDay: 14,
+      rawHijriDay: 14,
+      formattedHijriDate: '14 من الشهر القمري',
+      isNoorPhase: true,
+      phaseLabel: 'فترة تزايد النور (الشَرَف ☀️)',
+      phaseIcon: '☀️',
+    };
+  }
 }
 
 export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
@@ -113,6 +191,11 @@ export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
   silentWawMode: 'count_as_6',
   uthmaniWawMode: 'as_waw_6',
   silentAlifMode: 'count_as_1',
+  jabirScaleMode: false,
+  lunarScaleMode: false,
+  lunarDay: getCurrentHijriLunarDay().lunarDay,
+  autoDetectLunarDay: true,
+  lunarCeilFraction: true,
 };
 
 /**
@@ -183,16 +266,13 @@ export interface GematriaAnalysisResult {
 }
 
 /**
- * Calculates gematria sum for a word or text with configurable orthographic options
+ * Calculates gematria sum for a single word with configurable orthographic options
  */
-export function calculateGematriaWithOptions(
+function calculateSingleWordGematria(
   text: string,
-  options: Partial<GematriaCalculationOptions> = DEFAULT_GEMATRIA_OPTIONS,
-  tableValues: Record<string, number> = ABJAD_VALUES
+  opts: GematriaCalculationOptions,
+  tableValues: Record<string, number>
 ): number {
-  if (!text) return 0;
-  const opts: GematriaCalculationOptions = { ...DEFAULT_GEMATRIA_OPTIONS, ...options };
-  
   let processedText = text.trim();
 
   // Handle Definite Article stripping if requested
@@ -242,15 +322,21 @@ export function calculateGematriaWithOptions(
       continue;
     }
     // Only keep Arabic letters
-    if (/[\u0621-\u064A\u0671\s]/.test(ch)) {
-      if (ch !== ' ') {
-        cleanChars.push({ char: ch, isShaddah: false });
-      }
+    if (/[\u0621-\u064A\u0671]/.test(ch)) {
+      cleanChars.push({ char: ch, isShaddah: false });
     }
   }
 
-  let sum = daggerAlifCount * (tableValues['ا'] || 1);
+  let daggerAlifVal = tableValues['ا'] || 1;
+  if (opts.lunarScaleMode) {
+    const day = Math.min(28, Math.max(1, Math.round(opts.lunarDay ?? 14)));
+    if (day <= 14) {
+      daggerAlifVal = daggerAlifVal * day;
+    }
+  }
+  let sum = daggerAlifCount * daggerAlifVal;
 
+  let charPosIndex = 1;
   for (const { char, isShaddah } of cleanChars) {
     let charVal = 0;
 
@@ -289,8 +375,27 @@ export function calculateGematriaWithOptions(
       }
     }
 
+    // 4. الميزان الزماني القمري (حساب الشرف والمحو)
+    if (opts.lunarScaleMode) {
+      const day = Math.min(28, Math.max(1, Math.round(opts.lunarDay ?? 14)));
+      if (day <= 14) {
+        // النصف الأول (1 إلى 14): تزايد النور (حساب الشرف) - النوراني يضرب في رقم اليوم والظلماني خامل
+        if (isNoorani) {
+          charVal = charVal * day;
+        }
+      } else {
+        // النصف الثاني (15 إلى 28): المحو وتزايد الظلمة (حساب المحو) - النوراني ثابت والظلماني يقسم على (اليوم - 14)
+        if (!isNoorani) {
+          const divisor = day - 14;
+          charVal = divisor > 0 ? charVal / divisor : charVal;
+        }
+      }
+    }
+
     const multiplier = isShaddah ? 2 : 1;
-    sum += charVal * multiplier;
+    const positionalFactor = opts.jabirScaleMode ? charPosIndex : 1;
+    sum += charVal * multiplier * positionalFactor;
+    charPosIndex++;
   }
 
   // 4. Handle Silent Waw (الواو غير المقروءة في أولو، أولئك، أولات)
@@ -325,7 +430,39 @@ export function calculateGematriaWithOptions(
     }
   }
 
+  // 7. جبر الكسور في الميزان القمري للناتج الصحيح
+  if (opts.lunarScaleMode && opts.lunarCeilFraction !== false) {
+    sum = Math.ceil(sum);
+  }
+
   return Math.max(0, sum);
+}
+
+/**
+ * Calculates gematria sum for a word or text with configurable orthographic options
+ * When jabirScaleMode or lunarScaleMode is active, letter indices reset to 1 at the start of each word
+ */
+export function calculateGematriaWithOptions(
+  text: string,
+  options: Partial<GematriaCalculationOptions> = DEFAULT_GEMATRIA_OPTIONS,
+  tableValues: Record<string, number> = ABJAD_VALUES
+): number {
+  if (!text) return 0;
+  const opts: GematriaCalculationOptions = { ...DEFAULT_GEMATRIA_OPTIONS, ...options };
+  
+  const processedText = text.trim();
+
+  // Multi-word handling for Jabir Scale and Lunar Scale modes
+  if ((opts.jabirScaleMode || opts.lunarScaleMode) && /\s+/.test(processedText)) {
+    const words = processedText.split(/\s+/).filter(Boolean);
+    let totalSum = 0;
+    for (const w of words) {
+      totalSum += calculateSingleWordGematria(w, opts, tableValues);
+    }
+    return Math.max(0, totalSum);
+  }
+
+  return calculateSingleWordGematria(processedText, opts, tableValues);
 }
 
 /**

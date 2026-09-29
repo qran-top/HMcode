@@ -137,6 +137,38 @@ export const JAFR_VALUES: Record<string, number> = {
   'ي': 11, 'ى': 11, 'ئ': 11,
 };
 
+// 4. Bayat (حساب البيات)
+export const BAYAT_VALUES: Record<string, number> = {
+  'ا': 110, 'أ': 110, 'إ': 110, 'آ': 110, 'ء': 110,
+  'ب': 1,
+  'ت': 1,
+  'ث': 1,
+  'ج': 50,
+  'ح': 1,
+  'خ': 1,
+  'د': 31,
+  'ذ': 31,
+  'ر': 1,
+  'ز': 11,
+  'س': 60,
+  'ش': 60,
+  'ص': 5,
+  'ض': 5,
+  'ط': 1,
+  'ظ': 1,
+  'ع': 60,
+  'غ': 60,
+  'ف': 1,
+  'ق': 81,
+  'ك': 81,
+  'ل': 41,
+  'م': 50,
+  'ن': 56,
+  'ه': 1, 'هـ': 1, 'ة': 1,
+  'و': 7, 'ؤ': 7,
+  'ي': 1, 'ى': 1, 'ئ': 1,
+};
+
 export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
   {
     id: 'mashriqi',
@@ -160,6 +192,14 @@ export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
     description: 'حساب بسط الحروف وأسمائها: ا=111، ب=3، ج=53، د=35... غ=1060',
     isPreset: true,
     values: JAFR_VALUES,
+    letterOrder: MASHRIQI_ORDER,
+  },
+  {
+    id: 'bayat',
+    name: 'حساب البيات',
+    description: 'جدول البيات المخصوص: ا=110، ب=1، ج=50، د=31، ز=11... ق=81، ك=81، ل=41',
+    isPreset: true,
+    values: BAYAT_VALUES,
     letterOrder: MASHRIQI_ORDER,
   },
 ];
@@ -292,14 +332,14 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
           const combined: GematriaTable[] = [];
           for (const item of parsed) {
             if (presetMap.has(item.id)) {
-              // Ensure presets have latest description/order if not heavily customized
-              combined.push({ ...presetMap.get(item.id)!, ...item, isPreset: true });
+              const preset = presetMap.get(item.id)!;
+              combined.push({ ...preset, ...item, values: { ...preset.values, ...(item.values || {}) }, isPreset: true });
               presetMap.delete(item.id);
             } else {
               combined.push(item);
             }
           }
-          // Add any missing preset
+          // Add any missing preset (including newly added bayat)
           presetMap.forEach((p) => combined.push(p));
           return combined;
         }
@@ -461,47 +501,86 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Parse characters
-      const rawArray = Array.from(processed);
-      for (let i = 0; i < rawArray.length; i++) {
-        const ch = rawArray[i];
-        if (ch === '\u0651') {
-          if (details.length > 0 && opts.shaddahMode === 'double_2x') {
-            const prev = details[details.length - 1];
-            prev.value *= 2;
-            prev.note = (prev.note ? prev.note + ' + ' : '') + 'مضعف بالشدة (2x)';
-          }
-          continue;
-        }
-        if (/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]/.test(ch)) {
-          continue;
-        }
-        if (/[\u0621-\u064A\u0671]/.test(ch)) {
-          let charVal = 0;
-          let note: string | undefined;
+      // Parse characters (word-by-word to reset position index for Jabir Scale)
+      const words = processed.split(/\s+/).filter(Boolean);
+      for (let wIdx = 0; wIdx < words.length; wIdx++) {
+        const w = words[wIdx];
+        const rawArray = Array.from(w);
+        let posInWord = 1;
 
-          if (ch === 'ة' || ch === 'ۃ') {
-            charVal = opts.taMarbuta === 'ta_400' ? (targetTbl.values['ت'] || 400) : (targetTbl.values['ه'] || targetTbl.values['ة'] || 5);
-            note = opts.taMarbuta === 'ta_400' ? 'تاء مربوطة (400)' : 'تاء مربوطة كهاء (5)';
-          } else if (ch === 'ى') {
-            charVal = opts.alifMaqsura === 'alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ى'] || 10);
-            note = opts.alifMaqsura === 'alif_1' ? 'ألف مقصورة كألف (1)' : 'ألف مقصورة كياء (10)';
-          } else if (ch === 'ء') {
-            charVal = opts.hamzaMode === 'ignore_isolated_0' ? 0 : (targetTbl.values['ء'] || targetTbl.values['ا'] || 1);
-            if (opts.hamzaMode === 'ignore_isolated_0') note = 'همزة مهملة (0)';
-          } else if (['أ', 'إ', 'آ', 'ٱ'].includes(ch)) {
-            charVal = targetTbl.values['ا'] || targetTbl.values[ch] || 1;
-          } else if (ch === 'ؤ') {
-            charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['و'] || targetTbl.values['ؤ'] || 6);
-          } else if (ch === 'ئ') {
-            charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ئ'] || 10);
-          } else {
-            charVal = getLetterValueInTable(targetTbl, ch);
+        for (let i = 0; i < rawArray.length; i++) {
+          const ch = rawArray[i];
+          if (ch === '\u0651') {
+            if (details.length > 0 && opts.shaddahMode === 'double_2x') {
+              const prev = details[details.length - 1];
+              prev.value *= 2;
+              prev.note = (prev.note ? prev.note + ' + ' : '') + 'مضعف بالشدة (2x)';
+            }
+            continue;
           }
+          if (/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]/.test(ch)) {
+            continue;
+          }
+          if (/[\u0621-\u064A\u0671]/.test(ch)) {
+            let charVal = 0;
+            let note: string | undefined;
 
-          const normalized = normalizeAbjadChar(ch);
-          const isNoorani = NOORANI_LETTERS_SET.has(ch) || NOORANI_LETTERS_SET.has(normalized);
-          details.push({ char: ch, value: charVal, isNoorani, note });
+            if (ch === 'ة' || ch === 'ۃ') {
+              charVal = opts.taMarbuta === 'ta_400' ? (targetTbl.values['ت'] || 400) : (targetTbl.values['ه'] || targetTbl.values['ة'] || 5);
+              note = opts.taMarbuta === 'ta_400' ? 'تاء مربوطة (400)' : 'تاء مربوطة كهاء (5)';
+            } else if (ch === 'ى') {
+              charVal = opts.alifMaqsura === 'alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ى'] || 10);
+              note = opts.alifMaqsura === 'alif_1' ? 'ألف مقصورة كألف (1)' : 'ألف مقصورة كياء (10)';
+            } else if (ch === 'ء') {
+              charVal = opts.hamzaMode === 'ignore_isolated_0' ? 0 : (targetTbl.values['ء'] || targetTbl.values['ا'] || 1);
+              if (opts.hamzaMode === 'ignore_isolated_0') note = 'همزة مهملة (0)';
+            } else if (['أ', 'إ', 'آ', 'ٱ'].includes(ch)) {
+              charVal = targetTbl.values['ا'] || targetTbl.values[ch] || 1;
+            } else if (ch === 'ؤ') {
+              charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['و'] || targetTbl.values['ؤ'] || 6);
+            } else if (ch === 'ئ') {
+              charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ئ'] || 10);
+            } else {
+              charVal = getLetterValueInTable(targetTbl, ch);
+            }
+
+            const normalized = normalizeAbjadChar(ch);
+            const isNoorani = NOORANI_LETTERS_SET.has(ch) || NOORANI_LETTERS_SET.has(normalized);
+
+            if (opts.jabirScaleMode) {
+              const origVal = charVal;
+              charVal = charVal * posInWord;
+              note = (note ? note + ' | ' : '') + `ميزان جابر (${origVal} × ${posInWord})`;
+            }
+
+            if (opts.lunarScaleMode) {
+              const day = Math.min(28, Math.max(1, Math.round(opts.lunarDay ?? 14)));
+              const origVal = charVal;
+              if (day <= 14) {
+                // النصف الأول (1 إلى 14): تزايد النور (حساب الشرف)
+                if (isNoorani) {
+                  charVal = charVal * day;
+                  note = (note ? note + ' | ' : '') + `شرف ونور (${origVal} × ${day} = ${charVal})`;
+                } else {
+                  note = (note ? note + ' | ' : '') + `ظلماني خامل (${charVal})`;
+                }
+              } else {
+                // النصف الثاني (15 إلى 28): المحو وتزايد الظلمة (حساب المحو)
+                if (isNoorani) {
+                  note = (note ? note + ' | ' : '') + `نوراني ثابت (${charVal})`;
+                } else {
+                  const divisor = day - 14;
+                  const exactVal = divisor > 0 ? charVal / divisor : charVal;
+                  charVal = exactVal;
+                  const formattedVal = Number.isInteger(exactVal) ? exactVal : exactVal.toFixed(2).replace(/\.?0+$/, '');
+                  note = (note ? note + ' | ' : '') + `محو وظلمة (${origVal} ÷ ${divisor} = ${formattedVal})`;
+                }
+              }
+            }
+
+            details.push({ char: ch, value: charVal, isNoorani, note });
+            posInWord++;
+          }
         }
       }
 

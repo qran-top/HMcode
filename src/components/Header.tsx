@@ -190,7 +190,7 @@ export function Header({
           [تلميح:{isHintEnabled ? 'ON' : 'OFF'}]
         </button>
 
-        {/* F7: Font Family Switcher (Alyamama / Markazi Text / Handjet) */}
+        {/* F7: Font Family Switcher (Alyamama / IBM Plex Sans Arabic / Scheherazade New) */}
         <button
           type="button"
           onClick={() => {
@@ -201,7 +201,7 @@ export function Header({
           onMouseLeave={clearHint}
           style={{ backgroundColor: 'var(--dos-panel)', borderColor: 'var(--dos-accent)', color: 'var(--dos-accent)' }}
           className="px-2 py-0.5 h-7 min-w-[95px] text-2xs font-bold hover:bg-[#ffff55] hover:text-black border cursor-pointer active:translate-y-0.5 transition-none shrink-0 whitespace-nowrap inline-flex items-center justify-center text-center"
-          title="تبديل نوع الخط (F7: اليمامة / مركزي / هاندجت)"
+          title="تبديل نوع الخط (F7: اليمامة / IBM Plex / شهرزاد)"
         >
           [F7 خط:{fontFamilyInfo.name}]
         </button>
