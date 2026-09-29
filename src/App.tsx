@@ -54,7 +54,7 @@ export function App() {
   return (
     <div
       style={{ backgroundColor: 'var(--dos-bg)', color: 'var(--dos-text)' }}
-      className="min-h-screen flex flex-col font-mono antialiased selection:bg-[#ffff55] selection:text-black w-full max-w-full overflow-x-hidden transition-none"
+      className="min-h-screen flex flex-col antialiased selection:bg-[#ffff55] selection:text-black w-full max-w-full overflow-x-hidden transition-none"
       dir="rtl"
     >
       {/* CRT Scanline Overlay when DOS CRT effect is enabled */}
