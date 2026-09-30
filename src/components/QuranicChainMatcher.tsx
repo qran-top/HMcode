@@ -2694,7 +2694,7 @@ export function QuranicChainMatcher({
 
                   let chipStyle = '';
 
-                  if (!isTargetDiffering) {
+                  if (n.system === 'both' || n.system === 'dual_match') {
                     chipStyle = 'dos-chip-common hover:border-white';
                   } else if (n.system === 'mashriqi') {
                     chipStyle = 'dos-chip-mashriqi hover:border-white';

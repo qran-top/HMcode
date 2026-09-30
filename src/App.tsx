@@ -5,6 +5,7 @@ import { DualTranslator } from './components/DualTranslator';
 import { NotebookDrawer } from './components/NotebookDrawer';
 import { PWAPrompt } from './components/PWAPrompt';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
+import { FawatihScaleView } from './components/FawatihScaleView';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
 import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
@@ -81,7 +82,18 @@ export function App() {
           <QuranicChainMatcher initialQuery={sharedText} isWideMode={isWideMode} toggleWideMode={toggleWideMode} />
         </div>
 
-        {/* Tab 2: Unified Command Search & Dual Translator / Cipher Hub (F2) */}
+        {/* Tab 2: Fawatih Scale & 29-Surah Fingerprint Distribution (F2) */}
+        <div className={activeTab === 'fawatih_scale' ? 'block' : 'hidden'}>
+          <FawatihScaleView
+            initialQuery={sharedText || 'كتاب'}
+            onNavigateToGematria={(text) => {
+              setSharedText(text);
+              setActiveTab('gematria');
+            }}
+          />
+        </div>
+
+        {/* Tab 3: Unified Command Search & Dual Translator / Cipher Hub (F3) */}
         <div className={activeTab === 'search' ? 'block' : 'hidden'}>
           <DualTranslator
             mode="both"

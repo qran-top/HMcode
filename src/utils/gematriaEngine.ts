@@ -3292,22 +3292,18 @@ function buildMergedNooraniItems(
     let systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
     let displaySum: string;
 
-    const isTargetDiff = targetMashriqi !== targetMaghribi;
-
-    if (isTargetDiff) {
-      if (matchesMash) {
-        system = 'mashriqi';
-        systemLabel = 'شرقي';
-        displaySum = `${sumMash}`;
-      } else {
-        system = 'maghribi';
-        systemLabel = 'غربي';
-        displaySum = `${sumMag}`;
-      }
-    } else {
+    if (matchesMash && matchesMag) {
       system = 'both';
       systemLabel = 'مشترك';
       displaySum = `${sumMash}`;
+    } else if (matchesMash) {
+      system = 'mashriqi';
+      systemLabel = 'شرقي';
+      displaySum = `${sumMash}`;
+    } else {
+      system = 'maghribi';
+      systemLabel = 'غربي';
+      displaySum = `${sumMag}`;
     }
 
     const values = item.letters.map((c) => (system === 'maghribi' ? MAGHRIBI_VALUES[c] : MASHRIQI_VALUES[c]) ?? 0);

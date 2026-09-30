@@ -96,16 +96,16 @@ export function useDosKeyboardNavigation({
         e.preventDefault();
         playDosBeep(750, 35);
         setActiveTab('gematria');
-        setLastKeyPressed('F3: الجُمّل');
+        setLastKeyPressed('F3: السلاسل');
         return;
       }
 
-      // 4. F4: Switch to Search / Command Tab (البحث بالأوامر)
+      // 4. F4: Switch to Fawatih Scale Tab (ميزان الفواتح)
       if (e.key === 'F4' && !e.altKey) {
         e.preventDefault();
-        playDosBeep(780, 35);
-        setActiveTab('search');
-        setLastKeyPressed('F4: الأوامر');
+        playDosBeep(820, 35);
+        setActiveTab('fawatih_scale');
+        setLastKeyPressed('F4: ميزان الفواتح');
         return;
       }
 

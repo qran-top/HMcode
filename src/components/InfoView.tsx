@@ -23,7 +23,8 @@ import {
   BookOpen,
   SpellCheck,
   CheckCircle2,
-  ArrowUpDown
+  ArrowUpDown,
+  Scale,
 } from 'lucide-react';
 
 export type InfoSection = 'privacy' | 'terms' | 'disclaimer' | 'instructions' | 'cookies' | 'attribution';
@@ -305,6 +306,23 @@ export function InfoView({ onBack, initialSection = 'privacy' }: InfoViewProps) 
                       <li><strong>النصف الثاني (الأيام 15 إلى 28) - فترة تزايد الظلمة (المَحْو):</strong> تبقى الحروف النورانية ثابتة، بينما تُقسم الحروف الظلمانية الـ 14 على (رقم اليوم - 14) لطمسها ومحوها تدريجياً، مع إجراء عملية جبر الكسور (Ceil) للمجموع الكلي للوصول إلى الأعداد الصحيحة.</li>
                     </ul>
                   </li>
+                </ul>
+              </div>
+
+              <div className="border border-stone-200 dark:border-stone-800 p-4 rounded-xl space-y-2 bg-stone-50/50 dark:bg-stone-950/40">
+                <h4 className="font-bold text-stone-900 dark:text-stone-100 text-sm flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-emerald-600" />
+                  <span>٤. ميزان الفواتح والبصمة التكرارية (السور الـ 29):</span>
+                </h4>
+                <p className="text-stone-600 dark:text-stone-300 leading-relaxed">
+                  يقوم بحساب التوزيع التكراري الدقيق لأي كلمة في سور القرآن الـ 29 التي تفتتح بالأحرف المقطعة، ويستخرج الكلمات القرآنية النظيرة المتطابقة في القيمة:
+                </p>
+                <ul className="list-disc list-inside space-y-1.5 text-stone-600 dark:text-stone-300 pr-2">
+                  <li><strong>نوع المطابقة:</strong> إمكانية الاختيار بين المطابقة التامة والمجردة للكلمة أو المطابقة الشاملة للتصريفات واللواحق والضمائر.</li>
+                  <li><strong>المجموع التكراري الإجمالي:</strong> جمع إجمالي تكرارات الكلمة عبر السور الـ 29 مجتمعة.</li>
+                  <li><strong>ميزان الفواتح المرجّح:</strong> ضرب تكرار الكلمة في كل سورة بقيمة جُمّل فاتحة تلك السورة المحددة.</li>
+                  <li><strong>رصيد السور الفاتحية:</strong> عدد السور التي وردت فيها الكلمة من أصل 29 سورة.</li>
+                  <li><strong>مطابقة المعجم القرآني الشامل:</strong> استخراج كافة المفردات القرآنية التي تملك نفس القيمة فوراً مع أزرار نسخ مجرد ومفصل وفحص تفكيكي.</li>
                 </ul>
               </div>
             </div>

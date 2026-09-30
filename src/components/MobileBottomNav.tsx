@@ -1,7 +1,7 @@
 import React from 'react';
-import { Search, Sparkles, Settings } from 'lucide-react';
+import { Search, Sparkles, Scale } from 'lucide-react';
 
-export type AppTabType = 'gematria' | 'search' | 'settings' | 'info';
+export type AppTabType = 'gematria' | 'search' | 'fawatih_scale' | 'settings' | 'info';
 
 interface MobileBottomNavProps {
   activeTab: AppTabType;
@@ -9,7 +9,7 @@ interface MobileBottomNavProps {
 }
 
 interface NavItem {
-  id: Exclude<AppTabType, 'info'>;
+  id: Exclude<AppTabType, 'info' | 'settings'>;
   label: string;
   icon: React.ElementType;
   activeColor: string;
@@ -18,13 +18,19 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     id: 'gematria',
-    label: 'البحث بالجمل',
+    label: 'السلاسل والجُمّل',
     icon: Sparkles,
     activeColor: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50',
   },
   {
+    id: 'fawatih_scale',
+    label: 'ميزان الفواتح',
+    icon: Scale,
+    activeColor: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50',
+  },
+  {
     id: 'search',
-    label: 'البحث بالأوامر',
+    label: 'الباحث والمترجم',
     icon: Search,
     activeColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50',
   },
