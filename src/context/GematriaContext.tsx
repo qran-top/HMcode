@@ -8,6 +8,7 @@ import {
   GematriaCalculationOptions,
   DEFAULT_GEMATRIA_OPTIONS,
   calculateGematriaWithOptions,
+  getJabirPositionalMultiplier,
   synthesizeCombinationsDP,
   generateExactTwoLetterCombinations,
   generateExactThreeLetterCombinations,
@@ -106,7 +107,8 @@ export const MAGHRIBI_ORDER = [
 ];
 
 // 3. Jafr (حساب الجفر الكبير / بسط الحروف بأسماء حروفها)
-export const JAFR_VALUES: Record<string, number> = {
+// 3A. Jafr Mashriqi (حساب الجفر الشرقي / بسط الحروف بأسماء حروفها وفق النظام المشرقي)
+export const JAFR_MASHRIQI_VALUES: Record<string, number> = {
   'ا': 111, 'أ': 111, 'إ': 111, 'آ': 111, 'ء': 111,
   'ب': 3,
   'ت': 401,
@@ -118,14 +120,47 @@ export const JAFR_VALUES: Record<string, number> = {
   'ذ': 731,
   'ر': 201,
   'ز': 18,
-  'س': 120,
-  'ش': 360,
-  'ص': 95,
-  'ض': 805,
+  'س': 120, // س=60 + ي=10 + ن=50 = 120
+  'ش': 360, // ش=300 + ي=10 + ن=50 = 360
+  'ص': 95, // ص=90 + ا=1 + د=4 = 95
+  'ض': 805, // ض=800 + ا=1 + د=4 = 805
   'ط': 10,
-  'ظ': 901,
+  'ظ': 901, // ظ=900 + ا=1 = 901
   'ع': 130,
-  'غ': 1060,
+  'غ': 1060, // غ=1000 + ي=10 + ن=50 = 1060
+  'ف': 81,
+  'ق': 181,
+  'ك': 101,
+  'ل': 71,
+  'م': 90,
+  'ن': 106,
+  'ه': 6, 'هـ': 6, 'ة': 6,
+  'و': 13, 'ؤ': 13,
+  'ي': 11, 'ى': 11, 'ئ': 11,
+};
+export const JAFR_VALUES = JAFR_MASHRIQI_VALUES;
+
+// 3B. Jafr Maghribi (حساب الجفر المغربي / بسط الحروف بأسماء حروفها وفق النظام المغربي)
+export const JAFR_MAGHRIBI_VALUES: Record<string, number> = {
+  'ا': 111, 'أ': 111, 'إ': 111, 'آ': 111, 'ء': 111,
+  'ب': 3,
+  'ت': 401,
+  'ث': 501,
+  'ج': 53,
+  'ح': 9,
+  'خ': 601,
+  'د': 35,
+  'ذ': 731,
+  'ر': 201,
+  'ز': 18,
+  'س': 360, // س=300 + ي=10 + ن=50 = 360
+  'ش': 1060, // ش=1000 + ي=10 + ن=50 = 1060
+  'ص': 65, // ص=60 + ا=1 + د=4 = 65
+  'ض': 95, // ض=90 + ا=1 + د=4 = 95
+  'ط': 10,
+  'ظ': 801, // ظ=800 + ا=1 = 801
+  'ع': 130,
+  'غ': 960, // غ=900 + ي=10 + ن=50 = 960
   'ف': 81,
   'ق': 181,
   'ك': 101,
@@ -137,8 +172,41 @@ export const JAFR_VALUES: Record<string, number> = {
   'ي': 11, 'ى': 11, 'ئ': 11,
 };
 
-// 4. Bayat (حساب البيات)
-export const BAYAT_VALUES: Record<string, number> = {
+// 4A. Bayat Mashriqi (حساب البيات الشرقي / بسط الحروف مع حذف الحرف الأول وفق النظام المشرقي)
+export const BAYAT_MASHRIQI_VALUES: Record<string, number> = {
+  'ا': 110, 'أ': 110, 'إ': 110, 'آ': 110, 'ء': 110,
+  'ب': 1,
+  'ت': 1,
+  'ث': 1,
+  'ج': 50,
+  'ح': 1,
+  'خ': 1,
+  'د': 31,
+  'ذ': 31,
+  'ر': 1,
+  'ز': 11,
+  'س': 60,
+  'ش': 60,
+  'ص': 5,
+  'ض': 5,
+  'ط': 1,
+  'ظ': 1,
+  'ع': 60,
+  'غ': 60,
+  'ف': 1,
+  'ق': 81,
+  'ك': 81,
+  'ل': 41,
+  'م': 50,
+  'ن': 56,
+  'ه': 1, 'هـ': 1, 'ة': 1,
+  'و': 7, 'ؤ': 7,
+  'ي': 1, 'ى': 1, 'ئ': 1,
+};
+export const BAYAT_VALUES = BAYAT_MASHRIQI_VALUES;
+
+// 4B. Bayat Maghribi (حساب البيات المغربي / بسط الحروف مع حذف الحرف الأول وفق النظام المغربي)
+export const BAYAT_MAGHRIBI_VALUES: Record<string, number> = {
   'ا': 110, 'أ': 110, 'إ': 110, 'آ': 110, 'ء': 110,
   'ب': 1,
   'ت': 1,
@@ -187,20 +255,36 @@ export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
     letterOrder: MAGHRIBI_ORDER,
   },
   {
-    id: 'jafr',
-    name: 'حساب الجفر (بسط الحروف)',
-    description: 'حساب بسط الحروف وأسمائها: ا=111، ب=3، ج=53، د=35... غ=1060',
+    id: 'jafr_mashriqi',
+    name: 'حساب الجفر الشرقي (بسط الحروف)',
+    description: 'بسط الحروف وأسمائها وفق النظام المشرقي (س=120، ص=95، ض=805، غ=1060)',
     isPreset: true,
-    values: JAFR_VALUES,
+    values: JAFR_MASHRIQI_VALUES,
     letterOrder: MASHRIQI_ORDER,
   },
   {
-    id: 'bayat',
-    name: 'حساب البيات',
-    description: 'جدول البيات المخصوص: ا=110، ب=1، ج=50، د=31، ز=11... ق=81، ك=81، ل=41',
+    id: 'jafr_maghribi',
+    name: 'حساب الجفر المغربي (بسط الحروف)',
+    description: 'بسط الحروف وأسمائها وفق النظام المغربي (س=360، ص=65، ض=95، غ=960)',
     isPreset: true,
-    values: BAYAT_VALUES,
+    values: JAFR_MAGHRIBI_VALUES,
+    letterOrder: MAGHRIBI_ORDER,
+  },
+  {
+    id: 'bayat_mashriqi',
+    name: 'حساب البيات الشرقي',
+    description: 'بسط الحروف مع حذف الحرف الأول وحساب الباقي وفق النظام المشرقي',
+    isPreset: true,
+    values: BAYAT_MASHRIQI_VALUES,
     letterOrder: MASHRIQI_ORDER,
+  },
+  {
+    id: 'bayat_maghribi',
+    name: 'حساب البيات المغربي',
+    description: 'بسط الحروف مع حذف الحرف الأول وحساب الباقي وفق النظام المغربي',
+    isPreset: true,
+    values: BAYAT_MAGHRIBI_VALUES,
+    letterOrder: MAGHRIBI_ORDER,
   },
 ];
 
@@ -506,6 +590,8 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       for (let wIdx = 0; wIdx < words.length; wIdx++) {
         const w = words[wIdx];
         const rawArray = Array.from(w);
+        const lettersInWord = rawArray.filter((c) => /[\u0621-\u064A\u0671]/.test(c));
+        const wordLetterCount = lettersInWord.length;
         let posInWord = 1;
 
         for (let i = 0; i < rawArray.length; i++) {
@@ -548,9 +634,19 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
             const isNoorani = NOORANI_LETTERS_SET.has(ch) || NOORANI_LETTERS_SET.has(normalized);
 
             if (opts.jabirScaleMode) {
+              const jMode = opts.jabirMode || 'asc';
+              const factor = getJabirPositionalMultiplier(posInWord, wordLetterCount, jMode);
               const origVal = charVal;
-              charVal = charVal * posInWord;
-              note = (note ? note + ' | ' : '') + `ميزان جابر (${origVal} × ${posInWord})`;
+              charVal = charVal * factor;
+              const modeLabel =
+                jMode === 'desc'
+                  ? 'عكسي'
+                  : jMode === 'pyramid'
+                  ? 'هرمي'
+                  : jMode === 'valley'
+                  ? 'وادي'
+                  : 'جابر';
+              note = (note ? note + ' | ' : '') + `${modeLabel} (${origVal} × ${factor})`;
             }
 
             if (opts.lunarScaleMode) {

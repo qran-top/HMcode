@@ -24,7 +24,7 @@ export interface QuranicChainHistoryItem {
   multiplier?: number;
   matchesCount?: number;
   isFavorite?: boolean;
-  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale';
+  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale' | 'jabir_desc' | 'jabir_pyramid' | 'jabir_valley' | 'lunar_scale' | 'amiriyyah';
   targetJafr?: number;
   targetBayat?: number;
 }
@@ -274,7 +274,27 @@ export function QuranicChainHistory({
                     {/* Mode Badge */}
                     {item.nooraniQueryMode === 'jabir_scale' && (
                       <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-bold">
-                        ميزان جابر
+                        جابر
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'jabir_desc' && (
+                      <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-bold">
+                        عكسي
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'jabir_pyramid' && (
+                      <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-bold">
+                        هرمي
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'jabir_valley' && (
+                      <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-bold">
+                        وادي
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'lunar_scale' && (
+                      <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold">
+                        الميزان القمري
                       </span>
                     )}
                     {item.nooraniQueryMode === 'noorani_only' && (
@@ -285,6 +305,11 @@ export function QuranicChainHistory({
                     {item.nooraniQueryMode === 'strip_non_noorani_zeros' && (
                       <span className="px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
                         شطب الأصفار
+                      </span>
+                    )}
+                    {item.nooraniQueryMode === 'amiriyyah' && (
+                      <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-bold">
+                        العامرية ✨
                       </span>
                     )}
 

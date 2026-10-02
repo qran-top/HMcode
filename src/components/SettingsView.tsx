@@ -874,16 +874,31 @@ export function SettingsView() {
 
             {/* Jabir Scale Mode */}
             <div className="space-y-1">
-              <label className="text-3xs text-stone-500">ميزان جابر بن حيان (الموقع):</label>
+              <label className="text-3xs text-stone-500">ميزان جابر بن حيان (الموقع والمعاملات):</label>
               <select
-                value={calculationOptions.jabirScaleMode ? 'active' : 'inactive'}
-                onChange={(e) =>
-                  updateCalculationOptions({ jabirScaleMode: e.target.value === 'active' })
+                value={
+                  !calculationOptions.jabirScaleMode
+                    ? 'inactive'
+                    : calculationOptions.jabirMode || 'asc'
                 }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'inactive') {
+                    updateCalculationOptions({ jabirScaleMode: false });
+                  } else {
+                    updateCalculationOptions({
+                      jabirScaleMode: true,
+                      jabirMode: val as 'asc' | 'desc' | 'pyramid' | 'valley',
+                    });
+                  }
+                }}
                 className="w-full px-2 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-bold text-purple-700 dark:text-purple-300"
               >
                 <option value="inactive">تعطيل (الحساب القياسي)</option>
-                <option value="active">تفعيل ميزان جابر (الحرف × موقعه بالكلمة)</option>
+                <option value="asc">جابر (تصاعدي: الحرف 1 × 1 ... N × N)</option>
+                <option value="desc">عكسي (تنازلي: الحرف 1 × N ... N × 1)</option>
+                <option value="pyramid">هرمي (صعود وهبوط: الوسط أعلى معامل)</option>
+                <option value="valley">وادي (هبوط وصعود: الأطراف أعلى معامل)</option>
               </select>
             </div>
 

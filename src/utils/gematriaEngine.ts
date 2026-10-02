@@ -5,7 +5,157 @@ import { DEFAULT_CIPHER_LAYERS, NOORANI_LETTERS_SET, LayerInfo } from '../cipher
 import { quranicDictionary, QuranicWordMeta } from './quranicDictionary';
 import { arabicDictionary } from './arabicDictionary';
 import { checkArabicPhonotactics } from './arabicPhonotactics';
-import { MASHRIQI_VALUES, MAGHRIBI_VALUES } from '../context/GematriaContext';
+import {
+  MASHRIQI_VALUES,
+  MAGHRIBI_VALUES,
+  JAFR_MASHRIQI_VALUES,
+  JAFR_MAGHRIBI_VALUES,
+  BAYAT_MASHRIQI_VALUES,
+  BAYAT_MAGHRIBI_VALUES,
+  JAFR_VALUES,
+  BAYAT_VALUES,
+} from '../context/GematriaContext';
+
+export {
+  JAFR_MASHRIQI_VALUES,
+  JAFR_MAGHRIBI_VALUES,
+  BAYAT_MASHRIQI_VALUES,
+  BAYAT_MAGHRIBI_VALUES,
+};
+
+/** أسماء الحروف العربية القياسية لبسط الحروف واشتقاق العامرية */
+export const CANONICAL_LETTER_NAMES: Record<string, string> = {
+  'ا': 'الف', 'أ': 'الف', 'إ': 'الف', 'آ': 'الف', 'ء': 'الف', 'ٱ': 'الف',
+  'ب': 'با',
+  'ت': 'تا',
+  'ث': 'ثا',
+  'ج': 'جيم',
+  'ح': 'حا',
+  'خ': 'خا',
+  'د': 'دال',
+  'ذ': 'ذال',
+  'ر': 'را',
+  'ز': 'زاي',
+  'س': 'سين',
+  'ش': 'شين',
+  'ص': 'صاد',
+  'ض': 'ضاد',
+  'ط': 'طا',
+  'ظ': 'ظا',
+  'ع': 'عين',
+  'غ': 'غين',
+  'ف': 'فا',
+  'ق': 'قاف',
+  'ك': 'كاف',
+  'ل': 'لام',
+  'م': 'ميم',
+  'ن': 'نون',
+  'ه': 'ها', 'هـ': 'ها', 'ة': 'ها', 'ۃ': 'ها',
+  'و': 'واو', 'ؤ': 'واو',
+  'ي': 'يا', 'ى': 'يا', 'ئ': 'يا',
+};
+
+export interface AamiriyaCharStep {
+  char: string;
+  posInWord: number;
+  letterName: string;
+  selectedChar: string;
+  ruleExplanation: string;
+}
+
+export interface AamiriyaWordResult {
+  originalWord: string;
+  derivedWord: string;
+  steps: AamiriyaCharStep[];
+}
+
+export interface AamiriyaResult {
+  originalText: string;
+  derivedText: string;
+  words: AamiriyaWordResult[];
+  mashriqiSum: number;
+  maghribiSum: number;
+}
+
+/**
+ * اشتقاق الكلمة/العبارة وفق «الطريقة العامرية»:
+ * - الحرف 1 (الأول): نأخذ الحرف الأول من اسمه الهجائي (مثال: عين -> ع، ميم -> م)
+ * - الحرف 2 (الثاني): نأخذ الحرف الثاني من اسمه الهجائي (مثال: لام -> ا، حا -> ا، عين -> ي)
+ * - الحرف 3 فما بعد (الأخير): نأخذ الحرف الأخير من اسمه الهجائي (مثال: ميم -> م، دال -> ل، نون -> ن)
+ */
+export function deriveAamiriyaFromText(text: string): AamiriyaResult {
+  if (!text) {
+    return {
+      originalText: '',
+      derivedText: '',
+      words: [],
+      mashriqiSum: 0,
+      maghribiSum: 0,
+    };
+  }
+
+  const clean = cleanArabicTextForGematria(text);
+  const rawWords = clean.split(/\s+/).filter(Boolean);
+  const wordsResult: AamiriyaWordResult[] = [];
+  const derivedWords: string[] = [];
+
+  for (const w of rawWords) {
+    const letters = w.split('').filter((c) => /[\u0621-\u064A\u0671]/.test(c));
+    const steps: AamiriyaCharStep[] = [];
+    let derivedWord = '';
+
+    letters.forEach((ch, idx) => {
+      const pos = idx + 1;
+      const normalized = normalizeAbjadChar(ch);
+      const name = CANONICAL_LETTER_NAMES[ch] || CANONICAL_LETTER_NAMES[normalized] || ch;
+      const nameChars = name.split('');
+      let chosen = ch;
+      let rule = '';
+
+      if (pos === 1) {
+        // الحرف الأول: نأخذ الحرف الأول من اسمه
+        chosen = nameChars[0] || ch;
+        rule = `الحرف الأول: أخذ الحرف الأول من اسمه [${name}]`;
+      } else if (pos === 2) {
+        // الحرف الثاني: نأخذ الحرف الثاني من اسمه
+        chosen = nameChars.length > 1 ? nameChars[1] : nameChars[0];
+        rule = `الحرف الثاني: أخذ الحرف الثاني من اسمه [${name}]`;
+      } else {
+        // الحرف الثالث فما فوق / الأخير: نأخذ الحرف الأخير من اسمه
+        chosen = nameChars[nameChars.length - 1];
+        rule = `الحرف ${pos}: أخذ الحرف الأخير من اسمه [${name}]`;
+      }
+
+      derivedWord += chosen;
+      steps.push({
+        char: ch,
+        posInWord: pos,
+        letterName: name,
+        selectedChar: chosen,
+        ruleExplanation: rule,
+      });
+    });
+
+    wordsResult.push({
+      originalWord: w,
+      derivedWord,
+      steps,
+    });
+    derivedWords.push(derivedWord);
+  }
+
+  const derivedText = derivedWords.join(' ');
+  const mashriqiSum = calculateGematriaWithOptions(derivedText, DEFAULT_GEMATRIA_OPTIONS, MASHRIQI_VALUES);
+  const maghribiSum = calculateGematriaWithOptions(derivedText, DEFAULT_GEMATRIA_OPTIONS, MAGHRIBI_VALUES);
+
+  return {
+    originalText: text,
+    derivedText,
+    words: wordsResult,
+    mashriqiSum,
+    maghribiSum,
+  };
+}
 
 export const ABJAD_VALUES: Record<string, number> = {
   'ا': 1, 'أ': 1, 'إ': 1, 'آ': 1, 'ء': 1,
@@ -111,8 +261,15 @@ export interface GematriaCalculationOptions {
   nooraniOnlyMode?: boolean;
   /** شطب أصفار الحروف غير النورانية (الظلمانية) مثل ت=4 بدلاً من 400 */
   stripNonNooraniZerosMode?: boolean;
-  /** ميزان جابر بن حيان: ضرب قيمة كل حرف بترتيبه وموقعه في الكلمة (الحرف 1 × 1، الحرف 2 × 2، الحرف 3 × 3...) مع تصفير العداد عند كل كلمة جديدة */
+  /** ميزان جابر بن حيان: تفعيل ضرب قيمة كل حرف بمعامل موضعه بالكلمة مع تصفير العداد عند كل كلمة جديدة */
   jabirScaleMode?: boolean;
+  /** أنماط ميزان جابر الأربعة:
+   * - 'asc': طردي تصاعدي (الحرف 1 × 1 ... الحرف N × N)
+   * - 'desc': عكسي تنازلي (الحرف 1 × N ... الحرف N × 1)
+   * - 'pyramid': هرمي صعود وهبوط (الوسط أعلى معامل والأطراف 1)
+   * - 'valley': قمعي هبوط وصعود (الأطراف أعلى معامل والوسط 1)
+   */
+  jabirMode?: 'asc' | 'desc' | 'pyramid' | 'valley';
   /** الميزان الزماني القمري (حساب الشرف والمحو): تزايد النور في النصف الأول (1-14) والمحو في النصف الثاني (15-28) */
   lunarScaleMode?: boolean;
   /** رقم اليوم في الشهر القمري (1 إلى 28) */
@@ -192,11 +349,46 @@ export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
   uthmaniWawMode: 'as_waw_6',
   silentAlifMode: 'count_as_1',
   jabirScaleMode: false,
+  jabirMode: 'asc',
   lunarScaleMode: false,
   lunarDay: getCurrentHijriLunarDay().lunarDay,
   autoDetectLunarDay: true,
   lunarCeilFraction: true,
 };
+
+/**
+ * حساب معامل موضع الحرف في الكلمة وفق أنماط ميزان جابر بن حيان الأربعة
+ * @param posInWord موضع الحرف (1-based index)
+ * @param wordLength إجمالي عدد أحرف الكلمة
+ * @param mode نمط الميزان:
+ *  - 'asc': طردي تصاعدي (1, 2, ..., N)
+ *  - 'desc': عكسي تنازلي (N, N-1, ..., 1)
+ *  - 'pyramid': هرمي صعود وهبوط (1, ..., M, ..., 1) بحيث الوسط أعلى معامل
+ *  - 'valley': قمعي هبوط وصعود (M, ..., 1, ..., M) بحيث الأطراف أعلى معامل والوسط 1
+ */
+export function getJabirPositionalMultiplier(
+  posInWord: number,
+  wordLength: number,
+  mode: 'asc' | 'desc' | 'pyramid' | 'valley' = 'asc'
+): number {
+  const L = Math.max(1, wordLength);
+  const i = Math.min(L, Math.max(1, posInWord));
+
+  switch (mode) {
+    case 'desc':
+      return L - i + 1;
+    case 'pyramid':
+      return Math.min(i, L - i + 1);
+    case 'valley': {
+      const peak = Math.ceil(L / 2);
+      const pyramidVal = Math.min(i, L - i + 1);
+      return Math.max(1, peak - pyramidVal + 1);
+    }
+    case 'asc':
+    default:
+      return i;
+  }
+}
 
 /**
  * Normalizes Eastern Arabic (٠-٩) and Persian/Urdu (۰-۹) digits to standard ASCII digits (0-9)
@@ -393,7 +585,9 @@ function calculateSingleWordGematria(
     }
 
     const multiplier = isShaddah ? 2 : 1;
-    const positionalFactor = opts.jabirScaleMode ? charPosIndex : 1;
+    const positionalFactor = opts.jabirScaleMode
+      ? getJabirPositionalMultiplier(charPosIndex, cleanChars.length, opts.jabirMode || 'asc')
+      : 1;
     sum += charVal * multiplier * positionalFactor;
     charPosIndex++;
   }
