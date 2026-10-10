@@ -83,7 +83,7 @@ export function ResultsSummaryBox({
 
   // Analysis metadata cache
   const analyzedQuranic = useMemo(() => {
-    return exactQuranicList.map((item) => {
+    const list = exactQuranicList.map((item) => {
       const purity = getNooraniPurity(item.meta.word);
       const mirror = analyzeMirrorSymmetry(item.meta.word);
       const loop = checkBidirectionalLoop(
@@ -93,6 +93,22 @@ export function ResultsSummaryBox({
         mode
       );
       return { ...item, purity, mirror, loop };
+    });
+
+    return list.sort((a, b) => {
+      const targetA = a.meta.originalQuranicWord || a.meta.word;
+      const targetB = b.meta.originalQuranicWord || b.meta.word;
+      const isDirectA = !!a.meta.isDirectExact && (!a.combo || a.combo === targetA);
+      const isDirectB = !!b.meta.isDirectExact && (!b.combo || b.combo === targetB);
+      const confA = isDirectA ? 100 : Math.min(a.meta.confidence || 90, 95);
+      const confB = isDirectB ? 100 : Math.min(b.meta.confidence || 90, 95);
+      if (confB !== confA) {
+        return confB - confA;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.meta.occurrences || 0) - (a.meta.occurrences || 0);
     });
   }, [exactQuranicList, searchedWord, layers, mode]);
 
@@ -359,6 +375,11 @@ export function ResultsSummaryBox({
                 <div className="flex flex-wrap items-center gap-2">
                   {filteredQuranic.map((item, idx) => {
                     const isCopied = copiedWord === item.meta.word;
+                    const targetWord = item.meta.originalQuranicWord || item.meta.word;
+                    const isDirectExact = !!item.meta.isDirectExact && (!item.combo || item.combo === targetWord);
+                    const displayPercentage = isDirectExact ? 100 : Math.min(item.meta.confidence || 90, 95);
+                    const displayText = (!item.combo || item.combo === targetWord) ? targetWord : `${item.combo} = ${targetWord}`;
+
                     return (
                       <div
                         key={`quranic-${idx}`}
@@ -370,16 +391,25 @@ export function ResultsSummaryBox({
                       >
                         <button
                           type="button"
-                          onClick={() => handleWordClick(item.meta.word, item.original || item.combo)}
+                          onClick={() => handleWordClick(targetWord, item.original || item.combo)}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm font-extrabold cursor-pointer active:scale-95"
-                          title={`انقر لاختيار ونسخ: ${item.meta.word}${item.isReversed ? ' (معكوسة)' : ''}`}
+                          title={`انقر لاختيار ونسخ: ${targetWord}${item.isReversed ? ' (معكوسة)' : ''}`}
                         >
                           {isCopied ? (
                             <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           ) : (
                             <BookOpen className={`w-3.5 h-3.5 shrink-0 ${item.isReversed ? 'text-amber-600 dark:text-amber-400' : 'text-amber-700 dark:text-amber-300'}`} />
                           )}
-                          <span className="tracking-wide">{item.meta.word}</span>
+                          <span
+                            className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs shrink-0 ${
+                              isDirectExact
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200'
+                            }`}
+                          >
+                            {displayPercentage}%
+                          </span>
+                          <span className="tracking-wide">{displayText}</span>
                           {item.isReversed && (
                             <span className="flex items-center gap-0.5 text-[10px] bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 px-1 py-0.2 rounded">
                               <RefreshCcw className="w-2.5 h-2.5" />
@@ -459,18 +489,16 @@ export function ResultsSummaryBox({
                           key={`nearest-${idx}`}
                           className="inline-flex items-center bg-sky-50/60 dark:bg-sky-950/30 border-2 border-sky-300/80 dark:border-sky-700/70 hover:border-sky-500 dark:hover:border-sky-500 rounded-xl px-2.5 py-1 text-xs gap-2 shadow-2xs transition-all"
                         >
-                          <span className="font-bold text-stone-500 dark:text-stone-400 font-mono">{combo}</span>
-                          <span className="text-stone-300 dark:text-stone-600">←</span>
                           <button
                             type="button"
                             onClick={() => handleWordClick(nearest.originalQuranicWord, combo)}
-                            className="font-extrabold text-sky-950 dark:text-sky-200 hover:underline cursor-pointer inline-flex items-center gap-1"
+                            className="font-bold font-quran text-sky-950 dark:text-sky-200 hover:underline cursor-pointer inline-flex items-center gap-1 text-xs"
                             title={`انقر لنسخ: ${nearest.originalQuranicWord}`}
                           >
                             {isCopied ? (
                               <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             ) : null}
-                            <span>{nearest.originalQuranicWord}</span>
+                            <span>{combo} = {nearest.originalQuranicWord}</span>
                           </button>
                           <span
                             className={`text-3xs font-black px-1.5 py-0.5 rounded-md ${

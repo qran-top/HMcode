@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { quranicDictionary, QuranicWordMeta } from '../utils/quranicDictionary';
-import { arabicDictionary } from '../utils/arabicDictionary';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
+import { quranicDictionary, QuranicWordMeta } from "../utils/quranicDictionary";
+import { arabicDictionary } from "../utils/arabicDictionary";
 import {
   cleanArabicTextForGematria,
   normalizeAbjadChar,
@@ -14,8 +21,8 @@ import {
   generateExactThreeLetterCombinations,
   generateExactFourLetterCombinations,
   generateExactFiveLetterCombinations,
-} from '../utils/gematriaEngine';
-import { NOORANI_LETTERS_SET } from '../cipherData';
+} from "../utils/gematriaEngine";
+import { NOORANI_LETTERS_SET } from "../cipherData";
 
 export interface GematriaTable {
   id: string;
@@ -28,315 +35,621 @@ export interface GematriaTable {
 
 // 1. Mashriqi (النموذج المشرقي الشائع - أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ)
 export const MASHRIQI_VALUES: Record<string, number> = {
-  'ا': 1, 'أ': 1, 'إ': 1, 'آ': 1, 'ء': 1,
-  'ب': 2,
-  'ج': 3,
-  'د': 4,
-  'ه': 5, 'هـ': 5, 'ة': 5,
-  'و': 6, 'ؤ': 6,
-  'ز': 7,
-  'ح': 8,
-  'ط': 9,
-  'ي': 10, 'ى': 10, 'ئ': 10,
-  'ك': 20,
-  'ل': 30,
-  'م': 40,
-  'ن': 50,
-  'س': 60,
-  'ع': 70,
-  'ف': 80,
-  'ص': 90,
-  'ق': 100,
-  'ر': 200,
-  'ش': 300,
-  'ت': 400,
-  'ث': 500,
-  'خ': 600,
-  'ذ': 700,
-  'ض': 800,
-  'ظ': 900,
-  'غ': 1000,
+  ا: 1,
+  أ: 1,
+  إ: 1,
+  آ: 1,
+  ء: 1,
+  ب: 2,
+  ج: 3,
+  د: 4,
+  ه: 5,
+  هـ: 5,
+  ة: 5,
+  و: 6,
+  ؤ: 6,
+  ز: 7,
+  ح: 8,
+  ط: 9,
+  ي: 10,
+  ى: 10,
+  ئ: 10,
+  ك: 20,
+  ل: 30,
+  م: 40,
+  ن: 50,
+  س: 60,
+  ع: 70,
+  ف: 80,
+  ص: 90,
+  ق: 100,
+  ر: 200,
+  ش: 300,
+  ت: 400,
+  ث: 500,
+  خ: 600,
+  ذ: 700,
+  ض: 800,
+  ظ: 900,
+  غ: 1000,
 };
 
 export const MASHRIQI_ORDER = [
-  'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط',
-  'ي', 'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص',
-  'ق', 'ر', 'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+  "ا",
+  "ب",
+  "ج",
+  "د",
+  "ه",
+  "و",
+  "ز",
+  "ح",
+  "ط",
+  "ي",
+  "ك",
+  "ل",
+  "م",
+  "ن",
+  "س",
+  "ع",
+  "ف",
+  "ص",
+  "ق",
+  "ر",
+  "ش",
+  "ت",
+  "ث",
+  "خ",
+  "ذ",
+  "ض",
+  "ظ",
+  "غ",
 ];
 
 // 2. Maghribi (النموذج المغربي التاريخي - أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش)
 export const MAGHRIBI_VALUES: Record<string, number> = {
-  'ا': 1, 'أ': 1, 'إ': 1, 'آ': 1, 'ء': 1,
-  'ب': 2,
-  'ج': 3,
-  'د': 4,
-  'ه': 5, 'هـ': 5, 'ة': 5,
-  'و': 6, 'ؤ': 6,
-  'ز': 7,
-  'ح': 8,
-  'ط': 9,
-  'ي': 10, 'ى': 10, 'ئ': 10,
-  'ك': 20,
-  'ل': 30,
-  'م': 40,
-  'ن': 50,
+  ا: 1,
+  أ: 1,
+  إ: 1,
+  آ: 1,
+  ء: 1,
+  ب: 2,
+  ج: 3,
+  د: 4,
+  ه: 5,
+  هـ: 5,
+  ة: 5,
+  و: 6,
+  ؤ: 6,
+  ز: 7,
+  ح: 8,
+  ط: 9,
+  ي: 10,
+  ى: 10,
+  ئ: 10,
+  ك: 20,
+  ل: 30,
+  م: 40,
+  ن: 50,
   // صعفض
-  'ص': 60,
-  'ع': 70,
-  'ف': 80,
-  'ض': 90,
+  ص: 60,
+  ع: 70,
+  ف: 80,
+  ض: 90,
   // قرست
-  'ق': 100,
-  'ر': 200,
-  'س': 300,
-  'ت': 400,
+  ق: 100,
+  ر: 200,
+  س: 300,
+  ت: 400,
   // ثخذ
-  'ث': 500,
-  'خ': 600,
-  'ذ': 700,
+  ث: 500,
+  خ: 600,
+  ذ: 700,
   // ظغش
-  'ظ': 800,
-  'غ': 900,
-  'ش': 1000,
+  ظ: 800,
+  غ: 900,
+  ش: 1000,
 };
 
 export const MAGHRIBI_ORDER = [
-  'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط',
-  'ي', 'ك', 'ل', 'م', 'ن', 'ص', 'ع', 'ف', 'ض',
-  'ق', 'ر', 'س', 'ت', 'ث', 'خ', 'ذ', 'ظ', 'غ', 'ش'
+  "ا",
+  "ب",
+  "ج",
+  "د",
+  "ه",
+  "و",
+  "ز",
+  "ح",
+  "ط",
+  "ي",
+  "ك",
+  "ل",
+  "م",
+  "ن",
+  "ص",
+  "ع",
+  "ف",
+  "ض",
+  "ق",
+  "ر",
+  "س",
+  "ت",
+  "ث",
+  "خ",
+  "ذ",
+  "ظ",
+  "غ",
+  "ش",
 ];
 
 // 3. Jafr (حساب الجفر الكبير / بسط الحروف بأسماء حروفها)
 // 3A. Jafr Mashriqi (حساب الجفر الشرقي / بسط الحروف بأسماء حروفها وفق النظام المشرقي)
 export const JAFR_MASHRIQI_VALUES: Record<string, number> = {
-  'ا': 111, 'أ': 111, 'إ': 111, 'آ': 111, 'ء': 111,
-  'ب': 3,
-  'ت': 401,
-  'ث': 501,
-  'ج': 53,
-  'ح': 9,
-  'خ': 601,
-  'د': 35,
-  'ذ': 731,
-  'ر': 201,
-  'ز': 18,
-  'س': 120, // س=60 + ي=10 + ن=50 = 120
-  'ش': 360, // ش=300 + ي=10 + ن=50 = 360
-  'ص': 95, // ص=90 + ا=1 + د=4 = 95
-  'ض': 805, // ض=800 + ا=1 + د=4 = 805
-  'ط': 10,
-  'ظ': 901, // ظ=900 + ا=1 = 901
-  'ع': 130,
-  'غ': 1060, // غ=1000 + ي=10 + ن=50 = 1060
-  'ف': 81,
-  'ق': 181,
-  'ك': 101,
-  'ل': 71,
-  'م': 90,
-  'ن': 106,
-  'ه': 6, 'هـ': 6, 'ة': 6,
-  'و': 13, 'ؤ': 13,
-  'ي': 11, 'ى': 11, 'ئ': 11,
+  ا: 111,
+  أ: 111,
+  إ: 111,
+  آ: 111,
+  ء: 111,
+  ب: 3,
+  ت: 401,
+  ث: 501,
+  ج: 53,
+  ح: 9,
+  خ: 601,
+  د: 35,
+  ذ: 731,
+  ر: 201,
+  ز: 18,
+  س: 120, // س=60 + ي=10 + ن=50 = 120
+  ش: 360, // ش=300 + ي=10 + ن=50 = 360
+  ص: 95, // ص=90 + ا=1 + د=4 = 95
+  ض: 805, // ض=800 + ا=1 + د=4 = 805
+  ط: 10,
+  ظ: 901, // ظ=900 + ا=1 = 901
+  ع: 130,
+  غ: 1060, // غ=1000 + ي=10 + ن=50 = 1060
+  ف: 81,
+  ق: 181,
+  ك: 101,
+  ل: 71,
+  م: 90,
+  ن: 106,
+  ه: 6,
+  هـ: 6,
+  ة: 6,
+  و: 13,
+  ؤ: 13,
+  ي: 11,
+  ى: 11,
+  ئ: 11,
 };
 export const JAFR_VALUES = JAFR_MASHRIQI_VALUES;
 
 // 3B. Jafr Maghribi (حساب الجفر المغربي / بسط الحروف بأسماء حروفها وفق النظام المغربي)
 export const JAFR_MAGHRIBI_VALUES: Record<string, number> = {
-  'ا': 111, 'أ': 111, 'إ': 111, 'آ': 111, 'ء': 111,
-  'ب': 3,
-  'ت': 401,
-  'ث': 501,
-  'ج': 53,
-  'ح': 9,
-  'خ': 601,
-  'د': 35,
-  'ذ': 731,
-  'ر': 201,
-  'ز': 18,
-  'س': 360, // س=300 + ي=10 + ن=50 = 360
-  'ش': 1060, // ش=1000 + ي=10 + ن=50 = 1060
-  'ص': 65, // ص=60 + ا=1 + د=4 = 65
-  'ض': 95, // ض=90 + ا=1 + د=4 = 95
-  'ط': 10,
-  'ظ': 801, // ظ=800 + ا=1 = 801
-  'ع': 130,
-  'غ': 960, // غ=900 + ي=10 + ن=50 = 960
-  'ف': 81,
-  'ق': 181,
-  'ك': 101,
-  'ل': 71,
-  'م': 90,
-  'ن': 106,
-  'ه': 6, 'هـ': 6, 'ة': 6,
-  'و': 13, 'ؤ': 13,
-  'ي': 11, 'ى': 11, 'ئ': 11,
+  ا: 111,
+  أ: 111,
+  إ: 111,
+  آ: 111,
+  ء: 111,
+  ب: 3,
+  ت: 401,
+  ث: 501,
+  ج: 53,
+  ح: 9,
+  خ: 601,
+  د: 35,
+  ذ: 731,
+  ر: 201,
+  ز: 18,
+  س: 360, // س=300 + ي=10 + ن=50 = 360
+  ش: 1060, // ش=1000 + ي=10 + ن=50 = 1060
+  ص: 65, // ص=60 + ا=1 + د=4 = 65
+  ض: 95, // ض=90 + ا=1 + د=4 = 95
+  ط: 10,
+  ظ: 801, // ظ=800 + ا=1 = 801
+  ع: 130,
+  غ: 960, // غ=900 + ي=10 + ن=50 = 960
+  ف: 81,
+  ق: 181,
+  ك: 101,
+  ل: 71,
+  م: 90,
+  ن: 106,
+  ه: 6,
+  هـ: 6,
+  ة: 6,
+  و: 13,
+  ؤ: 13,
+  ي: 11,
+  ى: 11,
+  ئ: 11,
 };
 
 // 4A. Bayat Mashriqi (حساب البيات الشرقي / بسط الحروف مع حذف الحرف الأول وفق النظام المشرقي)
 export const BAYAT_MASHRIQI_VALUES: Record<string, number> = {
-  'ا': 110, 'أ': 110, 'إ': 110, 'آ': 110, 'ء': 110,
-  'ب': 1,
-  'ت': 1,
-  'ث': 1,
-  'ج': 50,
-  'ح': 1,
-  'خ': 1,
-  'د': 31,
-  'ذ': 31,
-  'ر': 1,
-  'ز': 11,
-  'س': 60,
-  'ش': 60,
-  'ص': 5,
-  'ض': 5,
-  'ط': 1,
-  'ظ': 1,
-  'ع': 60,
-  'غ': 60,
-  'ف': 1,
-  'ق': 81,
-  'ك': 81,
-  'ل': 41,
-  'م': 50,
-  'ن': 56,
-  'ه': 1, 'هـ': 1, 'ة': 1,
-  'و': 7, 'ؤ': 7,
-  'ي': 1, 'ى': 1, 'ئ': 1,
+  ا: 110,
+  أ: 110,
+  إ: 110,
+  آ: 110,
+  ء: 110,
+  ب: 1,
+  ت: 1,
+  ث: 1,
+  ج: 50,
+  ح: 1,
+  خ: 1,
+  د: 31,
+  ذ: 31,
+  ر: 1,
+  ز: 11,
+  س: 60,
+  ش: 60,
+  ص: 5,
+  ض: 5,
+  ط: 1,
+  ظ: 1,
+  ع: 60,
+  غ: 60,
+  ف: 1,
+  ق: 81,
+  ك: 81,
+  ل: 41,
+  م: 50,
+  ن: 56,
+  ه: 1,
+  هـ: 1,
+  ة: 1,
+  و: 7,
+  ؤ: 7,
+  ي: 1,
+  ى: 1,
+  ئ: 1,
 };
 export const BAYAT_VALUES = BAYAT_MASHRIQI_VALUES;
 
 // 4B. Bayat Maghribi (حساب البيات المغربي / بسط الحروف مع حذف الحرف الأول وفق النظام المغربي)
 export const BAYAT_MAGHRIBI_VALUES: Record<string, number> = {
-  'ا': 110, 'أ': 110, 'إ': 110, 'آ': 110, 'ء': 110,
-  'ب': 1,
-  'ت': 1,
-  'ث': 1,
-  'ج': 50,
-  'ح': 1,
-  'خ': 1,
-  'د': 31,
-  'ذ': 31,
-  'ر': 1,
-  'ز': 11,
-  'س': 60,
-  'ش': 60,
-  'ص': 5,
-  'ض': 5,
-  'ط': 1,
-  'ظ': 1,
-  'ع': 60,
-  'غ': 60,
-  'ف': 1,
-  'ق': 81,
-  'ك': 81,
-  'ل': 41,
-  'م': 50,
-  'ن': 56,
-  'ه': 1, 'هـ': 1, 'ة': 1,
-  'و': 7, 'ؤ': 7,
-  'ي': 1, 'ى': 1, 'ئ': 1,
+  ا: 110,
+  أ: 110,
+  إ: 110,
+  آ: 110,
+  ء: 110,
+  ب: 1,
+  ت: 1,
+  ث: 1,
+  ج: 50,
+  ح: 1,
+  خ: 1,
+  د: 31,
+  ذ: 31,
+  ر: 1,
+  ز: 11,
+  س: 60,
+  ش: 60,
+  ص: 5,
+  ض: 5,
+  ط: 1,
+  ظ: 1,
+  ع: 60,
+  غ: 60,
+  ف: 1,
+  ق: 81,
+  ك: 81,
+  ل: 41,
+  م: 50,
+  ن: 56,
+  ه: 1,
+  هـ: 1,
+  ة: 1,
+  و: 7,
+  ؤ: 7,
+  ي: 1,
+  ى: 1,
+  ئ: 1,
+};
+
+// 5. SRQM Gematria Tables (جداول جُمَّل صرقم)
+// 5A. SRQM 1 (جدول الأرض 4 المتناظر: رصمق - حسنع - يلهاطك)
+export const SRQM_1_ORDER = [
+  "ر",
+  "ز",
+  "ص",
+  "ض",
+  "م",
+  "ب",
+  "ق",
+  "د",
+  "ن",
+  "ذ",
+  "س",
+  "ش",
+  "ح",
+  "خ",
+  "ع",
+  "غ",
+  "ي",
+  "ج",
+  "ل",
+  "ث",
+  "ه",
+  "ف",
+  "ا",
+  "و",
+  "ط",
+  "ظ",
+  "ك",
+  "ت",
+];
+
+export const SRQM_1_VALUES: Record<string, number> = {
+  ر: 1,
+  ص: 2,
+  م: 3,
+  ق: 4,
+  ح: 5,
+  س: 6,
+  ن: 7,
+  ع: 8,
+  ي: 9,
+  ى: 9,
+  ئ: 9,
+  ل: 10,
+  ه: 20,
+  هـ: 20,
+  ة: 20,
+  ا: 30,
+  أ: 30,
+  إ: 30,
+  آ: 30,
+  ء: 30,
+  ٱ: 30,
+  ط: 40,
+  ك: 50,
+  ب: 0,
+  ت: 0,
+  ث: 0,
+  ج: 0,
+  خ: 0,
+  د: 0,
+  ذ: 0,
+  ز: 0,
+  ش: 0,
+  ض: 0,
+  ظ: 0,
+  غ: 0,
+  ف: 0,
+  و: 0,
+  ؤ: 0,
+};
+
+// 5B. SRQT 2 (حُفظ للتوافق البرمجي)
+export const SRQT_2_ORDER = [
+  "ر",
+  "ص",
+  "م",
+  "ق",
+  "ح",
+  "س",
+  "ن",
+  "ع",
+  "ي",
+  "ل",
+  "ه",
+  "ا",
+  "ط",
+  "ك",
+  "ر",
+  "ص",
+  "م",
+  "ق",
+  "ح",
+  "س",
+  "ن",
+  "ع",
+  "ي",
+  "ل",
+  "ه",
+  "ا",
+  "ط",
+  "ك",
+];
+
+export const SRQT_2_VALUES: Record<string, number> = {
+  ...SRQM_1_VALUES,
+};
+
+// 5C. SRQD 3 (جدول الأرض 3 الدوري: رصمق - حسنع - يلهاطك)
+export const SRQD_3_ORDER = [
+  "ر",
+  "ص",
+  "م",
+  "ق",
+  "ح",
+  "س",
+  "ن",
+  "ع",
+  "ي",
+  "ل",
+  "ه",
+  "ا",
+  "ط",
+  "ك",
+  "ر",
+  "ص",
+  "م",
+  "ق",
+  "ح",
+  "س",
+  "ن",
+  "ع",
+  "ي",
+  "ل",
+  "ه",
+  "ا",
+  "ط",
+  "ك",
+];
+
+export const SRQD_3_VALUES: Record<string, number> = {
+  ر: 1,
+  ص: 2,
+  م: 3,
+  ق: 4,
+  ح: 5,
+  س: 6,
+  ن: 7,
+  ع: 8,
+  ي: 9,
+  ى: 9,
+  ئ: 9,
+  ل: 10,
+  ه: 20,
+  هـ: 20,
+  ة: 20,
+  ا: 30,
+  أ: 30,
+  إ: 30,
+  آ: 30,
+  ء: 30,
+  ٱ: 30,
+  ط: 40,
+  ك: 50,
+  ب: 0,
+  ت: 0,
+  ث: 0,
+  ج: 0,
+  خ: 0,
+  د: 0,
+  ذ: 0,
+  ز: 0,
+  ش: 0,
+  ض: 0,
+  ظ: 0,
+  غ: 0,
+  ف: 0,
+  و: 0,
+  ؤ: 0,
+};
+
+// 5D. SRTG 4 (حُفظ للتوافق البرمجي)
+export const SRTG_4_ORDER = [
+  "ص",
+  "ر",
+  "ت",
+  "غ",
+  "ق",
+  "م",
+  "ف",
+  "و",
+  "س",
+  "ن",
+  "ش",
+  "د",
+  "ع",
+  "ح",
+  "ج",
+  "ب",
+  "ي",
+  "ل",
+  "ذ",
+  "خ",
+  "ه",
+  "ا",
+  "ز",
+  "ض",
+  "ك",
+  "ط",
+  "ث",
+  "ظ",
+];
+
+export const SRTG_4_VALUES: Record<string, number> = {
+  ...SRQD_3_VALUES,
 };
 
 export const DEFAULT_GEMATRIA_TABLES: GematriaTable[] = [
   {
-    id: 'mashriqi',
-    name: 'النموذج المشرقي (الأبجدي الشائع)',
-    description: 'الترتيب المشرقي التقليدي: أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ',
+    id: "mashriqi",
+    name: "النموذج المشرقي (الأبجدي الشائع)",
+    description:
+      "الترتيب المشرقي التقليدي: أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ",
     isPreset: true,
     values: MASHRIQI_VALUES,
     letterOrder: MASHRIQI_ORDER,
   },
   {
-    id: 'maghribi',
-    name: 'النموذج المغربي (أبجد صعفض)',
-    description: 'الترتيب المغربي الأصيل: أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش',
+    id: "maghribi",
+    name: "النموذج المغربي (أبجد صعفض)",
+    description: "الترتيب المغربي الأصيل: أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش",
     isPreset: true,
     values: MAGHRIBI_VALUES,
     letterOrder: MAGHRIBI_ORDER,
   },
   {
-    id: 'jafr_mashriqi',
-    name: 'حساب الجفر الشرقي (بسط الحروف)',
-    description: 'بسط الحروف وأسمائها وفق النظام المشرقي (س=120، ص=95، ض=805، غ=1060)',
+    id: "gematria_srqd_3",
+    name: "جُمَّل الأرض 3 الدوري (رصمق - حسنع)",
+    description:
+      "حساب الجُمَّل وفق ترتيب الأرض 3 الدوري: الأحرف النورانية بوزنها (ر=1 .. ك=50) وباقي الأحرف 0",
     isPreset: true,
-    values: JAFR_MASHRIQI_VALUES,
-    letterOrder: MASHRIQI_ORDER,
+    values: SRQD_3_VALUES,
+    letterOrder: SRQD_3_ORDER,
   },
   {
-    id: 'jafr_maghribi',
-    name: 'حساب الجفر المغربي (بسط الحروف)',
-    description: 'بسط الحروف وأسمائها وفق النظام المغربي (س=360، ص=65، ض=95، غ=960)',
+    id: "gematria_srqm_1",
+    name: "جُمَّل الأرض 4 المتناظر (رصمق - حسنع)",
+    description:
+      "حساب الجُمَّل وفق ترتيب الأرض 4 المتناظر: الأحرف النورانية بوزنها (ر=1 .. ك=50) وباقي الأحرف 0",
     isPreset: true,
-    values: JAFR_MAGHRIBI_VALUES,
-    letterOrder: MAGHRIBI_ORDER,
-  },
-  {
-    id: 'bayat_mashriqi',
-    name: 'حساب البيات الشرقي',
-    description: 'بسط الحروف مع حذف الحرف الأول وحساب الباقي وفق النظام المشرقي',
-    isPreset: true,
-    values: BAYAT_MASHRIQI_VALUES,
-    letterOrder: MASHRIQI_ORDER,
-  },
-  {
-    id: 'bayat_maghribi',
-    name: 'حساب البيات المغربي',
-    description: 'بسط الحروف مع حذف الحرف الأول وحساب الباقي وفق النظام المغربي',
-    isPreset: true,
-    values: BAYAT_MAGHRIBI_VALUES,
-    letterOrder: MAGHRIBI_ORDER,
+    values: SRQM_1_VALUES,
+    letterOrder: SRQM_1_ORDER,
   },
 ];
 
 export const ARABIC_28_CANONICAL = [
-  { char: 'ا', name: 'ألف' },
-  { char: 'ب', name: 'باء' },
-  { char: 'ج', name: 'جيم' },
-  { char: 'د', name: 'دال' },
-  { char: 'ه', name: 'هاء' },
-  { char: 'و', name: 'واو' },
-  { char: 'ز', name: 'زاي' },
-  { char: 'ح', name: 'حاء' },
-  { char: 'ط', name: 'طاء' },
-  { char: 'ي', name: 'ياء' },
-  { char: 'ك', name: 'كاف' },
-  { char: 'ل', name: 'لام' },
-  { char: 'م', name: 'ميم' },
-  { char: 'ن', name: 'نون' },
-  { char: 'س', name: 'سين' },
-  { char: 'ع', name: 'عين' },
-  { char: 'ف', name: 'فاء' },
-  { char: 'ص', name: 'صاد' },
-  { char: 'ق', name: 'قاف' },
-  { char: 'ر', name: 'راء' },
-  { char: 'ش', name: 'شين' },
-  { char: 'ت', name: 'تاء' },
-  { char: 'ث', name: 'ثاء' },
-  { char: 'خ', name: 'خاء' },
-  { char: 'ذ', name: 'ذال' },
-  { char: 'ض', name: 'ضاد' },
-  { char: 'ظ', name: 'ظاء' },
-  { char: 'غ', name: 'غين' },
+  { char: "ا", name: "ألف" },
+  { char: "ب", name: "باء" },
+  { char: "ج", name: "جيم" },
+  { char: "د", name: "دال" },
+  { char: "ه", name: "هاء" },
+  { char: "و", name: "واو" },
+  { char: "ز", name: "زاي" },
+  { char: "ح", name: "حاء" },
+  { char: "ط", name: "طاء" },
+  { char: "ي", name: "ياء" },
+  { char: "ك", name: "كاف" },
+  { char: "ل", name: "لام" },
+  { char: "م", name: "ميم" },
+  { char: "ن", name: "نون" },
+  { char: "س", name: "سين" },
+  { char: "ع", name: "عين" },
+  { char: "ف", name: "فاء" },
+  { char: "ص", name: "صاد" },
+  { char: "ق", name: "قاف" },
+  { char: "ر", name: "راء" },
+  { char: "ش", name: "شين" },
+  { char: "ت", name: "تاء" },
+  { char: "ث", name: "ثاء" },
+  { char: "خ", name: "خاء" },
+  { char: "ذ", name: "ذال" },
+  { char: "ض", name: "ضاد" },
+  { char: "ظ", name: "ظاء" },
+  { char: "غ", name: "غين" },
 ];
 
 /**
  * Robustly resolves the numeric value of an Arabic letter in a given table
  */
-export function getLetterValueInTable(table: GematriaTable, char: string): number {
-  if (!char || char === ' ') return 0;
+export function getLetterValueInTable(
+  table: GematriaTable,
+  char: string,
+): number {
+  if (!char || char === " ") return 0;
   if (table.values[char] !== undefined && table.values[char] !== null) {
     return Number(table.values[char]);
   }
   const norm = normalizeAbjadChar(char);
   if (table.values[norm] !== undefined && table.values[norm] !== null) {
     return Number(table.values[norm]);
-  }
-  // Preset or canonical fallback
-  if (MASHRIQI_VALUES[char] !== undefined) {
-    return MASHRIQI_VALUES[char];
-  }
-  if (MASHRIQI_VALUES[norm] !== undefined) {
-    return MASHRIQI_VALUES[norm];
   }
   return 0;
 }
@@ -346,64 +659,84 @@ export interface GematriaContextType {
   activeTableId: string;
   activeTable: GematriaTable;
   calculationOptions: GematriaCalculationOptions;
-  updateCalculationOptions: (updates: Partial<GematriaCalculationOptions>) => void;
+  updateCalculationOptions: (
+    updates: Partial<GematriaCalculationOptions>,
+  ) => void;
   dictCount: number;
   dictLoaded: boolean;
   setActiveTableId: (id: string) => void;
-  addCustomTable: (name: string, values: Record<string, number>, description?: string) => string;
+  addCustomTable: (
+    name: string,
+    values: Record<string, number>,
+    description?: string,
+  ) => string;
   updateTable: (id: string, updates: Partial<GematriaTable>) => void;
   deleteTable: (id: string) => boolean;
   resetToDefaults: () => void;
-  calculateWordGematria: (word: string, tableId?: string, overrideOptions?: Partial<GematriaCalculationOptions>) => number;
+  calculateWordGematria: (
+    word: string,
+    tableId?: string,
+    overrideOptions?: Partial<GematriaCalculationOptions>,
+  ) => number;
   getLetterBreakdown: (
     word: string,
     tableId?: string,
-    overrideOptions?: Partial<GematriaCalculationOptions>
+    overrideOptions?: Partial<GematriaCalculationOptions>,
   ) => { char: string; value: number; isNoorani: boolean; note?: string }[];
   findQuranicMatches: (
     targetValue: number,
-    options?: { filterType?: 'all' | 'noorani' | 'non_noorani'; maxResults?: number; tableId?: string }
+    options?: {
+      filterType?: "all" | "noorani" | "non_noorani";
+      maxResults?: number;
+      tableId?: string;
+    },
   ) => SynthesizedTextResult[];
   findArabicMatches: (
     targetValue: number,
-    options?: { maxResults?: number; tableId?: string }
+    options?: { maxResults?: number; tableId?: string },
   ) => SynthesizedTextResult[];
   synthesizeNonArabicPossibilities: (
     targetValue: number,
-    options?: { maxResults?: number; tableId?: string }
+    options?: { maxResults?: number; tableId?: string },
   ) => SynthesizedTextResult[];
 }
 
-const STORAGE_KEY_TABLES = 'gematria_custom_tables_v1';
-const STORAGE_KEY_ACTIVE = 'gematria_active_table_id_v1';
-const STORAGE_KEY_OPTIONS = 'gematria_calc_options_v1';
+const STORAGE_KEY_TABLES = "gematria_custom_tables_v2";
+const STORAGE_KEY_ACTIVE = "gematria_active_table_id_v2";
+const STORAGE_KEY_OPTIONS = "gematria_calc_options_v2";
 
-const GematriaContext = createContext<GematriaContextType | undefined>(undefined);
+const GematriaContext = createContext<GematriaContextType | undefined>(
+  undefined,
+);
 
 export function GematriaProvider({ children }: { children: React.ReactNode }) {
-  const [calculationOptions, setCalculationOptionsState] = useState<GematriaCalculationOptions>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_OPTIONS);
-      if (stored) {
-        return { ...DEFAULT_GEMATRIA_OPTIONS, ...JSON.parse(stored) };
-      }
-    } catch (e) {
-      console.warn('Error reading stored calculation options:', e);
-    }
-    return DEFAULT_GEMATRIA_OPTIONS;
-  });
-
-  const updateCalculationOptions = useCallback((updates: Partial<GematriaCalculationOptions>) => {
-    setCalculationOptionsState((prev) => {
-      const next = { ...prev, ...updates };
+  const [calculationOptions, setCalculationOptionsState] =
+    useState<GematriaCalculationOptions>(() => {
       try {
-        localStorage.setItem(STORAGE_KEY_OPTIONS, JSON.stringify(next));
+        const stored = localStorage.getItem(STORAGE_KEY_OPTIONS);
+        if (stored) {
+          return { ...DEFAULT_GEMATRIA_OPTIONS, ...JSON.parse(stored) };
+        }
       } catch (e) {
-        console.warn('Error saving calculation options:', e);
+        console.warn("Error reading stored calculation options:", e);
       }
-      return next;
+      return DEFAULT_GEMATRIA_OPTIONS;
     });
-  }, []);
+
+  const updateCalculationOptions = useCallback(
+    (updates: Partial<GematriaCalculationOptions>) => {
+      setCalculationOptionsState((prev) => {
+        const next = { ...prev, ...updates };
+        try {
+          localStorage.setItem(STORAGE_KEY_OPTIONS, JSON.stringify(next));
+        } catch (e) {
+          console.warn("Error saving calculation options:", e);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const [tables, setTables] = useState<GematriaTable[]>(() => {
     try {
@@ -411,25 +744,39 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge presets to ensure they always exist
-          const presetMap = new Map(DEFAULT_GEMATRIA_TABLES.map((t) => [t.id, t]));
+          const presetMap = new Map(
+            DEFAULT_GEMATRIA_TABLES.map((t) => [t.id, t]),
+          );
+          const legacyIds = new Set([
+            "jafr",
+            "jafr_mashriqi",
+            "jafr_maghribi",
+            "bayat",
+            "bayat_mashriqi",
+            "bayat_maghribi",
+            "small",
+            "abjad_asghar",
+            "gematria_srqt_2",
+            "gematria_srtg_4",
+          ]);
           const combined: GematriaTable[] = [];
           for (const item of parsed) {
+            if (legacyIds.has(item.id)) continue;
             if (presetMap.has(item.id)) {
               const preset = presetMap.get(item.id)!;
-              combined.push({ ...preset, ...item, values: { ...preset.values, ...(item.values || {}) }, isPreset: true });
+              combined.push(preset);
               presetMap.delete(item.id);
-            } else {
+            } else if (!item.isPreset) {
               combined.push(item);
             }
           }
-          // Add any missing preset (including newly added bayat)
+          // Add any missing preset
           presetMap.forEach((p) => combined.push(p));
           return combined;
         }
       }
     } catch (e) {
-      console.warn('Error reading stored gematria tables:', e);
+      console.warn("Error reading stored gematria tables:", e);
     }
     return DEFAULT_GEMATRIA_TABLES;
   });
@@ -439,14 +786,18 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       const storedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
       if (storedActive) return storedActive;
     } catch (e) {
-      console.warn('Error reading stored active table ID:', e);
+      console.warn("Error reading stored active table ID:", e);
     }
-    return 'mashriqi';
+    return "mashriqi";
   });
 
   // Track Quranic dictionary loading reactively
-  const [dictCount, setDictCount] = useState<number>(() => quranicDictionary.getWordCount());
-  const [dictLoaded, setDictLoaded] = useState<boolean>(() => quranicDictionary.isLoaded());
+  const [dictCount, setDictCount] = useState<number>(() =>
+    quranicDictionary.getWordCount(),
+  );
+  const [dictLoaded, setDictLoaded] = useState<boolean>(() =>
+    quranicDictionary.isLoaded(),
+  );
 
   useEffect(() => {
     // Initiate background loading if not already triggered
@@ -464,7 +815,7 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY_TABLES, JSON.stringify(tables));
     } catch (e) {
-      console.warn('Error saving gematria tables:', e);
+      console.warn("Error saving gematria tables:", e);
     }
   }, [tables]);
 
@@ -473,45 +824,60 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY_ACTIVE, activeTableId);
     } catch (e) {
-      console.warn('Error saving active table ID:', e);
+      console.warn("Error saving active table ID:", e);
     }
   }, [activeTableId]);
 
   const activeTable = useMemo(() => {
-    return tables.find((t) => t.id === activeTableId) || tables[0] || DEFAULT_GEMATRIA_TABLES[0];
+    return (
+      tables.find((t) => t.id === activeTableId) ||
+      tables[0] ||
+      DEFAULT_GEMATRIA_TABLES[0]
+    );
   }, [tables, activeTableId]);
 
   const setActiveTableId = useCallback((id: string) => {
     setActiveTableIdState(id);
   }, []);
 
-  const addCustomTable = useCallback((name: string, values: Record<string, number>, description: string = '') => {
-    const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const newTable: GematriaTable = {
-      id,
-      name: name.trim() || 'جدول مخصص جديد',
-      description: description.trim() || 'جدول حساب جُمَّل مخصص بواسطة المستخدم',
-      isPreset: false,
-      values: { ...values },
-      letterOrder: [...MASHRIQI_ORDER],
-    };
-    setTables((prev) => [...prev, newTable]);
-    setActiveTableIdState(id);
-    return id;
-  }, []);
+  const addCustomTable = useCallback(
+    (
+      name: string,
+      values: Record<string, number>,
+      description: string = "",
+    ) => {
+      const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newTable: GematriaTable = {
+        id,
+        name: name.trim() || "جدول مخصص جديد",
+        description:
+          description.trim() || "جدول حساب جُمَّل مخصص بواسطة المستخدم",
+        isPreset: false,
+        values: { ...values },
+        letterOrder: [...MASHRIQI_ORDER],
+      };
+      setTables((prev) => [...prev, newTable]);
+      setActiveTableIdState(id);
+      return id;
+    },
+    [],
+  );
 
-  const updateTable = useCallback((id: string, updates: Partial<GematriaTable>) => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        return {
-          ...t,
-          ...updates,
-          values: updates.values ? { ...updates.values } : t.values,
-        };
-      })
-    );
-  }, []);
+  const updateTable = useCallback(
+    (id: string, updates: Partial<GematriaTable>) => {
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          return {
+            ...t,
+            ...updates,
+            values: updates.values ? { ...updates.values } : t.values,
+          };
+        }),
+      );
+    },
+    [],
+  );
 
   const deleteTable = useCallback(
     (id: string) => {
@@ -531,55 +897,72 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     },
-    [tables, activeTableId]
+    [tables, activeTableId],
   );
 
   const resetToDefaults = useCallback(() => {
     setTables(DEFAULT_GEMATRIA_TABLES);
-    setActiveTableIdState('mashriqi');
+    setActiveTableIdState("mashriqi");
     try {
       localStorage.removeItem(STORAGE_KEY_TABLES);
       localStorage.removeItem(STORAGE_KEY_ACTIVE);
     } catch (e) {
-      console.warn('Error clearing localStorage:', e);
+      console.warn("Error clearing localStorage:", e);
     }
   }, []);
 
   // Calculate Gematria value of a word based on a table and active calculation options
   const calculateWordGematria = useCallback(
-    (word: string, tableId?: string, overrideOptions?: Partial<GematriaCalculationOptions>): number => {
+    (
+      word: string,
+      tableId?: string,
+      overrideOptions?: Partial<GematriaCalculationOptions>,
+    ): number => {
       if (!word) return 0;
-      const targetTbl = (tableId ? tables.find((t) => t.id === tableId) : activeTable) || activeTable;
+      const targetTbl =
+        (tableId ? tables.find((t) => t.id === tableId) : activeTable) ||
+        activeTable;
       const opts = { ...calculationOptions, ...overrideOptions };
       return calculateGematriaWithOptions(word, opts, targetTbl.values);
     },
-    [tables, activeTable, calculationOptions]
+    [tables, activeTable, calculationOptions],
   );
 
   // Detailed breakdown of letters for a word
   const getLetterBreakdown = useCallback(
-    (word: string, tableId?: string, overrideOptions?: Partial<GematriaCalculationOptions>) => {
+    (
+      word: string,
+      tableId?: string,
+      overrideOptions?: Partial<GematriaCalculationOptions>,
+    ) => {
       if (!word) return [];
-      const targetTbl = (tableId ? tables.find((t) => t.id === tableId) : activeTable) || activeTable;
+      const targetTbl =
+        (tableId ? tables.find((t) => t.id === tableId) : activeTable) ||
+        activeTable;
       const opts = { ...calculationOptions, ...overrideOptions };
 
       let processed = word.trim();
-      if (opts.definiteArticleMode === 'strip_al') {
-        processed = processed.replace(/^(وال|فال|كال|بال|لل|ال)/, '').trim();
+      if (opts.definiteArticleMode === "strip_al") {
+        processed = processed.replace(/^(وال|فال|كال|بال|لل|ال)/, "").trim();
       }
 
-      const details: { char: string; value: number; isNoorani: boolean; note?: string }[] = [];
+      const details: {
+        char: string;
+        value: number;
+        isNoorani: boolean;
+        note?: string;
+      }[] = [];
 
       // Check Dagger Alif
-      if (opts.daggerAlif === 'count_as_1') {
+      if (opts.daggerAlif === "count_as_1") {
         const rawMatches = processed.match(/\u0670/g);
         if (rawMatches) {
           for (let i = 0; i < rawMatches.length; i++) {
             details.push({
-              char: 'ٰ',
-              value: targetTbl.values['ا'] || 1,
+              char: "ٰ",
+              value: targetTbl.values["ا"] || 1,
               isNoorani: true,
-              note: 'ألف خنجرية محتسبة (1)',
+              note: "ألف خنجرية محتسبة (1)",
             });
           }
         }
@@ -590,86 +973,134 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       for (let wIdx = 0; wIdx < words.length; wIdx++) {
         const w = words[wIdx];
         const rawArray = Array.from(w);
-        const lettersInWord = rawArray.filter((c) => /[\u0621-\u064A\u0671]/.test(c));
+        const lettersInWord = rawArray.filter((c) =>
+          /[\u0621-\u064A\u0671]/.test(c),
+        );
         const wordLetterCount = lettersInWord.length;
         let posInWord = 1;
 
         for (let i = 0; i < rawArray.length; i++) {
           const ch = rawArray[i];
-          if (ch === '\u0651') {
-            if (details.length > 0 && opts.shaddahMode === 'double_2x') {
+          if (ch === "\u0651") {
+            if (details.length > 0 && opts.shaddahMode === "double_2x") {
               const prev = details[details.length - 1];
               prev.value *= 2;
-              prev.note = (prev.note ? prev.note + ' + ' : '') + 'مضعف بالشدة (2x)';
+              prev.note =
+                (prev.note ? prev.note + " + " : "") + "مضعف بالشدة (2x)";
             }
             continue;
           }
-          if (/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]/.test(ch)) {
+          if (
+            /[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0640]/.test(
+              ch,
+            )
+          ) {
             continue;
           }
           if (/[\u0621-\u064A\u0671]/.test(ch)) {
             let charVal = 0;
             let note: string | undefined;
 
-            if (ch === 'ة' || ch === 'ۃ') {
-              charVal = opts.taMarbuta === 'ta_400' ? (targetTbl.values['ت'] || 400) : (targetTbl.values['ه'] || targetTbl.values['ة'] || 5);
-              note = opts.taMarbuta === 'ta_400' ? 'تاء مربوطة (400)' : 'تاء مربوطة كهاء (5)';
-            } else if (ch === 'ى') {
-              charVal = opts.alifMaqsura === 'alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ى'] || 10);
-              note = opts.alifMaqsura === 'alif_1' ? 'ألف مقصورة كألف (1)' : 'ألف مقصورة كياء (10)';
-            } else if (ch === 'ء') {
-              charVal = opts.hamzaMode === 'ignore_isolated_0' ? 0 : (targetTbl.values['ء'] || targetTbl.values['ا'] || 1);
-              if (opts.hamzaMode === 'ignore_isolated_0') note = 'همزة مهملة (0)';
-            } else if (['أ', 'إ', 'آ', 'ٱ'].includes(ch)) {
-              charVal = targetTbl.values['ا'] || targetTbl.values[ch] || 1;
-            } else if (ch === 'ؤ') {
-              charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['و'] || targetTbl.values['ؤ'] || 6);
-            } else if (ch === 'ئ') {
-              charVal = opts.hamzaMode === 'all_as_alif_1' ? (targetTbl.values['ا'] || 1) : (targetTbl.values['ي'] || targetTbl.values['ئ'] || 10);
+            if (ch === "ة" || ch === "ۃ") {
+              charVal =
+                opts.taMarbuta === "ta_400"
+                  ? targetTbl.values["ت"] || 400
+                  : targetTbl.values["ه"] || targetTbl.values["ة"] || 5;
+              note =
+                opts.taMarbuta === "ta_400"
+                  ? "تاء مربوطة (400)"
+                  : "تاء مربوطة كهاء (5)";
+            } else if (ch === "ى") {
+              charVal =
+                opts.alifMaqsura === "alif_1"
+                  ? targetTbl.values["ا"] || 1
+                  : targetTbl.values["ي"] || targetTbl.values["ى"] || 10;
+              note =
+                opts.alifMaqsura === "alif_1"
+                  ? "ألف مقصورة كألف (1)"
+                  : "ألف مقصورة كياء (10)";
+            } else if (ch === "ء") {
+              charVal =
+                opts.hamzaMode === "ignore_isolated_0"
+                  ? 0
+                  : targetTbl.values["ء"] || targetTbl.values["ا"] || 1;
+              if (opts.hamzaMode === "ignore_isolated_0")
+                note = "همزة مهملة (0)";
+            } else if (["أ", "إ", "آ", "ٱ"].includes(ch)) {
+              charVal = targetTbl.values["ا"] || targetTbl.values[ch] || 1;
+            } else if (ch === "ؤ") {
+              charVal =
+                opts.hamzaMode === "all_as_alif_1"
+                  ? targetTbl.values["ا"] || 1
+                  : targetTbl.values["و"] || targetTbl.values["ؤ"] || 6;
+            } else if (ch === "ئ") {
+              charVal =
+                opts.hamzaMode === "all_as_alif_1"
+                  ? targetTbl.values["ا"] || 1
+                  : targetTbl.values["ي"] || targetTbl.values["ئ"] || 10;
             } else {
               charVal = getLetterValueInTable(targetTbl, ch);
             }
 
             const normalized = normalizeAbjadChar(ch);
-            const isNoorani = NOORANI_LETTERS_SET.has(ch) || NOORANI_LETTERS_SET.has(normalized);
+            const isNoorani =
+              NOORANI_LETTERS_SET.has(ch) ||
+              NOORANI_LETTERS_SET.has(normalized);
 
             if (opts.jabirScaleMode) {
-              const jMode = opts.jabirMode || 'asc';
-              const factor = getJabirPositionalMultiplier(posInWord, wordLetterCount, jMode);
+              const jMode = opts.jabirMode || "asc";
+              const factor = getJabirPositionalMultiplier(
+                posInWord,
+                wordLetterCount,
+                jMode,
+              );
               const origVal = charVal;
               charVal = charVal * factor;
               const modeLabel =
-                jMode === 'desc'
-                  ? 'عكسي'
-                  : jMode === 'pyramid'
-                  ? 'هرمي'
-                  : jMode === 'valley'
-                  ? 'وادي'
-                  : 'جابر';
-              note = (note ? note + ' | ' : '') + `${modeLabel} (${origVal} × ${factor})`;
+                jMode === "desc"
+                  ? "عكسي"
+                  : jMode === "pyramid"
+                    ? "هرمي"
+                    : jMode === "valley"
+                      ? "وادي"
+                      : "جابر";
+              note =
+                (note ? note + " | " : "") +
+                `${modeLabel} (${origVal} × ${factor})`;
             }
 
             if (opts.lunarScaleMode) {
-              const day = Math.min(28, Math.max(1, Math.round(opts.lunarDay ?? 14)));
+              const day = Math.min(
+                28,
+                Math.max(1, Math.round(opts.lunarDay ?? 14)),
+              );
               const origVal = charVal;
               if (day <= 14) {
                 // النصف الأول (1 إلى 14): تزايد النور (حساب الشرف)
                 if (isNoorani) {
                   charVal = charVal * day;
-                  note = (note ? note + ' | ' : '') + `شرف ونور (${origVal} × ${day} = ${charVal})`;
+                  note =
+                    (note ? note + " | " : "") +
+                    `شرف ونور (${origVal} × ${day} = ${charVal})`;
                 } else {
-                  note = (note ? note + ' | ' : '') + `ظلماني خامل (${charVal})`;
+                  note =
+                    (note ? note + " | " : "") + `ظلماني خامل (${charVal})`;
                 }
               } else {
                 // النصف الثاني (15 إلى 28): المحو وتزايد الظلمة (حساب المحو)
                 if (isNoorani) {
-                  note = (note ? note + ' | ' : '') + `نوراني ثابت (${charVal})`;
+                  note =
+                    (note ? note + " | " : "") + `نوراني ثابت (${charVal})`;
                 } else {
                   const divisor = day - 14;
                   const exactVal = divisor > 0 ? charVal / divisor : charVal;
                   charVal = exactVal;
-                  const formattedVal = Number.isInteger(exactVal) ? exactVal : exactVal.toFixed(2).replace(/\.?0+$/, '');
-                  note = (note ? note + ' | ' : '') + `محو وظلمة (${origVal} ÷ ${divisor} = ${formattedVal})`;
+                  const formattedVal = Number.isInteger(exactVal)
+                    ? exactVal
+                    : exactVal.toFixed(2).replace(/\.?0+$/, "");
+                  note =
+                    (note ? note + " | " : "") +
+                    `محو وظلمة (${origVal} ÷ ${divisor} = ${formattedVal})`;
                 }
               }
             }
@@ -682,11 +1113,24 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 
       return details;
     },
-    [tables, activeTable, calculationOptions]
+    [tables, activeTable, calculationOptions],
   );
 
   // Inverted Quranic index cache keyed by table ID + dictCount + table values + calculationOptions
-  const indexCacheRef = React.useRef<Map<string, Map<number, { meta: QuranicWordMeta; clean: string; value: number; isNoorani: boolean }[]>>>(new Map());
+  const indexCacheRef = React.useRef<
+    Map<
+      string,
+      Map<
+        number,
+        {
+          meta: QuranicWordMeta;
+          clean: string;
+          value: number;
+          isNoorani: boolean;
+        }[]
+      >
+    >
+  >(new Map());
 
   const getQuranIndexForTable = useCallback(
     (table: GematriaTable) => {
@@ -695,7 +1139,15 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       if (existing) return existing;
 
       const qDict = quranicDictionary.getAllWords();
-      const map = new Map<number, { meta: QuranicWordMeta; clean: string; value: number; isNoorani: boolean }[]>();
+      const map = new Map<
+        number,
+        {
+          meta: QuranicWordMeta;
+          clean: string;
+          value: number;
+          isNoorani: boolean;
+        }[]
+      >();
       const seen = new Set<string>();
 
       for (const meta of qDict) {
@@ -703,7 +1155,11 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         const clean = cleanArabicTextForGematria(meta.word);
         if (!clean) continue;
 
-        const val = calculateGematriaWithOptions(rawWord, calculationOptions, table.values);
+        const val = calculateGematriaWithOptions(
+          rawWord,
+          calculationOptions,
+          table.values,
+        );
         if (val <= 0) continue;
 
         const dedupKey = `${val}_${rawWord}`;
@@ -713,7 +1169,7 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         let isNoorani = true;
         for (let i = 0; i < clean.length; i++) {
           const ch = clean[i];
-          if (ch === ' ') continue;
+          if (ch === " ") continue;
           const norm = normalizeAbjadChar(ch);
           if (!NOORANI_LETTERS_SET.has(ch) && !NOORANI_LETTERS_SET.has(norm)) {
             isNoorani = false;
@@ -732,19 +1188,25 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       indexCacheRef.current.set(cacheKey, map);
       return map;
     },
-    [dictCount, calculationOptions]
+    [dictCount, calculationOptions],
   );
 
   // Find Quranic matches for target number
   const findQuranicMatches = useCallback(
     (
       targetValue: number,
-      options: { filterType?: 'all' | 'noorani' | 'non_noorani'; maxResults?: number; tableId?: string } = {}
+      options: {
+        filterType?: "all" | "noorani" | "non_noorani";
+        maxResults?: number;
+        tableId?: string;
+      } = {},
     ): SynthesizedTextResult[] => {
-      const { filterType = 'all', maxResults = 150, tableId } = options;
+      const { filterType = "all", maxResults = 150, tableId } = options;
       if (targetValue <= 0) return [];
 
-      const targetTbl = (tableId ? tables.find((t) => t.id === tableId) : activeTable) || activeTable;
+      const targetTbl =
+        (tableId ? tables.find((t) => t.id === tableId) : activeTable) ||
+        activeTable;
       const index = getQuranIndexForTable(targetTbl);
       const list = index.get(targetValue) || [];
 
@@ -752,8 +1214,8 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       const seenTexts = new Set<string>();
 
       for (const item of list) {
-        if (filterType === 'noorani' && !item.isNoorani) continue;
-        if (filterType === 'non_noorani' && item.isNoorani) continue;
+        if (filterType === "noorani" && !item.isNoorani) continue;
+        if (filterType === "non_noorani" && item.isNoorani) continue;
 
         const displayWord = item.meta.originalQuranicWord || item.meta.word;
         if (seenTexts.has(displayWord)) continue;
@@ -762,8 +1224,8 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         matches.push({
           text: displayWord,
           value: item.value,
-          letterCount: item.clean.replace(/\s+/g, '').length,
-          letters: item.clean.replace(/\s+/g, '').split(''),
+          letterCount: item.clean.replace(/\s+/g, "").length,
+          letters: item.clean.replace(/\s+/g, "").split(""),
           isQuranic: true,
           isLexical: true,
           quranicMeta: item.meta,
@@ -783,11 +1245,19 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 
       return matches;
     },
-    [tables, activeTable, getQuranIndexForTable]
+    [tables, activeTable, getQuranIndexForTable],
   );
 
   // Inverted Arabic dictionary index cache
-  const arabicIndexCacheRef = React.useRef<Map<string, Map<number, { word: string; clean: string; value: number; isNoorani: boolean }[]>>>(new Map());
+  const arabicIndexCacheRef = React.useRef<
+    Map<
+      string,
+      Map<
+        number,
+        { word: string; clean: string; value: number; isNoorani: boolean }[]
+      >
+    >
+  >(new Map());
 
   const getArabicIndexForTable = useCallback(
     (table: GematriaTable) => {
@@ -796,7 +1266,10 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       const existing = arabicIndexCacheRef.current.get(cacheKey);
       if (existing) return existing;
 
-      const map = new Map<number, { word: string; clean: string; value: number; isNoorani: boolean }[]>();
+      const map = new Map<
+        number,
+        { word: string; clean: string; value: number; isNoorani: boolean }[]
+      >();
       const seen = new Set<string>();
 
       for (const rawWord of allWords) {
@@ -804,13 +1277,17 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         if (!clean || seen.has(clean)) continue;
         seen.add(clean);
 
-        const val = calculateGematriaWithOptions(rawWord, calculationOptions, table.values);
+        const val = calculateGematriaWithOptions(
+          rawWord,
+          calculationOptions,
+          table.values,
+        );
         if (val <= 0) continue;
 
         let isNoorani = true;
         for (let i = 0; i < clean.length; i++) {
           const ch = clean[i];
-          if (ch === ' ') continue;
+          if (ch === " ") continue;
           const norm = normalizeAbjadChar(ch);
           if (!NOORANI_LETTERS_SET.has(ch) && !NOORANI_LETTERS_SET.has(norm)) {
             isNoorani = false;
@@ -829,19 +1306,21 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       arabicIndexCacheRef.current.set(cacheKey, map);
       return map;
     },
-    [calculationOptions]
+    [calculationOptions],
   );
 
   // Find general Arabic words (معجم اللغة العربية العام) matching this Gematria weight
   const findArabicMatches = useCallback(
     (
       targetValue: number,
-      options: { maxResults?: number; tableId?: string } = {}
+      options: { maxResults?: number; tableId?: string } = {},
     ): SynthesizedTextResult[] => {
       const { maxResults = 150, tableId } = options;
       if (targetValue <= 0) return [];
 
-      const targetTbl = (tableId ? tables.find((t) => t.id === tableId) : activeTable) || activeTable;
+      const targetTbl =
+        (tableId ? tables.find((t) => t.id === tableId) : activeTable) ||
+        activeTable;
       const index = getArabicIndexForTable(targetTbl);
       const list = index.get(targetValue) || [];
 
@@ -857,8 +1336,8 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
         matches.push({
           text: item.word,
           value: item.value,
-          letterCount: item.clean.replace(/\s+/g, '').length,
-          letters: item.clean.replace(/\s+/g, '').split(''),
+          letterCount: item.clean.replace(/\s+/g, "").length,
+          letters: item.clean.replace(/\s+/g, "").split(""),
           isQuranic: !!qMeta,
           isLexical: true,
           quranicMeta: qMeta,
@@ -872,25 +1351,52 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       matches.sort((a, b) => a.letterCount - b.letterCount);
       return matches;
     },
-    [tables, activeTable, getArabicIndexForTable]
+    [tables, activeTable, getArabicIndexForTable],
   );
 
   // Synthesize non-Arabic combinations & structural permutations (جميع احتمالات وتراكيب الحروف غير المعجمية)
   const synthesizeNonArabicPossibilities = useCallback(
     (
       targetValue: number,
-      options: { maxResults?: number; tableId?: string } = {}
+      options: { maxResults?: number; tableId?: string } = {},
     ): SynthesizedTextResult[] => {
       const { maxResults = 500, tableId } = options;
       if (targetValue <= 0) return [];
 
-      const targetTable = tableId ? tables.find((t) => t.id === tableId) || activeTable : activeTable;
+      const targetTable = tableId
+        ? tables.find((t) => t.id === tableId) || activeTable
+        : activeTable;
 
       // Extract letter values for the active table for all 28 canonical letters
       const canonicalChars = [
-        'ا', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح', 'ط', 'ي',
-        'ك', 'ل', 'م', 'ن', 'س', 'ع', 'ف', 'ص', 'ق', 'ر',
-        'ش', 'ت', 'ث', 'خ', 'ذ', 'ض', 'ظ', 'غ'
+        "ا",
+        "ب",
+        "ج",
+        "د",
+        "ه",
+        "و",
+        "ز",
+        "ح",
+        "ط",
+        "ي",
+        "ك",
+        "ل",
+        "م",
+        "ن",
+        "س",
+        "ع",
+        "ف",
+        "ص",
+        "ق",
+        "ر",
+        "ش",
+        "ت",
+        "ث",
+        "خ",
+        "ذ",
+        "ض",
+        "ظ",
+        "غ",
       ];
 
       const letterValues = canonicalChars.map((c) => ({
@@ -911,8 +1417,10 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       for (const permWord of exactTwoLetters.permutations) {
         if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
           seen.add(permWord);
-          const chars = permWord.split('');
-          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          const chars = permWord.split("");
+          const isNoorani = chars.every((c) =>
+            NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+          );
           results.push({
             text: permWord,
             value: targetValue,
@@ -927,17 +1435,22 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Exact combinations of 3 distinct letters without repetition (كافة احتمالات 3 أحرف بدون تكرار)
-      const exactThreeLetters = generateExactThreeLetterCombinations(targetValue, {
-        letterValues,
-        includePermutations: true,
-        maxResults: 3000,
-      });
+      const exactThreeLetters = generateExactThreeLetterCombinations(
+        targetValue,
+        {
+          letterValues,
+          includePermutations: true,
+          maxResults: 3000,
+        },
+      );
 
       for (const permWord of exactThreeLetters.permutations) {
         if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
           seen.add(permWord);
-          const chars = permWord.split('');
-          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          const chars = permWord.split("");
+          const isNoorani = chars.every((c) =>
+            NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+          );
           results.push({
             text: permWord,
             value: targetValue,
@@ -952,17 +1465,22 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 3. Exact combinations of 4 distinct letters without repetition
-      const exactFourLetters = generateExactFourLetterCombinations(targetValue, {
-        letterValues,
-        includePermutations: true,
-        maxResults: 3000,
-      });
+      const exactFourLetters = generateExactFourLetterCombinations(
+        targetValue,
+        {
+          letterValues,
+          includePermutations: true,
+          maxResults: 3000,
+        },
+      );
 
       for (const permWord of exactFourLetters.permutations) {
         if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
           seen.add(permWord);
-          const chars = permWord.split('');
-          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          const chars = permWord.split("");
+          const isNoorani = chars.every((c) =>
+            NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+          );
           results.push({
             text: permWord,
             value: targetValue,
@@ -977,17 +1495,22 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 4. Exact combinations of 5 distinct letters without repetition
-      const exactFiveLetters = generateExactFiveLetterCombinations(targetValue, {
-        letterValues,
-        includePermutations: true,
-        maxResults: 4000,
-      });
+      const exactFiveLetters = generateExactFiveLetterCombinations(
+        targetValue,
+        {
+          letterValues,
+          includePermutations: true,
+          maxResults: 4000,
+        },
+      );
 
       for (const permWord of exactFiveLetters.permutations) {
         if (!seen.has(permWord) && !arabicDictionary.isWord(permWord)) {
           seen.add(permWord);
-          const chars = permWord.split('');
-          const isNoorani = chars.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          const chars = permWord.split("");
+          const isNoorani = chars.every((c) =>
+            NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+          );
           results.push({
             text: permWord,
             value: targetValue,
@@ -1010,10 +1533,12 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 
       for (const combo of rawCombos) {
         // Direct combination word
-        const baseWord = combo.join('');
+        const baseWord = combo.join("");
         if (!seen.has(baseWord) && !arabicDictionary.isWord(baseWord)) {
           seen.add(baseWord);
-          const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+          const isNoorani = combo.every((c) =>
+            NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+          );
           results.push({
             text: baseWord,
             value: targetValue,
@@ -1028,15 +1553,17 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 
         // Permutations (reverse & alternations to give all sound possibilities)
         if (combo.length >= 2 && combo.length <= 5) {
-          const reversed = [...combo].reverse().join('');
+          const reversed = [...combo].reverse().join("");
           if (!seen.has(reversed) && !arabicDictionary.isWord(reversed)) {
             seen.add(reversed);
-            const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+            const isNoorani = combo.every((c) =>
+              NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+            );
             results.push({
               text: reversed,
               value: targetValue,
               letterCount: combo.length,
-              letters: reversed.split(''),
+              letters: reversed.split(""),
               isQuranic: false,
               isLexical: false,
               quranicMeta: null,
@@ -1045,15 +1572,17 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (combo.length >= 3) {
-            const transposed = [combo[1], combo[0], ...combo.slice(2)].join('');
+            const transposed = [combo[1], combo[0], ...combo.slice(2)].join("");
             if (!seen.has(transposed) && !arabicDictionary.isWord(transposed)) {
               seen.add(transposed);
-              const isNoorani = combo.every((c) => NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)));
+              const isNoorani = combo.every((c) =>
+                NOORANI_LETTERS_SET.has(normalizeAbjadChar(c)),
+              );
               results.push({
                 text: transposed,
                 value: targetValue,
                 letterCount: combo.length,
-                letters: transposed.split(''),
+                letters: transposed.split(""),
                 isQuranic: false,
                 isLexical: false,
                 quranicMeta: null,
@@ -1075,7 +1604,7 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 
       return results.slice(0, maxResults);
     },
-    [tables, activeTable]
+    [tables, activeTable],
   );
 
   return (
@@ -1108,7 +1637,7 @@ export function GematriaProvider({ children }: { children: React.ReactNode }) {
 export function useGematria() {
   const context = useContext(GematriaContext);
   if (!context) {
-    throw new Error('useGematria must be used within a GematriaProvider');
+    throw new Error("useGematria must be used within a GematriaProvider");
   }
   return context;
 }

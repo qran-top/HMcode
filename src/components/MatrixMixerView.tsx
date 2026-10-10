@@ -29,8 +29,8 @@ export const MatrixMixerView: React.FC<MatrixMixerViewProps> = ({ onBackToGrid }
   });
 
   // Selection states
-  const [selectedNooraniId, setSelectedNooraniId] = useState<string>('noorani_1_nl');
-  const [selectedArabicId, setSelectedArabicId] = useState<string>('arabic_1_az');
+  const [selectedNooraniId, setSelectedNooraniId] = useState<string>('noorani_1_sr');
+  const [selectedArabicId, setSelectedArabicId] = useState<string>('arabic_2_az');
 
   // Inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);

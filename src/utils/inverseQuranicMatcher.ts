@@ -11,7 +11,14 @@ import {
 } from './gematriaEngine';
 import { NOORANI_LETTERS_SET } from '../cipherData';
 import { getQuranTopSearchUrl, SURAH_NAMES } from './quranicDictionary';
-import { MAGHRIBI_VALUES, MASHRIQI_VALUES, JAFR_VALUES, BAYAT_VALUES } from '../context/GematriaContext';
+import {
+  MAGHRIBI_VALUES,
+  MASHRIQI_VALUES,
+  SRQM_1_VALUES,
+  SRQT_2_VALUES,
+  SRQD_3_VALUES,
+  SRTG_4_VALUES,
+} from '../context/GematriaContext';
 
 export interface QuranAyahItem {
   sn: number; // Surah number (1-114)
@@ -27,11 +34,13 @@ export interface InverseQuranicMatch {
   value: number; // matched target value
   maghribiValue: number;
   mashriqiValue: number;
-  jafrValue?: number;
-  bayatValue?: number;
-  systemOrigin: 'common' | 'maghribi' | 'mashriqi' | 'jafr' | 'bayat';
-  systemLabel: string; // 'مشترك' | 'غربي' | 'شرقي' | 'جفر' | 'بيات'
-  isIntrinsicCommon: boolean; // maghribiValue === mashriqiValue
+  srqm1Value?: number;
+  srqt2Value?: number;
+  srqd3Value?: number;
+  srtg4Value?: number;
+  systemOrigin: 'common' | 'maghribi' | 'mashriqi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4';
+  systemLabel: string; // 'مشترك' | 'غربي' | 'شرقي' | 'صرقم 1' | 'صرقم 2' | 'صرقم 3' | 'صرتغ 4'
+  isIntrinsicCommon: boolean; // maghribiValue === mashriqiValue === srqm1Value ...
   wordCount: number;
   letterCount: number;
   surahName: string;
@@ -46,9 +55,19 @@ export interface InverseQuranicMatch {
     value: number;
     magVal: number;
     mashVal: number;
-    jafrVal?: number;
-    bayatVal?: number;
-    letters: { char: string; magVal: number; mashVal: number; jafrVal?: number; bayatVal?: number }[];
+    srqm1Val?: number;
+    srqt2Val?: number;
+    srqd3Val?: number;
+    srtg4Val?: number;
+    letters: {
+      char: string;
+      magVal: number;
+      mashVal: number;
+      srqm1Val?: number;
+      srqt2Val?: number;
+      srqd3Val?: number;
+      srtg4Val?: number;
+    }[];
   }[];
   quranUrl: string;
 }
@@ -66,11 +85,13 @@ export interface ScannerProgress {
 }
 
 export interface ScannerOptions {
-  mode?: 'dual' | 'maghribi' | 'mashriqi' | 'jafr' | 'bayat' | string;
+  mode?: 'dual' | 'all' | string;
   targetMaghribi: number;
   targetMashriqi: number;
-  targetJafr?: number;
-  targetBayat?: number;
+  targetSrqm1?: number;
+  targetSrqt2?: number;
+  targetSrqd3?: number;
+  targetSrtg4?: number;
   calcOptions?: Partial<GematriaCalculationOptions>;
   scope: 'all' | 'verses_and_chains' | 'chains_only' | 'single_words';
   onlyNoorani?: boolean;
@@ -223,8 +244,10 @@ export class InverseQuranicScanner {
     targetMaghribi: number,
     targetMashriqi: number,
     options: Omit<ScannerOptions, 'targetMaghribi' | 'targetMashriqi'>,
-    targetJafr?: number,
-    targetBayat?: number
+    targetSrqm1?: number,
+    targetSrqt2?: number,
+    targetSrqd3?: number,
+    targetSrtg4?: number
   ): Promise<InverseQuranicMatch[]> {
     this.stop();
     this.isScanning = true;
@@ -243,13 +266,17 @@ export class InverseQuranicScanner {
       onComplete,
     } = options;
 
-    const effectiveTargetJafr = targetJafr ?? options.targetJafr ?? 0;
-    const effectiveTargetBayat = targetBayat ?? options.targetBayat ?? 0;
-    const magTargetsSet = new Set<number>([targetMaghribi, ...alternateTargets]);
-    const mashTargetsSet = new Set<number>([targetMashriqi, ...alternateTargets]);
-    const jafrTargetsSet = effectiveTargetJafr > 0 ? new Set<number>([effectiveTargetJafr, ...alternateTargets]) : new Set<number>();
-    const bayatTargetsSet = effectiveTargetBayat > 0 ? new Set<number>([effectiveTargetBayat, ...alternateTargets]) : new Set<number>();
-    const maxTarget = Math.max(targetMaghribi, targetMashriqi, effectiveTargetJafr, effectiveTargetBayat, ...alternateTargets);
+    const effectiveTargetSrqm1 = targetSrqm1 ?? options.targetSrqm1 ?? 0;
+    const effectiveTargetSrqt2 = targetSrqt2 ?? options.targetSrqt2 ?? 0;
+    const effectiveTargetSrqd3 = targetSrqd3 ?? options.targetSrqd3 ?? 0;
+    const effectiveTargetSrtg4 = targetSrtg4 ?? options.targetSrtg4 ?? 0;
+    const magTargetsSet = new Set<number>([targetMaghribi, ...alternateTargets].filter((v) => v > 0));
+    const mashTargetsSet = new Set<number>([targetMashriqi, ...alternateTargets].filter((v) => v > 0));
+    const srqm1TargetsSet = effectiveTargetSrqm1 > 0 ? new Set<number>([effectiveTargetSrqm1, ...alternateTargets]) : new Set<number>();
+    const srqt2TargetsSet = effectiveTargetSrqt2 > 0 ? new Set<number>([effectiveTargetSrqt2, ...alternateTargets]) : new Set<number>();
+    const srqd3TargetsSet = effectiveTargetSrqd3 > 0 ? new Set<number>([effectiveTargetSrqd3, ...alternateTargets]) : new Set<number>();
+    const srtg4TargetsSet = effectiveTargetSrtg4 > 0 ? new Set<number>([effectiveTargetSrtg4, ...alternateTargets]) : new Set<number>();
+    const maxTarget = Math.max(targetMaghribi, targetMashriqi, effectiveTargetSrqm1, effectiveTargetSrqt2, effectiveTargetSrqd3, effectiveTargetSrtg4, ...alternateTargets);
 
     if (onProgress) {
       onProgress({
@@ -324,7 +351,7 @@ export class InverseQuranicScanner {
             const rawTokens = ayah.t.split(/\s+/).filter(Boolean);
             if (rawTokens.length === 0) continue;
 
-            // Calculate clean words and word values in Maghribi, Mashriqi, and Jafr
+            // Calculate clean words and word values in Maghribi, Mashriqi, SRQM 1, SRQT 2, SRQD 3
             // CRITICAL FIX: Pass rawTokens (not cleanTokens) so dagger alifs (\u0670), shaddahs, and Uthmani orthography are preserved!
             const cleanTokens = rawTokens.map((w) => cleanArabicTextForGematria(w));
             const magWordVals = rawTokens.map((w) =>
@@ -333,11 +360,17 @@ export class InverseQuranicScanner {
             const mashWordVals = rawTokens.map((w) =>
               calculateGematriaWithOptions(w, calcOptions, MASHRIQI_VALUES)
             );
-            const jafrWordVals = rawTokens.map((w) =>
-              calculateGematriaWithOptions(w, calcOptions, JAFR_VALUES)
+            const srqm1WordVals = rawTokens.map((w) =>
+              calculateGematriaWithOptions(w, calcOptions, SRQM_1_VALUES)
             );
-            const bayatWordVals = rawTokens.map((w) =>
-              calculateGematriaWithOptions(w, calcOptions, BAYAT_VALUES)
+            const srqt2WordVals = rawTokens.map((w) =>
+              calculateGematriaWithOptions(w, calcOptions, SRQT_2_VALUES)
+            );
+            const srqd3WordVals = rawTokens.map((w) =>
+              calculateGematriaWithOptions(w, calcOptions, SRQD_3_VALUES)
+            );
+            const srtg4WordVals = rawTokens.map((w) =>
+              calculateGematriaWithOptions(w, calcOptions, SRTG_4_VALUES)
             );
 
             const n = rawTokens.length;
@@ -346,15 +379,19 @@ export class InverseQuranicScanner {
             for (let i = 0; i < n; i++) {
               let currentMagSum = 0;
               let currentMashSum = 0;
-              let currentJafrSum = 0;
-              let currentBayatSum = 0;
+              let currentSrqm1Sum = 0;
+              let currentSrqt2Sum = 0;
+              let currentSrqd3Sum = 0;
+              let currentSrtg4Sum = 0;
               const limit = Math.min(n, i + maxWords);
 
               for (let j = i; j < limit; j++) {
                 currentMagSum += magWordVals[j];
                 currentMashSum += mashWordVals[j];
-                currentJafrSum += jafrWordVals[j];
-                currentBayatSum += bayatWordVals[j];
+                currentSrqm1Sum += srqm1WordVals[j];
+                currentSrqt2Sum += srqt2WordVals[j];
+                currentSrqd3Sum += srqd3WordVals[j];
+                currentSrtg4Sum += srtg4WordVals[j];
                 const phraseLength = j - i + 1;
 
                 if (phraseLength >= minWords && phraseLength <= maxWords) {
@@ -362,11 +399,12 @@ export class InverseQuranicScanner {
 
                   const isMaghribiMatch = magTargetsSet.has(currentMagSum);
                   const isMashriqiMatch = mashTargetsSet.has(currentMashSum);
-                  const isJafrMatch = effectiveTargetJafr > 0 && jafrTargetsSet.has(currentJafrSum);
-                  const isBayatMatch = effectiveTargetBayat > 0 && bayatTargetsSet.has(currentBayatSum);
-                  const isIntrinsicCommon = currentMagSum === currentMashSum && (!effectiveTargetJafr || currentMagSum === currentJafrSum) && (!effectiveTargetBayat || currentMagSum === currentBayatSum);
+                  const isSrqm1Match = effectiveTargetSrqm1 > 0 && srqm1TargetsSet.has(currentSrqm1Sum);
+                  const isSrqt2Match = effectiveTargetSrqt2 > 0 && srqt2TargetsSet.has(currentSrqt2Sum);
+                  const isSrqd3Match = effectiveTargetSrqd3 > 0 && srqd3TargetsSet.has(currentSrqd3Sum);
+                  const isSrtg4Match = effectiveTargetSrtg4 > 0 && srtg4TargetsSet.has(currentSrtg4Sum);
 
-                  if (isMaghribiMatch || isMashriqiMatch || isJafrMatch || isBayatMatch) {
+                  if (isMaghribiMatch || isMashriqiMatch || isSrqm1Match || isSrqt2Match || isSrqd3Match || isSrtg4Match) {
                     const phraseWords = rawTokens.slice(i, j + 1);
                     const phraseText = phraseWords.join(' ');
                     const cleanPhrase = cleanTokens.slice(i, j + 1).join(' ');
@@ -380,32 +418,34 @@ export class InverseQuranicScanner {
                       if (!isAllNoorani) continue;
                     }
 
-                    // Determine system origin and labeling with strict accuracy across the 4 systems (Maghribi, Mashriqi, Jafr, Bayat):
+                    // Determine system origin and labeling with strict accuracy across all 6 systems:
                     const isTargetDiffering = (targetMaghribi !== targetMashriqi) || 
-                      (effectiveTargetJafr > 0 && (targetMaghribi !== effectiveTargetJafr || targetMashriqi !== effectiveTargetJafr)) ||
-                      (effectiveTargetBayat > 0 && (targetMaghribi !== effectiveTargetBayat || targetMashriqi !== effectiveTargetBayat));
+                      (effectiveTargetSrqm1 > 0 && (targetMaghribi !== effectiveTargetSrqm1 || targetMashriqi !== effectiveTargetSrqm1)) ||
+                      (effectiveTargetSrqt2 > 0 && (targetMaghribi !== effectiveTargetSrqt2 || targetMashriqi !== effectiveTargetSrqt2)) ||
+                      (effectiveTargetSrqd3 > 0 && (targetMaghribi !== effectiveTargetSrqd3 || targetMashriqi !== effectiveTargetSrqd3)) ||
+                      (effectiveTargetSrtg4 > 0 && (targetMaghribi !== effectiveTargetSrtg4 || targetMashriqi !== effectiveTargetSrtg4));
                     let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'common';
                     let systemLabel = 'مشترك';
 
                     if (isTargetDiffering) {
-                      if (isBayatMatch && !isJafrMatch && !isMashriqiMatch && !isMaghribiMatch) {
-                        systemOrigin = 'bayat';
-                        systemLabel = 'بيات';
-                      } else if (isJafrMatch && !isMashriqiMatch && !isMaghribiMatch && !isBayatMatch) {
-                        systemOrigin = 'jafr';
-                        systemLabel = 'جفر';
-                      } else if (isMashriqiMatch && !isMaghribiMatch && !isJafrMatch && !isBayatMatch) {
+                      if (isSrqd3Match && !isSrqm1Match && !isMashriqiMatch && !isMaghribiMatch) {
+                        systemOrigin = 'srqd3';
+                        systemLabel = 'أرض 3';
+                      } else if (isSrqm1Match && !isSrqd3Match && !isMashriqiMatch && !isMaghribiMatch) {
+                        systemOrigin = 'srqm1';
+                        systemLabel = 'أرض 4';
+                      } else if (isMashriqiMatch && !isMaghribiMatch && !isSrqm1Match && !isSrqd3Match) {
                         systemOrigin = 'mashriqi';
                         systemLabel = 'شرقي';
-                      } else if (isMaghribiMatch && !isMashriqiMatch && !isJafrMatch && !isBayatMatch) {
+                      } else if (isMaghribiMatch && !isMashriqiMatch && !isSrqm1Match && !isSrqd3Match) {
                         systemOrigin = 'maghribi';
                         systemLabel = 'غربي';
-                      } else if (isBayatMatch) {
-                        systemOrigin = 'bayat';
-                        systemLabel = 'بيات';
-                      } else if (isJafrMatch) {
-                        systemOrigin = 'jafr';
-                        systemLabel = 'جفر';
+                      } else if (isSrqd3Match) {
+                        systemOrigin = 'srqd3';
+                        systemLabel = 'أرض 3';
+                      } else if (isSrqm1Match) {
+                        systemOrigin = 'srqm1';
+                        systemLabel = 'أرض 4';
                       } else if (isMashriqiMatch) {
                         systemOrigin = 'mashriqi';
                         systemLabel = 'شرقي';
@@ -431,22 +471,28 @@ export class InverseQuranicScanner {
                         const cleanW = cleanTokens[i + pidx];
                         const magVal = magWordVals[i + pidx];
                         const mashVal = mashWordVals[i + pidx];
-                        const jafrVal = jafrWordVals[i + pidx];
-                        const bayatVal = bayatWordVals[i + pidx];
+                        const srqm1Val = srqm1WordVals[i + pidx];
+                        const srqt2Val = srqt2WordVals[i + pidx];
+                        const srqd3Val = srqd3WordVals[i + pidx];
+                        const srtg4Val = srtg4WordVals[i + pidx];
                         const letters = cleanW.split('').map((c) => ({
                           char: c,
                           magVal: MAGHRIBI_VALUES[c] ?? MAGHRIBI_VALUES[normalizeAbjadChar(c)] ?? 0,
                           mashVal: MASHRIQI_VALUES[c] ?? MASHRIQI_VALUES[normalizeAbjadChar(c)] ?? 0,
-                          jafrVal: JAFR_VALUES[c] ?? JAFR_VALUES[normalizeAbjadChar(c)] ?? 0,
-                          bayatVal: BAYAT_VALUES[c] ?? BAYAT_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqm1Val: SRQM_1_VALUES[c] ?? SRQM_1_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqt2Val: SRQT_2_VALUES[c] ?? SRQT_2_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqd3Val: SRQD_3_VALUES[c] ?? SRQD_3_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srtg4Val: SRTG_4_VALUES[c] ?? SRTG_4_VALUES[normalizeAbjadChar(c)] ?? 0,
                         }));
                         return {
                           word: pw,
-                          value: isBayatMatch ? bayatVal : isJafrMatch ? jafrVal : isMaghribiMatch ? magVal : mashVal,
+                          value: isSrtg4Match ? srtg4Val : isSrqd3Match ? srqd3Val : isSrqt2Match ? srqt2Val : isSrqm1Match ? srqm1Val : isMaghribiMatch ? magVal : mashVal,
                           magVal,
                           mashVal,
-                          jafrVal,
-                          bayatVal,
+                          srqm1Val,
+                          srqt2Val,
+                          srqd3Val,
+                          srtg4Val,
                           letters,
                         };
                       });
@@ -490,14 +536,16 @@ export class InverseQuranicScanner {
                         id: `match_${sNum}_${ayah.a}_${i}_${j}_${systemOrigin}_${Date.now()}`,
                         phrase: phraseText,
                         cleanPhrase,
-                        value: isBayatMatch ? currentBayatSum : isJafrMatch ? currentJafrSum : isMaghribiMatch ? currentMagSum : currentMashSum,
+                        value: isSrtg4Match ? currentSrtg4Sum : isSrqd3Match ? currentSrqd3Sum : isSrqt2Match ? currentSrqt2Sum : isSrqm1Match ? currentSrqm1Sum : isMaghribiMatch ? currentMagSum : currentMashSum,
                         maghribiValue: currentMagSum,
                         mashriqiValue: currentMashSum,
-                        jafrValue: currentJafrSum,
-                        bayatValue: currentBayatSum,
+                        srqm1Value: currentSrqm1Sum,
+                        srqt2Value: currentSrqt2Sum,
+                        srqd3Value: currentSrqd3Sum,
+                        srtg4Value: currentSrtg4Sum,
                         systemOrigin,
                         systemLabel,
-                        isIntrinsicCommon,
+                        isIntrinsicCommon: currentMagSum === currentMashSum && currentMagSum === currentSrqm1Sum && currentMagSum === currentSrqt2Sum && currentMagSum === currentSrqd3Sum && currentMagSum === currentSrtg4Sum,
                         wordCount: phraseLength,
                         letterCount: cleanPhrase.replace(/\s+/g, '').length,
                         surahName,
@@ -519,7 +567,14 @@ export class InverseQuranicScanner {
                   }
                 }
 
-                  if (currentMagSum > maxTarget && currentMashSum > maxTarget) {
+                  if (
+                    currentMagSum > maxTarget &&
+                    currentMashSum > maxTarget &&
+                    (effectiveTargetSrqm1 === 0 || currentSrqm1Sum > maxTarget) &&
+                    (effectiveTargetSrqt2 === 0 || currentSrqt2Sum > maxTarget) &&
+                    (effectiveTargetSrqd3 === 0 || currentSrqd3Sum > maxTarget) &&
+                    (effectiveTargetSrtg4 === 0 || currentSrtg4Sum > maxTarget)
+                  ) {
                     break; // Pruning: sums only increase
                   }
                 }
@@ -529,21 +584,27 @@ export class InverseQuranicScanner {
               if (n > maxWords && (scope === 'all' || scope === 'verses_and_chains')) {
                 let fullMagSum = 0;
                 let fullMashSum = 0;
-                let fullJafrSum = 0;
-                let fullBayatSum = 0;
+                let fullSrqm1Sum = 0;
+                let fullSrqt2Sum = 0;
+                let fullSrqd3Sum = 0;
+                let fullSrtg4Sum = 0;
                 for (let k = 0; k < n; k++) {
                   fullMagSum += magWordVals[k];
                   fullMashSum += mashWordVals[k];
-                  fullJafrSum += jafrWordVals[k];
-                  fullBayatSum += bayatWordVals[k];
+                  fullSrqm1Sum += srqm1WordVals[k];
+                  fullSrqt2Sum += srqt2WordVals[k];
+                  fullSrqd3Sum += srqd3WordVals[k];
+                  fullSrtg4Sum += srtg4WordVals[k];
                 }
 
                 const isMagMatch = magTargetsSet.has(fullMagSum);
                 const isMashMatch = mashTargetsSet.has(fullMashSum);
-                const isJafrMatchFull = effectiveTargetJafr > 0 && jafrTargetsSet.has(fullJafrSum);
-                const isBayatMatchFull = effectiveTargetBayat > 0 && bayatTargetsSet.has(fullBayatSum);
+                const isSrqm1MatchFull = effectiveTargetSrqm1 > 0 && srqm1TargetsSet.has(fullSrqm1Sum);
+                const isSrqt2MatchFull = effectiveTargetSrqt2 > 0 && srqt2TargetsSet.has(fullSrqt2Sum);
+                const isSrqd3MatchFull = effectiveTargetSrqd3 > 0 && srqd3TargetsSet.has(fullSrqd3Sum);
+                const isSrtg4MatchFull = effectiveTargetSrtg4 > 0 && srtg4TargetsSet.has(fullSrtg4Sum);
 
-                if (isMagMatch || isMashMatch || isJafrMatchFull || isBayatMatchFull) {
+                if (isMagMatch || isMashMatch || isSrqm1MatchFull || isSrqt2MatchFull || isSrqd3MatchFull || isSrtg4MatchFull) {
                   totalCombinationsScanned++;
                   const cleanPhrase = cleanTokens.join(' ');
                   let allowNoorani = true;
@@ -555,34 +616,44 @@ export class InverseQuranicScanner {
                   }
 
                   if (allowNoorani) {
+                    const isTargetDiffering = (targetMaghribi !== targetMashriqi) || 
+                      (effectiveTargetSrqm1 > 0 && (targetMaghribi !== effectiveTargetSrqm1 || targetMashriqi !== effectiveTargetSrqm1)) ||
+                      (effectiveTargetSrqt2 > 0 && (targetMaghribi !== effectiveTargetSrqt2 || targetMashriqi !== effectiveTargetSrqt2)) ||
+                      (effectiveTargetSrqd3 > 0 && (targetMaghribi !== effectiveTargetSrqd3 || targetMashriqi !== effectiveTargetSrqd3)) ||
+                      (effectiveTargetSrtg4 > 0 && (targetMaghribi !== effectiveTargetSrtg4 || targetMashriqi !== effectiveTargetSrtg4));
                     let systemOrigin: InverseQuranicMatch['systemOrigin'] = 'common';
                     let systemLabel = 'مشترك';
-                    const isIntrinsicCommon = fullMagSum === fullMashSum && (!effectiveTargetJafr || fullMagSum === fullJafrSum) && (!effectiveTargetBayat || fullMagSum === fullBayatSum);
+                    const isIntrinsicCommon = fullMagSum === fullMashSum && fullMagSum === fullSrqm1Sum && fullMagSum === fullSrqt2Sum && fullMagSum === fullSrqd3Sum && fullMagSum === fullSrtg4Sum;
 
-                    if (isBayatMatchFull && !isJafrMatchFull && !isMashMatch && !isMagMatch) {
-                      systemOrigin = 'bayat';
-                      systemLabel = 'بيات';
-                    } else if (isJafrMatchFull && !isMashMatch && !isMagMatch && !isBayatMatchFull) {
-                      systemOrigin = 'jafr';
-                      systemLabel = 'جفر';
-                    } else if (isMashMatch && !isMagMatch && !isJafrMatchFull && !isBayatMatchFull) {
-                      systemOrigin = 'mashriqi';
-                      systemLabel = 'شرقي';
-                    } else if (isMagMatch && !isMashMatch && !isJafrMatchFull && !isBayatMatchFull) {
-                      systemOrigin = 'maghribi';
-                      systemLabel = 'غربي';
-                    } else if (isBayatMatchFull) {
-                      systemOrigin = 'bayat';
-                      systemLabel = 'بيات';
-                    } else if (isJafrMatchFull) {
-                      systemOrigin = 'jafr';
-                      systemLabel = 'جفر';
-                    } else if (isMashMatch) {
-                      systemOrigin = isIntrinsicCommon ? 'common' : 'mashriqi';
-                      systemLabel = isIntrinsicCommon ? 'مشترك' : 'شرقي';
+                    if (isTargetDiffering) {
+                      if (isSrqd3MatchFull && !isSrqm1MatchFull && !isMashMatch && !isMagMatch) {
+                        systemOrigin = 'srqd3';
+                        systemLabel = 'أرض 3';
+                      } else if (isSrqm1MatchFull && !isSrqd3MatchFull && !isMashMatch && !isMagMatch) {
+                        systemOrigin = 'srqm1';
+                        systemLabel = 'أرض 4';
+                      } else if (isMashMatch && !isMagMatch && !isSrqm1MatchFull && !isSrqd3MatchFull) {
+                        systemOrigin = 'mashriqi';
+                        systemLabel = 'شرقي';
+                      } else if (isMagMatch && !isMashMatch && !isSrqm1MatchFull && !isSrqd3MatchFull) {
+                        systemOrigin = 'maghribi';
+                        systemLabel = 'غربي';
+                      } else if (isSrqd3MatchFull) {
+                        systemOrigin = 'srqd3';
+                        systemLabel = 'أرض 3';
+                      } else if (isSrqm1MatchFull) {
+                        systemOrigin = 'srqm1';
+                        systemLabel = 'أرض 4';
+                      } else if (isMashMatch) {
+                        systemOrigin = 'mashriqi';
+                        systemLabel = 'شرقي';
+                      } else {
+                        systemOrigin = 'maghribi';
+                        systemLabel = 'غربي';
+                      }
                     } else {
-                      systemOrigin = isIntrinsicCommon ? 'common' : 'maghribi';
-                      systemLabel = isIntrinsicCommon ? 'مشترك' : 'غربي';
+                      systemOrigin = 'common';
+                      systemLabel = 'مشترك';
                     }
 
                     const dedupKey = `${sNum}:${ayah.a}:${cleanPhrase}:${systemOrigin}`;
@@ -596,17 +667,21 @@ export class InverseQuranicScanner {
 
                       const breakdown = rawTokens.map((pw, pidx) => ({
                         word: pw,
-                        value: isBayatMatchFull ? bayatWordVals[pidx] : isJafrMatchFull ? jafrWordVals[pidx] : isMagMatch ? magWordVals[pidx] : mashWordVals[pidx],
+                        value: isSrtg4MatchFull ? srtg4WordVals[pidx] : isSrqd3MatchFull ? srqd3WordVals[pidx] : isSrqt2MatchFull ? srqt2WordVals[pidx] : isSrqm1MatchFull ? srqm1WordVals[pidx] : isMagMatch ? magWordVals[pidx] : mashWordVals[pidx],
                         magVal: magWordVals[pidx],
                         mashVal: mashWordVals[pidx],
-                        jafrVal: jafrWordVals[pidx],
-                        bayatVal: bayatWordVals[pidx],
+                        srqm1Val: srqm1WordVals[pidx],
+                        srqt2Val: srqt2WordVals[pidx],
+                        srqd3Val: srqd3WordVals[pidx],
+                        srtg4Val: srtg4WordVals[pidx],
                         letters: cleanTokens[pidx].split('').map((c) => ({
                           char: c,
                           magVal: MAGHRIBI_VALUES[c] ?? MAGHRIBI_VALUES[normalizeAbjadChar(c)] ?? 0,
                           mashVal: MASHRIQI_VALUES[c] ?? MASHRIQI_VALUES[normalizeAbjadChar(c)] ?? 0,
-                          jafrVal: JAFR_VALUES[c] ?? JAFR_VALUES[normalizeAbjadChar(c)] ?? 0,
-                          bayatVal: BAYAT_VALUES[c] ?? BAYAT_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqm1Val: SRQM_1_VALUES[c] ?? SRQM_1_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqt2Val: SRQT_2_VALUES[c] ?? SRQT_2_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srqd3Val: SRQD_3_VALUES[c] ?? SRQD_3_VALUES[normalizeAbjadChar(c)] ?? 0,
+                          srtg4Val: SRTG_4_VALUES[c] ?? SRTG_4_VALUES[normalizeAbjadChar(c)] ?? 0,
                         })),
                       }));
 
@@ -614,11 +689,13 @@ export class InverseQuranicScanner {
                         id: `match_${sNum}_${ayah.a}_full_${systemOrigin}_${Date.now()}`,
                         phrase: ayah.t,
                         cleanPhrase,
-                        value: isBayatMatchFull ? fullBayatSum : isJafrMatchFull ? fullJafrSum : isMagMatch ? fullMagSum : fullMashSum,
+                        value: isSrtg4MatchFull ? fullSrtg4Sum : isSrqd3MatchFull ? fullSrqd3Sum : isSrqt2MatchFull ? fullSrqt2Sum : isSrqm1MatchFull ? fullSrqm1Sum : isMagMatch ? fullMagSum : fullMashSum,
                         maghribiValue: fullMagSum,
                         mashriqiValue: fullMashSum,
-                        jafrValue: fullJafrSum,
-                        bayatValue: fullBayatSum,
+                        srqm1Value: fullSrqm1Sum,
+                        srqt2Value: fullSrqt2Sum,
+                        srqd3Value: fullSrqd3Sum,
+                        srtg4Value: fullSrtg4Sum,
                         systemOrigin,
                         systemLabel,
                         isIntrinsicCommon,

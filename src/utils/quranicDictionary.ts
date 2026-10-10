@@ -1,6 +1,8 @@
-// Quranic Lexicon and Dictionary Service
-// Provides exact matching and nearest fuzzy matching against 20,000+ words & lemmas
-// from the Holy Quran (مفردات وألفاظ القرآن الكريم).
+// Quranic Lexicon, Orthography Rules, and Complete Corpus Service
+// Supports full Uthmani orthography, Dagger Alif (الألف الخنجرية), Shaddah gemination (التضعيف),
+// Hamzat & Waslah, Affix stripping, and exhaustive 6,236 Ayah verse matching.
+
+import { getCipherBaseString } from '../cipherData';
 
 export interface QuranicWordMeta {
   word: string;
@@ -10,7 +12,14 @@ export interface QuranicWordMeta {
   ayahNum: number;
   occurrences: number;
   isExact: boolean;
+  isDirectExact?: boolean;
+  confidence?: number;
   isShaddahVariant?: boolean;
+  isDaggerAlifVariant?: boolean;
+  isAffixVariant?: boolean;
+  matchRule?: string;
+  ayahText?: string;
+  sampleAyahText?: string;
 }
 
 export interface QuranicNearestMatch {
@@ -19,8 +28,12 @@ export interface QuranicNearestMatch {
   surahName: string;
   surahNumber: number;
   ayahNum: number;
+  occurrences?: number;
   distance: number;
   similarity: number; // 0 - 100%
+  matchRule?: string;
+  ayahText?: string;
+  sampleAyahText?: string;
 }
 
 export const SURAH_NAMES: string[] = [
@@ -123,9 +136,6 @@ export function getSurahMuqattaat(surahNumber?: number, surahName?: string): str
   return null;
 }
 
-/**
- * Returns the 1-114 Surah index number
- */
 export function getSurahNumber(nameOrNum: string | number): number {
   if (typeof nameOrNum === 'number' && nameOrNum >= 1 && nameOrNum <= 114) {
     return nameOrNum;
@@ -140,48 +150,133 @@ export function getSurahNumber(nameOrNum: string | number): number {
   return 1;
 }
 
-/**
- * Generates the official direct link to the verse on qran-top on GitHub
- * Example: https://qran-top.github.io/#/surah/2?ayah=2
- */
 export function getQuranTopAyahUrl(surah: string | number, ayah: number = 1): string {
   const surahNum = getSurahNumber(surah);
   const safeAyah = Math.max(1, ayah || 1);
   return `https://qran-top.github.io/#/surah/${surahNum}?ayah=${safeAyah}`;
 }
 
-/**
- * Generates the official search link on qran-top on GitHub
- * Example: https://qran-top.github.io/#/search/%D9%87%D8%A7%D8%B1%D9%88%D9%86
- */
 export function getQuranTopSearchUrl(query: string): string {
   const clean = query.trim();
   return `https://qran-top.github.io/#/search/${encodeURIComponent(clean)}`;
 }
 
-/**
- * Generates the dictionary lookup URL via Google Search:
- * Example: https://www.google.com/search?q=%D8%AD%D9%85%D8%AF
- */
-export function getArabicDictSearchUrl(word: string): string {
-  const clean = word.trim();
-  return `https://www.google.com/search?q=${encodeURIComponent(clean)}`;
-}
-
-/**
- * Generates the appropriate link on qran-top:
- * If the word occurs multiple times (> 1), links directly to the search page for that word
- * so the user can see all Quranic results.
- * If it occurs only once (= 1), links directly to the exact Surah and Ayah.
- */
 export function getQuranTopWordUrl(
   word: string,
   _surah?: string | number,
   _ayah: number = 1,
   _occurrences: number = 1
 ): string {
-  // Always search for the word in the Quran on qran-top as requested
   return getQuranTopSearchUrl(word);
+}
+
+export function getArabicDictSearchUrl(word: string): string {
+  const clean = word.trim();
+  return `https://www.google.com/search?q=${encodeURIComponent(clean)}`;
+}
+
+/**
+ * Normalization function that handles Uthmani signs, diacritics, and basic letter unification
+ */
+export function normalizeArabicText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u06E0-\u06EC\u0610-\u061A]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/ـ/g, '')
+    .trim();
+}
+
+/**
+ * Specialized Dagger Alif & Uthmani Orthography Word Expansion (قواعد الألف الخنجرية والرسم العثماني)
+ */
+export const DAGGER_ALIF_SPECIAL_MAP: Record<string, string[]> = {
+  'رحمن': ['رحمٰن', 'رحمان'],
+  'رحمان': ['رحمن', 'رحمٰن'],
+  'صلوة': ['صلاة', 'صلوٰة'],
+  'صلاة': ['صلوة', 'صلوٰة'],
+  'زكوة': ['زكاة', 'زكوٰة'],
+  'زكاة': ['زكوة', 'زكوٰة'],
+  'حيوة': ['حياة', 'حيوٰة'],
+  'حياة': ['حيوة', 'حيوٰة'],
+  'هذا': ['هٰذا', 'هاذا'],
+  'هاذا': ['هذا', 'هٰذا'],
+  'هذه': ['هٰذه', 'هاذه'],
+  'ذلك': ['ذٰلك', 'ذالك'],
+  'ذالك': ['ذلك', 'ذٰلك'],
+  'اله': ['إلٰه', 'إلاه', 'إله', 'الاه'],
+  'إله': ['إلٰه', 'إلاه', 'اله', 'الاه'],
+  'إلاه': ['إله', 'اله', 'إلٰه'],
+  'سموات': ['سماوات', 'سمٰوٰت'],
+  'سماوات': ['سموات', 'سمٰوٰت'],
+  'اسمعيل': ['إسماعيل', 'إسمـٰعيل'],
+  'إسماعيل': ['اسمعيل', 'إسمـٰعيل'],
+  'اسحق': ['إسحاق', 'إسحـٰق'],
+  'إسحاق': ['اسحق', 'إسحـٰق'],
+  'ابرهيم': ['إبراهيم', 'إبرٰهيم'],
+  'إبراهيم': ['ابرهيم', 'إبرٰهيم'],
+  'هرون': ['هارون', 'هـٰرون'],
+  'هارون': ['هرون', 'هـٰرون'],
+  'سلـمن': ['سليمان'],
+  'سليمان': ['سلـمن'],
+  'داود': ['داوود'],
+  'داوود': ['داود'],
+  'ربوا': ['ربا', 'ربوٰا'],
+  'ربا': ['ربوا', 'ربوٰا'],
+  'مشكوة': ['مشكاة', 'مشكوٰة'],
+  'مشكاة': ['مشكوة', 'مشكوٰة'],
+  // Alif Maqsura is Double Alif (الألف المقصورة = دبل ا / اا)
+  'هدى': ['هداا', 'هدا'],
+  'هداا': ['هدى', 'هدا'],
+  'موسى': ['موساا', 'موسا'],
+  'موساا': ['موسى', 'موسا'],
+  'عيسى': ['عيساا', 'عيسا'],
+  'عيساا': ['عيسى', 'عيسا'],
+  'ضحى': ['ضحاا', 'ضحا'],
+  'ضحاا': ['ضحى', 'ضحا'],
+  'سعى': ['سعاا', 'سعا'],
+  'سعاا': ['سعى', 'سعا'],
+  'قضى': ['قضاا', 'قضا'],
+  'قضاا': ['قضى', 'قضا'],
+  'أتى': ['أتاا', 'اتاا', 'أتا'],
+  'أتاا': ['أتى', 'اتا', 'أتا'],
+  'اتاا': ['أتى', 'اتى', 'أتا'],
+  'رعى': ['رعاا', 'رعا'],
+  'رعاا': ['رعى', 'رعا'],
+  'فتى': ['فتاا', 'فتا'],
+  'فتاا': ['فتى', 'فتا'],
+  'طوى': ['طواا', 'طوا'],
+  'طواا': ['طوى', 'طوا'],
+  'قرى': ['قراا', 'قرا'],
+  'قراا': ['قرى', 'قرا'],
+  'توى': ['تواا', 'توا'],
+  'تواا': ['توى', 'توا'],
+};
+
+// Common Quranic prefixes and suffixes for rule evaluation
+const QURANIC_PREFIXES = ['وال', 'فال', 'بال', 'كال', 'ولل', 'فلل', 'لل', 'ال', 'وب', 'فب', 'ول', 'فل', 'و', 'ف', 'ب', 'ك', 'ل', 'س'];
+const QURANIC_SUFFIXES = ['هم', 'هن', 'ها', 'كم', 'كن', 'نا', 'ات', 'ين', 'ون', 'ان', 'وا', 'تم', 'تن', 'ني', 'ي', 'ك', 'ه', 'ة'];
+
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = [];
+  for (let i = 0; i <= m; i++) dp[i] = [i];
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return dp[m][n];
 }
 
 // Built-in immediate core set of prominent Quranic vocabulary (instant 0ms availability)
@@ -282,46 +377,19 @@ const INITIAL_CORE_QURANIC: Record<string, [string, number, number, string]> = {
   'مبين': ['البقرة', 168, 119, 'مبين'],
 };
 
-function normalizeArabicText(text: string): string {
-  return text
-    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
-    .trim();
-}
-
-function levenshteinDistance(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = [];
-  for (let i = 0; i <= m; i++) dp[i] = [i];
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost
-      );
-    }
-  }
-  return dp[m][n];
-}
-
-import { getCipherBaseString } from '../cipherData';
-
 class QuranicDictionaryService {
   private dataMap = new Map<string, [string, number, number, string]>();
   private normalizedMap = new Map<string, string>(); // norm -> original key in dataMap
   private cipherBaseMap = new Map<string, string>(); // cipherBase -> original key in dataMap
   private wordsByLength = new Map<number, string[]>();
+  private sampleMap = new Map<string, string>(); // word -> verse sample snippet
+  private ayahsMap = new Map<string, string>(); // 'surahNum:ayahNum' -> full Ayah text
+  private allAyahsList: { sn: number; s: string; a: number; t: string; norm: string }[] = [];
   private loaded: boolean = false;
   private loading: boolean = false;
   private listeners: ((loaded: boolean, count: number) => void)[] = [];
   private nearestCache = new Map<string, QuranicNearestMatch | null>();
+  private detailsCache = new Map<string, QuranicWordMeta | null>();
 
   constructor() {
     // Populate immediate core set
@@ -331,6 +399,30 @@ class QuranicDictionaryService {
     if (typeof window !== 'undefined') {
       setTimeout(() => this.init(), 50);
     }
+  }
+
+  private ingestWord(w: string, surahName: string, ayahNum: number, occurrences: number = 1, originalQuranicWord?: string, sample?: string) {
+    if (!w || w.length < 2) return;
+    const cleanW = w.trim();
+    if (!this.dataMap.has(cleanW)) {
+      this.dataMap.set(cleanW, [surahName, ayahNum, occurrences, originalQuranicWord || cleanW]);
+    }
+    if (sample && !this.sampleMap.has(cleanW)) {
+      this.sampleMap.set(cleanW, sample);
+    }
+    const nw = normalizeArabicText(cleanW);
+    if (!this.normalizedMap.has(nw)) {
+      this.normalizedMap.set(nw, cleanW);
+    }
+    const cb = getCipherBaseString(cleanW);
+    if (!this.cipherBaseMap.has(cb)) {
+      this.cipherBaseMap.set(cb, cleanW);
+    }
+    const l = cleanW.length;
+    if (!this.wordsByLength.has(l)) {
+      this.wordsByLength.set(l, []);
+    }
+    this.wordsByLength.get(l)!.push(cleanW);
   }
 
   private ingestRecord(record: Record<string, [string, number, number, string]>) {
@@ -400,10 +492,38 @@ class QuranicDictionaryService {
         return null;
       };
 
-      // Load both datasets in parallel for maximum Quranic vocabulary coverage
-      const [wordsInfoJson, lexiconJson] = await Promise.all([
+      const fetchTextFile = async (filename: string): Promise<string | null> => {
+        const candidateUrls: string[] = [
+          `${cleanBase}${filename}`,
+          `/${filename}`,
+          `./${filename}`,
+        ];
+        if (typeof window !== 'undefined' && window.location) {
+          try {
+            candidateUrls.push(new URL(filename, window.location.href).href);
+          } catch {}
+          if (window.location.origin && window.location.origin !== 'null') {
+            candidateUrls.push(`${window.location.origin}/${filename}`);
+          }
+        }
+        const uniqueUrls = Array.from(new Set(candidateUrls));
+        for (const u of uniqueUrls) {
+          try {
+            const res = await fetch(u);
+            if (res.ok) {
+              return await res.text();
+            }
+          } catch {}
+        }
+        return null;
+      };
+
+      // Load all datasets in parallel for complete Quranic vocabulary and full Ayahs
+      const [wordsInfoJson, lexiconJson, completeAyahsJson, wordsTxt] = await Promise.all([
         fetchFile('quranic_words_info.json'),
         fetchFile('quranic_lexicon.json'),
+        fetchFile('quran_complete_ayahs.json'),
+        fetchTextFile('quranic_words.txt'),
       ]);
 
       if (wordsInfoJson) {
@@ -411,19 +531,57 @@ class QuranicDictionaryService {
       }
 
       if (lexiconJson) {
-        // lexiconJson format: {"word": {"c": count, "s": surahName, "sn": surahNumber, "a": ayahNum, "sample": "..."}}
-        const convertedRecord: Record<string, [string, number, number, string]> = {};
         for (const [w, entry] of Object.entries(lexiconJson as Record<string, any>)) {
           if (entry && entry.s) {
-            convertedRecord[w] = [entry.s, entry.a || 1, entry.c || 1, w];
-            // Also ingest normalized and stripped variations if not present
+            this.ingestWord(w, entry.s, entry.a || 1, entry.c || 1, w, entry.sample);
             const strippedAl = w.replace(/^(وال|فال|بال|كال|لل|ال)/, '');
-            if (strippedAl && strippedAl.length >= 2 && !convertedRecord[strippedAl]) {
-              convertedRecord[strippedAl] = [entry.s, entry.a || 1, entry.c || 1, w];
+            if (strippedAl && strippedAl.length >= 2) {
+              this.ingestWord(strippedAl, entry.s, entry.a || 1, entry.c || 1, w, entry.sample);
             }
           }
         }
-        this.ingestRecord(convertedRecord);
+      }
+
+      if (Array.isArray(completeAyahsJson)) {
+        this.allAyahsList = [];
+        for (const item of completeAyahsJson) {
+          const sn = item.sn || item.surahNumber || 1;
+          const a = item.a || item.ayahNumber || 1;
+          const text = item.t || item.text || '';
+          const sName = item.s || SURAH_NAMES[sn] || 'القرآن الكريم';
+          if (text) {
+            this.ayahsMap.set(`${sn}:${a}`, text);
+            this.ayahsMap.set(`${sName}:${a}`, text);
+            const cleanS = String(sName).replace(/^سورة\s+/, '').trim();
+            this.ayahsMap.set(`${cleanS}:${a}`, text);
+            this.allAyahsList.push({
+              sn,
+              s: sName,
+              a,
+              t: text,
+              norm: normalizeArabicText(text),
+            });
+
+            // Index individual words in the Ayah
+            const tokens = text.split(/\s+/);
+            for (const rawToken of tokens) {
+              const cleanToken = rawToken.replace(/[^ء-ي]/g, '');
+              if (cleanToken.length >= 2 && !this.dataMap.has(cleanToken)) {
+                this.ingestWord(cleanToken, sName, a, 1, rawToken, text);
+              }
+            }
+          }
+        }
+      }
+
+      if (wordsTxt) {
+        const lines = wordsTxt.split(/\r?\n/);
+        for (const line of lines) {
+          const w = line.trim();
+          if (w.length >= 2 && !this.dataMap.has(w)) {
+            this.ingestWord(w, 'القرآن الكريم', 1, 1, w);
+          }
+        }
       }
 
       this.loaded = true;
@@ -432,92 +590,316 @@ class QuranicDictionaryService {
     } catch (err) {
       console.warn('Quranic dictionary fetch notice (using core set):', err);
       this.loading = false;
-      this.loaded = true; // core set is active
+      this.loaded = true;
       this.notify();
     }
   }
 
-  /**
-   * Check if text is an exact Quranic word or lemma
-   */
-  isQuranic(word: string): boolean {
-    if (!word) return false;
-    const clean = word.trim();
-    if (this.dataMap.has(clean)) return true;
-    const nw = normalizeArabicText(clean);
-    if (this.normalizedMap.has(nw)) return true;
-    const cb = getCipherBaseString(clean);
-    if (this.cipherBaseMap.has(cb)) return true;
+  getAyahText(surahNumberOrName: number | string, ayahNum: number): string | null {
+    if (typeof surahNumberOrName === 'number') {
+      const byNum = this.ayahsMap.get(`${surahNumberOrName}:${ayahNum}`);
+      if (byNum) return byNum;
+      const surahName = SURAH_NAMES[surahNumberOrName];
+      if (surahName) {
+        const byName = this.ayahsMap.get(`${surahName}:${ayahNum}`);
+        if (byName) return byName;
+      }
+    } else {
+      const cleanName = String(surahNumberOrName).replace(/^سورة\s+/, '').trim();
+      const byName = this.ayahsMap.get(`${cleanName}:${ayahNum}`) || this.ayahsMap.get(`${surahNumberOrName}:${ayahNum}`);
+      if (byName) return byName;
+      const sNum = getSurahNumber(cleanName);
+      if (sNum > 0) {
+        const byNum = this.ayahsMap.get(`${sNum}:${ayahNum}`);
+        if (byNum) return byNum;
+      }
+    }
+    return null;
+  }
 
-    if (/(.)\1/.test(clean)) {
-      const collapsed = clean.replace(/(.)\1/g, '$1');
-      if (this.dataMap.has(collapsed)) return true;
-      const nwCol = normalizeArabicText(collapsed);
-      if (this.normalizedMap.has(nwCol)) return true;
-      const cbCol = getCipherBaseString(collapsed);
-      if (this.cipherBaseMap.has(cbCol)) return true;
+  getAyahForWord(word: string, fallbackSurahName?: string, fallbackAyahNum?: number): { surahName: string; surahNumber: number; ayahNum: number; ayahText: string; sample?: string } | null {
+    const details = this.getWordDetails(word);
+    const surahName = details?.surahName || fallbackSurahName || '';
+    const surahNumber = details?.surahNumber || (surahName ? getSurahNumber(surahName) : 0);
+    const ayahNum = details?.ayahNum || fallbackAyahNum || 1;
+    const sample = this.sampleMap.get(word) || details?.sampleAyahText;
+
+    if (surahNumber > 0 || surahName) {
+      const fullText = this.getAyahText(surahNumber > 0 ? surahNumber : surahName, ayahNum);
+      if (fullText) {
+        return {
+          surahName: surahName || SURAH_NAMES[surahNumber] || 'القرآن الكريم',
+          surahNumber: surahNumber > 0 ? surahNumber : getSurahNumber(surahName),
+          ayahNum,
+          ayahText: fullText,
+          sample,
+        };
+      }
     }
 
-    return false;
+    // Direct scan across all verses for the word
+    if (this.allAyahsList.length > 0) {
+      const normWord = normalizeArabicText(word);
+      const foundAyah = this.allAyahsList.find((ay) => ay.norm.includes(normWord));
+      if (foundAyah) {
+        return {
+          surahName: foundAyah.s,
+          surahNumber: foundAyah.sn,
+          ayahNum: foundAyah.a,
+          ayahText: foundAyah.t,
+          sample: foundAyah.t,
+        };
+      }
+    }
+
+    if (sample) {
+      return {
+        surahName: surahName || 'القرآن الكريم',
+        surahNumber: surahNumber > 0 ? surahNumber : 1,
+        ayahNum,
+        ayahText: sample,
+        sample,
+      };
+    }
+
+    return null;
+  }
+
+  isQuranic(word: string): boolean {
+    return this.getWordDetails(word) !== null;
   }
 
   /**
-   * Get rich Quranic metadata for a word (Surah name, Ayah, occurrences)
+   * Comprehensive Multi-Rule Quranic Matcher
+   * Implements Dagger Alif (الألف الخنجرية), Shaddah Gemination (التضعيف),
+   * Waslah & Hamzat, Prefix & Affix evaluation, and direct Ayah searching.
    */
   getWordDetails(word: string): QuranicWordMeta | null {
     if (!word) return null;
     const clean = word.trim();
+    if (clean.length < 2) return null;
+
+    if (this.detailsCache.has(clean)) {
+      return this.detailsCache.get(clean)!;
+    }
+
+    // Rule 1: Exact entry in dictionary
     let entry = this.dataMap.get(clean);
     let matchedKey = clean;
+    let matchRule = 'تطابق قرآني مباشر';
+    let isDirectExact = false;
+    let confidence = 100;
     let isShaddahVariant = false;
+    let isDaggerAlifVariant = false;
+    let isAffixVariant = false;
 
+    if (entry) {
+      isDirectExact = true;
+      confidence = 100;
+    }
+
+    // Rule 2: Dagger Alif & Orthography Map (الألف الخنجرية)
+    if (!entry && DAGGER_ALIF_SPECIAL_MAP[clean]) {
+      for (const alt of DAGGER_ALIF_SPECIAL_MAP[clean]) {
+        if (this.dataMap.has(alt)) {
+          entry = this.dataMap.get(alt);
+          matchedKey = alt;
+          isDaggerAlifVariant = true;
+          isDirectExact = false;
+          confidence = 95;
+          matchRule = `قاعدة الألف الخنجرية والرسم العثماني (${alt})`;
+          break;
+        }
+      }
+    }
+
+    // Rule 3: Normalized Orthographic Match (أ / إ / آ / ٱ / ى / ة)
     if (!entry) {
       const nw = normalizeArabicText(clean);
       const originalKey = this.normalizedMap.get(nw);
       if (originalKey) {
         entry = this.dataMap.get(originalKey);
         matchedKey = originalKey;
-      } else {
-        // Fallback to phonetic cipher matching (e.g. كفأ matches كفى)
-        const cb = getCipherBaseString(clean);
-        const cbKey = this.cipherBaseMap.get(cb);
-        if (cbKey) {
-          entry = this.dataMap.get(cbKey);
-          matchedKey = cbKey;
-        } else if (/(.)\1/.test(clean)) {
-          // Check Shaddah variant (doubled consecutive letters e.g. مدد -> مد)
-          const collapsed = clean.replace(/(.)\1/g, '$1');
-          let colEntry = this.dataMap.get(collapsed);
-          let colKey = collapsed;
-          if (!colEntry) {
-            const nwCol = normalizeArabicText(collapsed);
-            const origColKey = this.normalizedMap.get(nwCol);
-            if (origColKey) {
-              colEntry = this.dataMap.get(origColKey);
-              colKey = origColKey;
-            } else {
-              const cbCol = getCipherBaseString(collapsed);
-              const cbColKey = this.cipherBaseMap.get(cbCol);
-              if (cbColKey) {
-                colEntry = this.dataMap.get(cbColKey);
-                colKey = cbColKey;
-              }
-            }
+        isDirectExact = (clean === originalKey);
+        confidence = (clean === originalKey) ? 100 : 96;
+        matchRule = 'تطابق قرآني مع توحيد الهمزات والياء والألف';
+      }
+    }
+
+    // Rule 4: Shaddah Gemination Contraction & Expansion (التضعيف وفكه: مدد <-> مد)
+    if (!entry) {
+      if (/(.)\1/.test(clean)) {
+        const collapsed = clean.replace(/(.)\1/g, '$1');
+        let colEntry = this.dataMap.get(collapsed);
+        let colKey = collapsed;
+        if (!colEntry) {
+          const nwCol = normalizeArabicText(collapsed);
+          const origColKey = this.normalizedMap.get(nwCol);
+          if (origColKey) {
+            colEntry = this.dataMap.get(origColKey);
+            colKey = origColKey;
           }
-          if (colEntry) {
-            entry = colEntry;
-            matchedKey = colKey;
-            isShaddahVariant = true;
+        }
+        if (colEntry) {
+          entry = colEntry;
+          matchedKey = colKey;
+          isShaddahVariant = true;
+          isDirectExact = false;
+          confidence = 92;
+          matchRule = `تطابق قرآني بدمج التضعيف المشدد (${colKey})`;
+        }
+      } else {
+        // Expand last char if double candidate e.g. مد -> مدد
+        const lastChar = clean[clean.length - 1];
+        const expanded = clean + lastChar;
+        let expEntry = this.dataMap.get(expanded);
+        if (expEntry) {
+          entry = expEntry;
+          matchedKey = expanded;
+          isShaddahVariant = true;
+          isDirectExact = false;
+          confidence = 92;
+          matchRule = `تطابق قرآني بفك تضعيف الحرف (${expanded})`;
+        }
+      }
+    }
+
+    // Rule 4.5: Alif Maqsura as Double Alif Rule (قاعدة الألف المقصورة كدبل ألف: ى ↔ اا)
+    if (!entry) {
+      if (clean.includes('اا')) {
+        const withMaqsuraEnd = clean.replace(/اا$/, 'ى');
+        const withMaqsuraAll = clean.replace(/اا/g, 'ى');
+        for (const cand of [withMaqsuraEnd, withMaqsuraAll]) {
+          if (this.dataMap.has(cand)) {
+            entry = this.dataMap.get(cand);
+            matchedKey = cand;
+            isDirectExact = false;
+            confidence = 93;
+            matchRule = `قاعدة الألف المقصورة كدبل ألف (${clean} ↔ ${cand})`;
+            break;
+          }
+          const nCand = normalizeArabicText(cand);
+          const origKey = this.normalizedMap.get(nCand);
+          if (origKey) {
+            entry = this.dataMap.get(origKey);
+            matchedKey = origKey;
+            isDirectExact = false;
+            confidence = 93;
+            matchRule = `قاعدة الألف المقصورة كدبل ألف (${clean} ↔ ${origKey})`;
+            break;
+          }
+        }
+      } else if (clean.includes('ى') || clean.endsWith('ا')) {
+        const withDoubleAlifEnd = clean.replace(/ى$/, 'اا');
+        const withDoubleAlifAll = clean.replace(/ى/g, 'اا');
+        for (const cand of [withDoubleAlifEnd, withDoubleAlifAll]) {
+          if (cand !== clean && this.dataMap.has(cand)) {
+            entry = this.dataMap.get(cand);
+            matchedKey = cand;
+            isDirectExact = false;
+            confidence = 93;
+            matchRule = `قاعدة الألف المقصورة كدبل ألف (${clean} ↔ ${cand})`;
+            break;
+          }
+          const nCand = normalizeArabicText(cand);
+          const origKey = this.normalizedMap.get(nCand);
+          if (origKey && origKey !== clean) {
+            entry = this.dataMap.get(origKey);
+            matchedKey = origKey;
+            isDirectExact = false;
+            confidence = 93;
+            matchRule = `قاعدة الألف المقصورة كدبل ألف (${clean} ↔ ${origKey})`;
+            break;
           }
         }
       }
     }
 
-    if (!entry) return null;
+    // Rule 5: Prefix and Suffix Stripping / Affix Scanning (السوابق واللواحق القرآنية)
+    if (!entry) {
+      for (const p of QURANIC_PREFIXES) {
+        if (clean.startsWith(p) && clean.length - p.length >= 2) {
+          const sub = clean.slice(p.length);
+          if (this.dataMap.has(sub)) {
+            entry = this.dataMap.get(sub);
+            matchedKey = sub;
+            isAffixVariant = true;
+            isDirectExact = false;
+            const diff = clean.length - sub.length;
+            confidence = Math.max(75, 90 - diff * 3);
+            matchRule = `مفردة قرآنية بإسقاط السابقة (${p})`;
+            break;
+          }
+          const nwSub = normalizeArabicText(sub);
+          const origSub = this.normalizedMap.get(nwSub);
+          if (origSub) {
+            entry = this.dataMap.get(origSub);
+            matchedKey = origSub;
+            isAffixVariant = true;
+            isDirectExact = false;
+            const diff = clean.length - origSub.length;
+            confidence = Math.max(75, 90 - diff * 3);
+            matchRule = `مفردة قرآنية بإسقاط السابقة (${p})`;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!entry) {
+      for (const s of QURANIC_SUFFIXES) {
+        if (clean.endsWith(s) && clean.length - s.length >= 2) {
+          const sub = clean.slice(0, clean.length - s.length);
+          if (this.dataMap.has(sub)) {
+            entry = this.dataMap.get(sub);
+            matchedKey = sub;
+            isAffixVariant = true;
+            isDirectExact = false;
+            const diff = clean.length - sub.length;
+            confidence = Math.max(75, 90 - diff * 3);
+            matchRule = `مفردة قرآنية بإسقاط اللاحقة (${s})`;
+            break;
+          }
+          const nwSub = normalizeArabicText(sub);
+          const origSub = this.normalizedMap.get(nwSub);
+          if (origSub) {
+            entry = this.dataMap.get(origSub);
+            matchedKey = origSub;
+            isAffixVariant = true;
+            isDirectExact = false;
+            const diff = clean.length - origSub.length;
+            confidence = Math.max(75, 90 - diff * 3);
+            matchRule = `مفردة قرآنية بإسقاط اللاحقة (${s})`;
+            break;
+          }
+        }
+      }
+    }
+
+    // Rule 6: Cipher / Phonetic Base
+    if (!entry) {
+      const cb = getCipherBaseString(clean);
+      const cbKey = this.cipherBaseMap.get(cb);
+      if (cbKey) {
+        entry = this.dataMap.get(cbKey);
+        matchedKey = cbKey;
+        isDirectExact = false;
+        confidence = 85;
+        matchRule = 'تطابق تقاربي في قاعدة التشفير القرآنية';
+      }
+    }
+
+    if (!entry) {
+      this.detailsCache.set(clean, null);
+      return null;
+    }
 
     const [surahName, ayahNum, occurrences, originalQuranicWord] = entry;
     const surahNumber = getSurahNumber(surahName);
-    return {
+    const sample = this.sampleMap.get(matchedKey) || this.sampleMap.get(clean);
+    const ayahText = this.getAyahText(surahNumber, ayahNum) || sample;
+
+    const res: QuranicWordMeta = {
       word: matchedKey,
       originalQuranicWord: originalQuranicWord || matchedKey,
       surahName,
@@ -525,13 +907,20 @@ class QuranicDictionaryService {
       ayahNum,
       occurrences,
       isExact: true,
+      isDirectExact: isDirectExact && clean === matchedKey,
+      confidence: (isDirectExact && clean === matchedKey) ? 100 : Math.min(confidence, 95),
       isShaddahVariant,
+      isDaggerAlifVariant,
+      isAffixVariant,
+      matchRule,
+      ayahText: ayahText || undefined,
+      sampleAyahText: sample || undefined,
     };
+
+    this.detailsCache.set(clean, res);
+    return res;
   }
 
-  /**
-   * Find the closest Quranic vocabulary word with high optical similarity
-   */
   findClosestQuranicWord(query: string): QuranicNearestMatch | null {
     if (!query || query.length < 2) return null;
     const clean = query.trim();
@@ -540,7 +929,7 @@ class QuranicDictionaryService {
       return this.nearestCache.get(clean)!;
     }
 
-    // 1. Exact match check
+    // 1. Exact or rule-based match
     const exact = this.getWordDetails(clean);
     if (exact) {
       const match: QuranicNearestMatch = {
@@ -551,14 +940,16 @@ class QuranicDictionaryService {
         ayahNum: exact.ayahNum,
         distance: 0,
         similarity: 100,
+        matchRule: exact.matchRule,
+        ayahText: exact.ayahText,
+        sampleAyahText: exact.sampleAyahText,
       };
       this.nearestCache.set(clean, match);
       return match;
     }
 
-    // 2. Search nearest in candidate pool (words with length within ± 1)
+    // 2. Nearest in candidate pool
     const qLen = clean.length;
-    // Lengths ± 1 are sufficient for high quality matches (>= 60%)
     const candidateLengths = [qLen, qLen - 1, qLen + 1].filter((len) => len >= 2);
 
     let bestMatch: QuranicNearestMatch | null = null;
@@ -567,13 +958,9 @@ class QuranicDictionaryService {
 
     for (const len of candidateLengths) {
       const words = this.wordsByLength.get(len) || [];
-      // Prioritize words that start with the same letter or common root prefix
       let evaluated = 0;
       for (const w of words) {
-        // Fast early skip: if lengths are same and first letter differs by a lot, still check, but cap evaluations
         if (evaluated > 350) break;
-
-        // Fast check: if first char matches or length <= 3
         if (w[0] === firstChar || qLen <= 3) {
           evaluated++;
           const d = levenshteinDistance(clean, w);
@@ -582,20 +969,24 @@ class QuranicDictionaryService {
             const entry = this.dataMap.get(w);
             if (entry) {
               const maxLen = Math.max(clean.length, w.length);
-              const similarity = Math.max(0, Math.round((1 - d / maxLen) * 100));
+              const similarity = Math.min(95, Math.max(0, Math.round((1 - d / maxLen) * 100)));
               const surahNumber = getSurahNumber(entry[0]);
+              const sample = this.sampleMap.get(w);
+              const ayahText = this.getAyahText(surahNumber, entry[1]) || sample;
               bestMatch = {
                 word: w,
                 originalQuranicWord: entry[3] || w,
                 surahName: entry[0],
                 surahNumber,
                 ayahNum: entry[1],
+                occurrences: entry[2] || 1,
                 distance: d,
                 similarity,
+                matchRule: `تقارب لفظي (${similarity}%)`,
+                ayahText: ayahText || undefined,
+                sampleAyahText: sample || undefined,
               };
-              if (d <= 1 && similarity >= 70) {
-                break;
-              }
+              if (d <= 1 && similarity >= 70) break;
             }
           }
         }
@@ -605,6 +996,48 @@ class QuranicDictionaryService {
 
     this.nearestCache.set(clean, bestMatch);
     return bestMatch;
+  }
+
+  /**
+   * Asynchronous Progressive Quranic Search with Real Frame-by-Frame Progress Reporting
+   */
+  async searchQuranicWordsAsync(
+    words: { word: string; isReversed: boolean; original?: string }[],
+    onProgress?: (percent: number, currentItem: string) => void
+  ): Promise<{ word: string; meta: QuranicWordMeta; isReversed: boolean; original?: string }[]> {
+    const results: { word: string; meta: QuranicWordMeta; isReversed: boolean; original?: string }[] = [];
+    const seen = new Set<string>();
+    const total = words.length;
+    if (total === 0) {
+      if (onProgress) onProgress(100, '');
+      return results;
+    }
+
+    let processed = 0;
+    const CHUNK = 100;
+
+    for (let i = 0; i < total; i += CHUNK) {
+      const slice = words.slice(i, i + CHUNK);
+      for (const item of slice) {
+        if (!seen.has(item.word)) {
+          const meta = this.getWordDetails(item.word);
+          if (meta) {
+            seen.add(item.word);
+            results.push({ word: item.word, meta, isReversed: item.isReversed, original: item.original });
+          }
+        }
+      }
+      processed += slice.length;
+      if (onProgress) {
+        const p = Math.min(100, Math.round((processed / total) * 100));
+        onProgress(p, slice[slice.length - 1]?.word || '');
+      }
+      // Instant non-blocking yield for UI rendering
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    if (onProgress) onProgress(100, 'اكتمل مسح المصحف الشريف');
+    return results;
   }
 
   getWordCount(): number {

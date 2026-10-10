@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   LayerInfo,
   DEFAULT_CIPHER_LAYERS,
@@ -17,12 +24,12 @@ import {
   analyzeWord,
   decryptCipherChar,
   normalizeArabicChar,
-} from '../cipherData';
+} from "../cipherData";
 
-const LOCAL_STORAGE_KEY = 'quran_cipher_custom_layers_v2';
-const SAVED_TABLES_STORAGE_KEY = 'quran_cipher_saved_tables_v1';
-const SAVED_ARABIC_PRESETS_KEY = 'quran_cipher_saved_arabic_presets_v1';
-const SAVED_NOORANI_PRESETS_KEY = 'quran_cipher_saved_noorani_presets_v1';
+const LOCAL_STORAGE_KEY = "quran_cipher_custom_layers_v2";
+const SAVED_TABLES_STORAGE_KEY = "quran_cipher_saved_tables_v1";
+const SAVED_ARABIC_PRESETS_KEY = "quran_cipher_saved_arabic_presets_v1";
+const SAVED_NOORANI_PRESETS_KEY = "quran_cipher_saved_noorani_presets_v1";
 
 export interface SelectedSlot {
   layerNum: number;
@@ -53,7 +60,11 @@ export interface SavedNooraniPreset {
   name: string;
   description?: string;
   createdAt: number;
-  nooraniLayers: { layer: number; cipherLetters: string[]; description?: string }[];
+  nooraniLayers: {
+    layer: number;
+    cipherLetters: string[];
+    description?: string;
+  }[];
 }
 
 export interface ColumnDuplicateItem {
@@ -106,13 +117,13 @@ export interface CipherLayersContextType {
   saveCurrentTable: (
     nooraniOrderName: string,
     arabicOrderName: string,
-    description?: string
+    description?: string,
   ) => SavedCustomTable;
   saveCustomLayersTable: (
     nooraniOrderName: string,
     arabicOrderName: string,
     customLayers: LayerInfo[],
-    description?: string
+    description?: string,
   ) => SavedCustomTable;
   loadSavedTable: (id: string) => boolean;
   deleteSavedTable: (id: string) => void;
@@ -127,10 +138,18 @@ export interface CipherLayersContextType {
       nooraniOrderName?: string;
       arabicOrderName?: string;
       updateWithCurrentLayers?: boolean;
-    }
+    },
   ) => void;
-  exportCurrentTableAsFile: (customNooraniName?: string, customArabicName?: string) => void;
-  exportPairAsFile: (nooraniName: string, arabicName: string, customLayers: LayerInfo[], description?: string) => void;
+  exportCurrentTableAsFile: (
+    customNooraniName?: string,
+    customArabicName?: string,
+  ) => void;
+  exportPairAsFile: (
+    nooraniName: string,
+    arabicName: string,
+    customLayers: LayerInfo[],
+    description?: string,
+  ) => void;
   exportCurrentTableAsTextFile: (customName?: string) => void;
   exportSingleSavedTableAsFile: (tableId: string) => void;
   exportSingleSavedTableAsTextFile: (tableId: string) => void;
@@ -141,25 +160,43 @@ export interface CipherLayersContextType {
   // Arabic distributions
   savedArabicPresets: SavedArabicPreset[];
   activeArabicPresetName: string | null;
-  saveCurrentArabicPreset: (name: string, description?: string) => SavedArabicPreset;
-  applyArabicDistribution: (presetOrId: ArabicDistributionPreset | SavedArabicPreset | string) => void;
+  saveCurrentArabicPreset: (
+    name: string,
+    description?: string,
+  ) => SavedArabicPreset;
+  applyArabicDistribution: (
+    presetOrId: ArabicDistributionPreset | SavedArabicPreset | string,
+  ) => void;
   deleteSavedArabicPreset: (id: string) => void;
   updateSavedArabicPresetName: (id: string, name: string) => void;
   // Noorani distributions
   savedNooraniPresets: SavedNooraniPreset[];
   activeNooraniPresetName: string | null;
-  saveCurrentNooraniPreset: (name: string, description?: string) => SavedNooraniPreset;
-  applyNooraniDistribution: (presetOrId: NooraniDistributionPreset | SavedNooraniPreset | string) => void;
+  saveCurrentNooraniPreset: (
+    name: string,
+    description?: string,
+  ) => SavedNooraniPreset;
+  applyNooraniDistribution: (
+    presetOrId: NooraniDistributionPreset | SavedNooraniPreset | string,
+  ) => void;
   deleteSavedNooraniPreset: (id: string) => void;
   updateSavedNooraniPresetName: (id: string, name: string) => void;
   // Row duplicates removal
-  removeRowDuplicates: () => { arabicRemoved: number; cipherRemoved: number; totalRemoved: number };
+  removeRowDuplicates: () => {
+    arabicRemoved: number;
+    cipherRemoved: number;
+    totalRemoved: number;
+  };
   // Column duplicates summary
   columnDuplicatesSummary: ColumnDuplicatesSummary;
   // Layer & Grid Expandability
-  addLayer: (layerNum?: number, description?: string, position?: 'top' | 'bottom') => void;
+  addLayer: (
+    layerNum?: number,
+    description?: string,
+    position?: "top" | "bottom",
+  ) => void;
   deleteLayer: (layerNum: number) => boolean;
-  moveLayer: (layerNum: number, direction: 'up' | 'down') => void;
+  moveLayer: (layerNum: number, direction: "up" | "down") => void;
   addArabicSlotToLayer: (layerNum: number, initialChar?: string) => void;
   removeArabicSlotFromLayer: (layerNum: number, slotIndex: number) => void;
   addArabicColumnToAllLayers: () => void;
@@ -171,28 +208,41 @@ export interface CipherLayersContextType {
   reverseAllLayersArabicLetters: () => void;
   reverseAllLayersCipherLetters: () => void;
   // Mutations
-  swapSlots: (layerA: number, indexA: number, layerB: number, indexB: number) => void;
+  swapSlots: (
+    layerA: number,
+    indexA: number,
+    layerB: number,
+    indexB: number,
+  ) => void;
   setLetterAtSlot: (layerNum: number, slotIndex: number, char: string) => void;
   clearLetterAtSlot: (layerNum: number, slotIndex: number) => void;
   clearAllSlots: () => void;
   clearSkyLetters: () => void;
   clearEarthLetters: () => void;
-  setCipherLettersForLayer: (layerNum: number, cipherKeysOr1: string[] | string, cipher2?: string) => void;
-  setCipherLetterAtSlot: (layerNum: number, cipherSlotIndex: number, char: string) => void;
+  setCipherLettersForLayer: (
+    layerNum: number,
+    cipherKeysOr1: string[] | string,
+    cipher2?: string,
+  ) => void;
+  setCipherLetterAtSlot: (
+    layerNum: number,
+    cipherSlotIndex: number,
+    char: string,
+  ) => void;
   resetToDefault: () => void;
   applyPreset: (presetId: keyof typeof PRESET_TABLES) => void;
   updateAllLayers: (newLayers: LayerInfo[], tableName?: string) => void;
   bulkFillArabicLetters: (
     rawLetters: string[],
-    orderMode?: 'table_order' | 'layer_asc' | 'layer_desc',
+    orderMode?: "table_order" | "layer_asc" | "layer_desc",
     clearRemaining?: boolean,
-    resizeConfig?: { rows: number; cols: number }
+    resizeConfig?: { rows: number; cols: number },
   ) => { filledCount: number; totalSlots: number; message: string };
   bulkFillCipherLetters: (
     rawLetters: string[],
-    orderMode?: 'table_order' | 'layer_asc' | 'layer_desc',
+    orderMode?: "table_order" | "layer_asc" | "layer_desc",
     clearRemaining?: boolean,
-    resizeConfig?: { rows: number; cols: number }
+    resizeConfig?: { rows: number; cols: number },
   ) => { filledCount: number; totalSlots: number; message: string };
   importLayersJson: (jsonStr: string) => boolean;
   exportLayersJson: () => string;
@@ -208,9 +258,9 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
     const rawCiphers = Array.isArray(l.cipherLetters) ? l.cipherLetters : [];
     const flatChars: string[] = [];
     rawCiphers.forEach((c) => {
-      const trimmed = String(c || '').trim();
+      const trimmed = String(c || "").trim();
       if (trimmed) {
-        const singleLetters = trimmed.replace(/[^ء-ي]/g, '').split('');
+        const singleLetters = trimmed.replace(/[^ء-ي]/g, "").split("");
         if (singleLetters.length > 0) {
           flatChars.push(...singleLetters);
         } else {
@@ -221,10 +271,10 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
     const rawArabic = Array.isArray(l.arabicLetters) ? l.arabicLetters : [];
     const targetArabicLen = Math.max(4, rawArabic.length);
     return {
-      layer: typeof l.layer === 'number' ? l.layer : index + 1,
-      cipherLetters: flatChars.length > 0 ? flatChars : [''],
+      layer: typeof l.layer === "number" ? l.layer : index + 1,
+      cipherLetters: flatChars.length > 0 ? flatChars : [""],
       arabicLetters: Array.from({ length: targetArabicLen }, (_, i) =>
-        rawArabic[i] != null ? String(rawArabic[i]) : ''
+        rawArabic[i] != null ? String(rawArabic[i]) : "",
       ),
       description: l.description || `الطبقة ${l.layer || index + 1}`,
     };
@@ -233,11 +283,19 @@ export function normalizeLayers(candidate: LayerInfo[]): LayerInfo[] {
 
 function loadInitialLayers(): LayerInfo[] {
   try {
-    const v6BenchmarkKey = localStorage.getItem('quran_cipher_preset_v6_sky3_earth2_baseline_set');
-    if (!v6BenchmarkKey) {
-      // Seed to Sky 3 (ا - ن) x Earth 2 (اب - ظغ) standard default requested by user
-      localStorage.setItem('quran_cipher_preset_v6_sky3_earth2_baseline_set', 'true');
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_CIPHER_LAYERS));
+    const v9BenchmarkKey = localStorage.getItem(
+      "quran_cipher_preset_v10_sky1_earth4_baseline_set",
+    );
+    if (!v9BenchmarkKey) {
+      // Seed to Sky 1 (صرقم) x Earth 4 (صرتغ - كطثظ) standard default requested by user
+      localStorage.setItem(
+        "quran_cipher_preset_v10_sky1_earth4_baseline_set",
+        "true",
+      );
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify(DEFAULT_CIPHER_LAYERS),
+      );
       return JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS));
     }
 
@@ -249,18 +307,18 @@ function loadInitialLayers(): LayerInfo[] {
       }
     }
   } catch (e) {
-    console.error('Failed to load saved cipher layers from localStorage:', e);
+    console.error("Failed to load saved cipher layers from localStorage:", e);
   }
   return JSON.parse(JSON.stringify(DEFAULT_CIPHER_LAYERS));
 }
 
 function normalizeForDuplicateCheck(str: string): string {
-  return (str || '')
-    .replace(/[\u064B-\u0652\u0670]/g, '') // remove arabic diacritics
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/\d+/g, '') // remove numbers
-    .replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '') // remove non-alphanumeric/non-arabic chars
+  return (str || "")
+    .replace(/[\u064B-\u0652\u0670]/g, "") // remove arabic diacritics
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/\d+/g, "") // remove numbers
+    .replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, "") // remove non-alphanumeric/non-arabic chars
     .toLowerCase();
 }
 
@@ -269,7 +327,9 @@ function loadInitialSavedTables(): SavedCustomTable[] {
     const saved = localStorage.getItem(SAVED_TABLES_STORAGE_KEY);
 
     const builtInNormalizedSet = new Set(
-      Object.values(PRESET_TABLES).map((p) => normalizeForDuplicateCheck(p.name))
+      Object.values(PRESET_TABLES).map((p) =>
+        normalizeForDuplicateCheck(p.name),
+      ),
     );
 
     // Helper to filter out legacy preset tables & built-in presets
@@ -279,20 +339,23 @@ function loadInitialSavedTables(): SavedCustomTable[] {
       if (builtInNormalizedSet.has(norm)) return true;
 
       for (const bNorm of builtInNormalizedSet) {
-        if (bNorm.length >= 3 && (norm.includes(bNorm) || bNorm.includes(norm))) {
+        if (
+          bNorm.length >= 3 &&
+          (norm.includes(bNorm) || bNorm.includes(norm))
+        ) {
           return true;
         }
       }
 
       return (
-        norm.includes('ذكرعسق') ||
-        norm.includes('المشرح') ||
-        norm.includes('ذكرللعالمين') ||
-        norm.includes('طسمترتيب') ||
-        norm.includes('تعجب') ||
-        norm.includes('الترتيبالهجائي') ||
-        norm.includes('الفتح') ||
-        norm.includes('توزيع')
+        norm.includes("ذكرعسق") ||
+        norm.includes("المشرح") ||
+        norm.includes("ذكرللعالمين") ||
+        norm.includes("طسمترتيب") ||
+        norm.includes("تعجب") ||
+        norm.includes("الترتيبالهجائي") ||
+        norm.includes("الفتح") ||
+        norm.includes("توزيع")
       );
     };
 
@@ -302,7 +365,8 @@ function loadInitialSavedTables(): SavedCustomTable[] {
         const cleaned = parsed.filter((t: SavedCustomTable) => {
           if (isDeletedOrBuiltInPreset(t.name)) return false;
           // Must have explicit dual names (nooraniOrderName & arabicOrderName)
-          if (!t.nooraniOrderName?.trim() || !t.arabicOrderName?.trim()) return false;
+          if (!t.nooraniOrderName?.trim() || !t.arabicOrderName?.trim())
+            return false;
           return true;
         });
         // Save cleaned back to localStorage to purge single-named legacy items permanently
@@ -314,7 +378,7 @@ function loadInitialSavedTables(): SavedCustomTable[] {
       }
     }
   } catch (e) {
-    console.error('Failed to load saved tables library from localStorage:', e);
+    console.error("Failed to load saved tables library from localStorage:", e);
   }
   return [];
 }
@@ -329,7 +393,7 @@ function loadInitialArabicPresets(): SavedArabicPreset[] {
       }
     }
   } catch (e) {
-    console.error('Failed to load saved arabic presets from localStorage:', e);
+    console.error("Failed to load saved arabic presets from localStorage:", e);
   }
   return [];
 }
@@ -344,42 +408,47 @@ function loadInitialNooraniPresets(): SavedNooraniPreset[] {
       }
     }
   } catch (e) {
-    console.error('Failed to load saved noorani presets from localStorage:', e);
+    console.error("Failed to load saved noorani presets from localStorage:", e);
   }
   return [];
 }
 
 function triggerJsonDownload(filename: string, data: unknown) {
   try {
-    const jsonStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const jsonStr =
+      typeof data === "string" ? data : JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], {
+      type: "application/json;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = filename.endsWith('.json') ? filename : `${filename}.json`;
+    link.download = filename.endsWith(".json") ? filename : `${filename}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (err) {
-    console.error('Download error:', err);
+    console.error("Download error:", err);
   }
 }
 
 function triggerTextDownload(filename: string, text: string) {
   try {
     // UTF-8 BOM (\uFEFF) ensures Windows Notepad & mobile editors open Arabic cleanly without scrambling
-    const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob(["\uFEFF" + text], {
+      type: "text/plain;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = filename.endsWith('.txt') ? filename : `${filename}.txt`;
+    link.download = filename.endsWith(".txt") ? filename : `${filename}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (err) {
-    console.error('Text download error:', err);
+    console.error("Text download error:", err);
   }
 }
 
@@ -387,25 +456,34 @@ function triggerTextDownload(filename: string, text: string) {
  * Pure Arabic line-by-line format:
  * Each field is on its own separate line to completely eliminate BiDi / RTL mixed-language editing issues.
  */
-export function serializeLayersToText(tableName: string, layers: LayerInfo[]): string {
+export function serializeLayersToText(
+  tableName: string,
+  layers: LayerInfo[],
+): string {
   const sorted = layers.slice().sort((a, b) => b.layer - a.layer);
   const lines: string[] = [];
   lines.push(`المنظومة: ${tableName}`);
-  lines.push('');
+  lines.push("");
   for (const l of sorted) {
-    const cipherStr = (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' ');
-    const arabicStr = (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' ');
+    const cipherStr = (l.cipherLetters || [])
+      .map((c) => (c || "").trim())
+      .filter(Boolean)
+      .join(" ");
+    const arabicStr = (l.arabicLetters || [])
+      .map((a) => (a || "").trim())
+      .filter(Boolean)
+      .join(" ");
     lines.push(`[الطبقة ${l.layer}]`);
     lines.push(`الشيفرة: ${cipherStr}`);
     lines.push(`العربي: ${arabicStr}`);
-    lines.push('');
+    lines.push("");
   }
-  return lines.join('\n').trim();
+  return lines.join("\n").trim();
 }
 
 export interface ParsedTextLayersResult {
   name: string;
-  type: 'full' | 'noorani_only' | 'arabic_only';
+  type: "full" | "noorani_only" | "arabic_only";
   layers: LayerInfo[];
   totalCipherCount: number;
   totalArabicCount: number;
@@ -414,14 +492,16 @@ export interface ParsedTextLayersResult {
 /**
  * Resilient parser for text format (supports full systems, sky-only, earth-only, and raw sequences)
  */
-export function parseLayersFromText(text: string): ParsedTextLayersResult | null {
-  if (!text || typeof text !== 'string') return null;
+export function parseLayersFromText(
+  text: string,
+): ParsedTextLayersResult | null {
+  if (!text || typeof text !== "string") return null;
   const rawLines = text.split(/\r?\n/);
 
-  let tableName = 'منظومة مستوردة';
+  let tableName = "منظومة مستوردة";
   const layerMap = new Map<number, { cipher: string[]; arabic: string[] }>();
   let currentLayerNum: number | null = null;
-  let expectingType: 'cipher' | 'arabic' | null = null;
+  let expectingType: "cipher" | "arabic" | null = null;
   let hasValidLayers = false;
   let detectedExplicitSkyName = false;
   let detectedExplicitEarthName = false;
@@ -431,32 +511,40 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
     if (!line) continue;
 
     // Check table/sky/earth name
-    const skyNameMatch = line.match(/^(?:سماء|جدول السماء|ترتيب السماء|noorani)\s*[:=]\s*(.*)$/i);
+    const skyNameMatch = line.match(
+      /^(?:سماء|جدول السماء|ترتيب السماء|noorani)\s*[:=]\s*(.*)$/i,
+    );
     if (skyNameMatch && skyNameMatch[1].trim()) {
       tableName = skyNameMatch[1].trim();
       detectedExplicitSkyName = true;
       continue;
     }
 
-    const earthNameMatch = line.match(/^(?:أرض|ارض|جدول الأرض|ترتيب الأرض|arabic)\s*[:=]\s*(.*)$/i);
+    const earthNameMatch = line.match(
+      /^(?:أرض|ارض|جدول الأرض|ترتيب الأرض|arabic)\s*[:=]\s*(.*)$/i,
+    );
     if (earthNameMatch && earthNameMatch[1].trim()) {
       tableName = earthNameMatch[1].trim();
       detectedExplicitEarthName = true;
       continue;
     }
 
-    const nameMatch = line.match(/^(?:المنظومة|منظومة|الاسم|اسم|name)\s*[:=]\s*(.*)$/i);
+    const nameMatch = line.match(
+      /^(?:المنظومة|منظومة|الاسم|اسم|name)\s*[:=]\s*(.*)$/i,
+    );
     if (nameMatch && nameMatch[1].trim()) {
       tableName = nameMatch[1].trim();
       continue;
     }
 
     // Check layer header: [الطبقة 7] or الطبقة 7 or layer 7 or [7] or just 7
-    const layerMatch = line.match(/^(?:\[\s*)?(?:الطبقة|طبقة|layer)?\s*([1-7])(?:\s*\])?$/i);
+    const layerMatch = line.match(
+      /^(?:\[\s*)?(?:الطبقة|طبقة|layer)?\s*([1-7])(?:\s*\])?$/i,
+    );
     if (layerMatch) {
       currentLayerNum = parseInt(layerMatch[1], 10);
       hasValidLayers = true;
-      expectingType = 'cipher';
+      expectingType = "cipher";
       if (!layerMap.has(currentLayerNum)) {
         layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
       }
@@ -464,28 +552,42 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
     }
 
     // Check explicit cipher line: الشيفرة: ...
-    const cipherMatch = line.match(/^(?:الشيفرة|الشفره|شيفرة|شفرة|تشفير|cipher|نورانية|حروف نورانية)\s*[:=]\s*(.*)$/i);
+    const cipherMatch = line.match(
+      /^(?:الشيفرة|الشفره|شيفرة|شفرة|تشفير|cipher|نورانية|حروف نورانية)\s*[:=]\s*(.*)$/i,
+    );
     if (cipherMatch) {
       hasValidLayers = true;
       const content = cipherMatch[1].trim();
-      const tokens = content ? (content.includes(' ') || content.includes(',') ? content.split(/[\s,]+/) : content.split('')) : [];
+      const tokens = content
+        ? content.includes(" ") || content.includes(",")
+          ? content.split(/[\s,]+/)
+          : content.split("")
+        : [];
       const validTokens = tokens.filter(Boolean);
       if (currentLayerNum === null) currentLayerNum = 7;
-      if (!layerMap.has(currentLayerNum)) layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
+      if (!layerMap.has(currentLayerNum))
+        layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
       layerMap.get(currentLayerNum)!.cipher = validTokens;
-      expectingType = 'arabic';
+      expectingType = "arabic";
       continue;
     }
 
     // Check explicit arabic line: العربي: ...
-    const arabicMatch = line.match(/^(?:العربي|عربي|الأحرف|الاحرف|حروف|arabic|letters|حروف عربية)\s*[:=]\s*(.*)$/i);
+    const arabicMatch = line.match(
+      /^(?:العربي|عربي|الأحرف|الاحرف|حروف|arabic|letters|حروف عربية)\s*[:=]\s*(.*)$/i,
+    );
     if (arabicMatch) {
       hasValidLayers = true;
       const content = arabicMatch[1].trim();
-      const tokens = content ? (content.includes(' ') || content.includes(',') ? content.split(/[\s,]+/) : content.split('')) : [];
+      const tokens = content
+        ? content.includes(" ") || content.includes(",")
+          ? content.split(/[\s,]+/)
+          : content.split("")
+        : [];
       const validTokens = tokens.filter(Boolean);
       if (currentLayerNum === null) currentLayerNum = 7;
-      if (!layerMap.has(currentLayerNum)) layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
+      if (!layerMap.has(currentLayerNum))
+        layerMap.set(currentLayerNum, { cipher: [], arabic: [] });
       layerMap.get(currentLayerNum)!.arabic = validTokens;
       expectingType = null;
       continue;
@@ -493,12 +595,15 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
 
     // Implicit content line if directly below layer header
     if (currentLayerNum !== null && expectingType) {
-      const tokens = line.includes(' ') || line.includes(',') ? line.split(/[\s,]+/) : line.split('');
+      const tokens =
+        line.includes(" ") || line.includes(",")
+          ? line.split(/[\s,]+/)
+          : line.split("");
       const validTokens = tokens.filter(Boolean);
-      if (expectingType === 'cipher') {
+      if (expectingType === "cipher") {
         layerMap.get(currentLayerNum)!.cipher = validTokens;
-        expectingType = 'arabic';
-      } else if (expectingType === 'arabic') {
+        expectingType = "arabic";
+      } else if (expectingType === "arabic") {
         layerMap.get(currentLayerNum)!.arabic = validTokens;
         expectingType = null;
       }
@@ -507,11 +612,18 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
 
   // Fallback check: Raw sequence of letters without section headers
   if (!hasValidLayers && layerMap.size === 0) {
-    const rawClean = text.replace(/[\r\n\t]/g, ' ').trim();
-    
+    const rawClean = text.replace(/[\r\n\t]/g, " ").trim();
+
     // Check if hyphenated or spaced chunks
-    if (rawClean.includes('-') || rawClean.includes(' ') || rawClean.includes(',')) {
-      const parts = rawClean.split(/[-,\n]+/).map((p) => p.replace(/[^ء-ي]/g, '').trim()).filter(Boolean);
+    if (
+      rawClean.includes("-") ||
+      rawClean.includes(" ") ||
+      rawClean.includes(",")
+    ) {
+      const parts = rawClean
+        .split(/[-,\n]+/)
+        .map((p) => p.replace(/[^ء-ي]/g, "").trim())
+        .filter(Boolean);
       if (parts.length === 7) {
         // If 7 parts of 2 letters -> Sky only
         const is2LetterChunks = parts.every((p) => p.length === 2);
@@ -519,9 +631,12 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
           const resultLayers: LayerInfo[] = [];
           for (let i = 0; i < 7; i++) {
             const layerNum = 7 - i;
-            const letters = parts[i].split('');
-            const cipherSlots = Array.from({ length: 9 }, (_, idx) => letters[idx] || '');
-            const arabicSlots = Array(4).fill('');
+            const letters = parts[i].split("");
+            const cipherSlots = Array.from(
+              { length: 9 },
+              (_, idx) => letters[idx] || "",
+            );
+            const arabicSlots = Array(4).fill("");
             resultLayers.push({
               layer: layerNum,
               cipherLetters: cipherSlots,
@@ -530,8 +645,8 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
             });
           }
           return {
-            name: tableName === 'منظومة مستوردة' ? 'سماء مخصصة' : tableName,
-            type: 'noorani_only',
+            name: tableName === "منظومة مستوردة" ? "سماء مخصصة" : tableName,
+            type: "noorani_only",
             layers: normalizeLayers(resultLayers),
             totalCipherCount: 14,
             totalArabicCount: 0,
@@ -544,9 +659,12 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
           const resultLayers: LayerInfo[] = [];
           for (let i = 0; i < 7; i++) {
             const layerNum = 7 - i;
-            const letters = parts[i].split('');
-            const cipherSlots = Array(9).fill('');
-            const arabicSlots = Array.from({ length: 4 }, (_, idx) => letters[idx] || '');
+            const letters = parts[i].split("");
+            const cipherSlots = Array(9).fill("");
+            const arabicSlots = Array.from(
+              { length: 4 },
+              (_, idx) => letters[idx] || "",
+            );
             resultLayers.push({
               layer: layerNum,
               cipherLetters: cipherSlots,
@@ -555,8 +673,8 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
             });
           }
           return {
-            name: tableName === 'منظومة مستوردة' ? 'أرض مخصصة' : tableName,
-            type: 'arabic_only',
+            name: tableName === "منظومة مستوردة" ? "أرض مخصصة" : tableName,
+            type: "arabic_only",
             layers: normalizeLayers(resultLayers),
             totalCipherCount: 0,
             totalArabicCount: 28,
@@ -566,14 +684,17 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
     }
 
     // Check pure continuous Arabic string
-    const pureArabicChars = rawClean.replace(/[^ء-ي]/g, '').split('');
+    const pureArabicChars = rawClean.replace(/[^ء-ي]/g, "").split("");
     if (pureArabicChars.length === 14) {
       const resultLayers: LayerInfo[] = [];
       for (let i = 0; i < 7; i++) {
         const layerNum = 7 - i;
         const letters = pureArabicChars.slice(i * 2, (i + 1) * 2);
-        const cipherSlots = Array.from({ length: 9 }, (_, idx) => letters[idx] || '');
-        const arabicSlots = Array(4).fill('');
+        const cipherSlots = Array.from(
+          { length: 9 },
+          (_, idx) => letters[idx] || "",
+        );
+        const arabicSlots = Array(4).fill("");
         resultLayers.push({
           layer: layerNum,
           cipherLetters: cipherSlots,
@@ -582,8 +703,8 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
         });
       }
       return {
-        name: tableName === 'منظومة مستوردة' ? 'سماء مخصصة' : tableName,
-        type: 'noorani_only',
+        name: tableName === "منظومة مستوردة" ? "سماء مخصصة" : tableName,
+        type: "noorani_only",
         layers: normalizeLayers(resultLayers),
         totalCipherCount: 14,
         totalArabicCount: 0,
@@ -593,8 +714,11 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
       for (let i = 0; i < 7; i++) {
         const layerNum = 7 - i;
         const letters = pureArabicChars.slice(i * 4, (i + 1) * 4);
-        const cipherSlots = Array(9).fill('');
-        const arabicSlots = Array.from({ length: 4 }, (_, idx) => letters[idx] || '');
+        const cipherSlots = Array(9).fill("");
+        const arabicSlots = Array.from(
+          { length: 4 },
+          (_, idx) => letters[idx] || "",
+        );
         resultLayers.push({
           layer: layerNum,
           cipherLetters: cipherSlots,
@@ -603,8 +727,8 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
         });
       }
       return {
-        name: tableName === 'منظومة مستوردة' ? 'أرض مخصصة' : tableName,
-        type: 'arabic_only',
+        name: tableName === "منظومة مستوردة" ? "أرض مخصصة" : tableName,
+        type: "arabic_only",
         layers: normalizeLayers(resultLayers),
         totalCipherCount: 0,
         totalArabicCount: 28,
@@ -622,19 +746,23 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
 
   for (const num of allLayerNums) {
     const data = layerMap.get(num) || { cipher: [], arabic: [] };
-    const cleanCipher = (data.cipher || []).map((c) => (c || '').trim()).filter(Boolean);
-    const cleanArabic = (data.arabic || []).map((a) => (a || '').trim()).filter(Boolean);
-    
+    const cleanCipher = (data.cipher || [])
+      .map((c) => (c || "").trim())
+      .filter(Boolean);
+    const cleanArabic = (data.arabic || [])
+      .map((a) => (a || "").trim())
+      .filter(Boolean);
+
     totalCipherCount += cleanCipher.length;
     totalArabicCount += cleanArabic.length;
 
     const cipherSlots = Array.from(
       { length: Math.max(9, data.cipher.length) },
-      (_, i) => (data.cipher[i] || '').trim()
+      (_, i) => (data.cipher[i] || "").trim(),
     );
     const arabicSlots = Array.from(
       { length: Math.max(4, data.arabic.length) },
-      (_, i) => (data.arabic[i] || '').trim()
+      (_, i) => (data.arabic[i] || "").trim(),
     );
     resultLayers.push({
       layer: num,
@@ -645,17 +773,25 @@ export function parseLayersFromText(text: string): ParsedTextLayersResult | null
   }
 
   // Determine import type
-  let importType: 'full' | 'noorani_only' | 'arabic_only' = 'full';
+  let importType: "full" | "noorani_only" | "arabic_only" = "full";
   if (totalCipherCount > 0 && totalArabicCount === 0) {
-    importType = 'noorani_only';
-    if (tableName === 'منظومة مستوردة') tableName = 'سماء مخصصة';
+    importType = "noorani_only";
+    if (tableName === "منظومة مستوردة") tableName = "سماء مخصصة";
   } else if (totalArabicCount > 0 && totalCipherCount === 0) {
-    importType = 'arabic_only';
-    if (tableName === 'منظومة مستوردة') tableName = 'أرض مخصصة';
-  } else if (detectedExplicitSkyName && !detectedExplicitEarthName && totalArabicCount === 0) {
-    importType = 'noorani_only';
-  } else if (detectedExplicitEarthName && !detectedExplicitSkyName && totalCipherCount === 0) {
-    importType = 'arabic_only';
+    importType = "arabic_only";
+    if (tableName === "منظومة مستوردة") tableName = "أرض مخصصة";
+  } else if (
+    detectedExplicitSkyName &&
+    !detectedExplicitEarthName &&
+    totalArabicCount === 0
+  ) {
+    importType = "noorani_only";
+  } else if (
+    detectedExplicitEarthName &&
+    !detectedExplicitSkyName &&
+    totalCipherCount === 0
+  ) {
+    importType = "arabic_only";
   }
 
   return {
@@ -671,25 +807,38 @@ function validateLayersStructure(candidate: unknown): candidate is LayerInfo[] {
   if (!Array.isArray(candidate) || candidate.length === 0) return false;
   return candidate.every(
     (l) =>
-      typeof l === 'object' &&
+      typeof l === "object" &&
       l !== null &&
-      typeof l.layer === 'number' &&
+      typeof l.layer === "number" &&
       Array.isArray(l.cipherLetters) &&
-      Array.isArray(l.arabicLetters)
+      Array.isArray(l.arabicLetters),
   );
 }
 
-export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [layers, setLayers] = useState<LayerInfo[]>(loadInitialLayers);
-  const [savedTables, setSavedTables] = useState<SavedCustomTable[]>(loadInitialSavedTables);
-  const [savedArabicPresets, setSavedArabicPresets] = useState<SavedArabicPreset[]>(loadInitialArabicPresets);
-  const [savedNooraniPresets, setSavedNooraniPresets] = useState<SavedNooraniPreset[]>(loadInitialNooraniPresets);
-  const [activeTableName, setActiveTableName] = useState<string | null>(BENCHMARK_TABLE_NAME);
-  const [activeArabicPresetName, setActiveArabicPresetName] = useState<string | null>(
-    ARABIC_PRESETS.arabic_1_az?.name || 'أبجد - ذضظغ'
+  const [savedTables, setSavedTables] = useState<SavedCustomTable[]>(
+    loadInitialSavedTables,
   );
-  const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<string | null>(
-    NOORANI_PRESETS.noorani_1_nl?.name || 'نصحك - لهسر'
+  const [savedArabicPresets, setSavedArabicPresets] = useState<
+    SavedArabicPreset[]
+  >(loadInitialArabicPresets);
+  const [savedNooraniPresets, setSavedNooraniPresets] = useState<
+    SavedNooraniPreset[]
+  >(loadInitialNooraniPresets);
+  const [activeTableName, setActiveTableName] = useState<string | null>(
+    BENCHMARK_TABLE_NAME,
+  );
+  const [activeArabicPresetName, setActiveArabicPresetName] = useState<
+    string | null
+  >(ARABIC_PRESETS.arabic_4_srqm?.name || "رزصض - مبقد (جدول الأرض 4)");
+  const [activeNooraniPresetName, setActiveNooraniPresetName] = useState<
+    string | null
+  >(
+    NOORANI_PRESETS.noorani_1_sr?.name ||
+      "ر ص - م ق - ح س - ن ع - ي ل - هـ ا - ط ك (حروف السماء)",
   );
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
 
@@ -698,34 +847,52 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(layers));
     } catch (e) {
-      console.error('Failed to persist cipher layers to localStorage:', e);
+      console.error("Failed to persist cipher layers to localStorage:", e);
     }
   }, [layers]);
 
   // Persist saved tables library whenever it changes
   useEffect(() => {
     try {
-      localStorage.setItem(SAVED_TABLES_STORAGE_KEY, JSON.stringify(savedTables));
+      localStorage.setItem(
+        SAVED_TABLES_STORAGE_KEY,
+        JSON.stringify(savedTables),
+      );
     } catch (e) {
-      console.error('Failed to persist saved tables library to localStorage:', e);
+      console.error(
+        "Failed to persist saved tables library to localStorage:",
+        e,
+      );
     }
   }, [savedTables]);
 
   // Persist saved Arabic presets library
   useEffect(() => {
     try {
-      localStorage.setItem(SAVED_ARABIC_PRESETS_KEY, JSON.stringify(savedArabicPresets));
+      localStorage.setItem(
+        SAVED_ARABIC_PRESETS_KEY,
+        JSON.stringify(savedArabicPresets),
+      );
     } catch (e) {
-      console.error('Failed to persist saved arabic presets to localStorage:', e);
+      console.error(
+        "Failed to persist saved arabic presets to localStorage:",
+        e,
+      );
     }
   }, [savedArabicPresets]);
 
   // Persist saved Noorani presets library
   useEffect(() => {
     try {
-      localStorage.setItem(SAVED_NOORANI_PRESETS_KEY, JSON.stringify(savedNooraniPresets));
+      localStorage.setItem(
+        SAVED_NOORANI_PRESETS_KEY,
+        JSON.stringify(savedNooraniPresets),
+      );
     } catch (e) {
-      console.error('Failed to persist saved noorani presets to localStorage:', e);
+      console.error(
+        "Failed to persist saved noorani presets to localStorage:",
+        e,
+      );
     }
   }, [savedNooraniPresets]);
 
@@ -755,7 +922,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     layers.forEach((l) => {
       // Cipher keys - support all 9 slots & duplicates
       (l.cipherLetters || []).forEach((raw) => {
-        const c = (raw || '').trim();
+        const c = (raw || "").trim();
         if (c) {
           validCiphers.add(c);
           cCounts[c] = (cCounts[c] || 0) + 1;
@@ -792,7 +959,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         count,
       }));
 
-    const missing = ALL_ARABIC_LETTERS_28.filter((c) => !used.has(normalizeArabicChar(c)));
+    const missing = ALL_ARABIC_LETTERS_28.filter(
+      (c) => !used.has(normalizeArabicChar(c)),
+    );
 
     return {
       usedLetters: used,
@@ -815,8 +984,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const lB = next.find((l) => l.layer === layerB);
         if (!lA || !lB) return prevLayers;
 
-        const charA = lA.arabicLetters[indexA] || '';
-        const charB = lB.arabicLetters[indexB] || '';
+        const charA = lA.arabicLetters[indexA] || "";
+        const charB = lB.arabicLetters[indexB] || "";
 
         lA.arabicLetters[indexA] = charB;
         lB.arabicLetters[indexB] = charA;
@@ -825,46 +994,55 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       setSelectedSlot(null);
     },
-    []
+    [],
   );
 
   // Set letter at a specific slot
-  const setLetterAtSlot = useCallback((layerNum: number, slotIndex: number, char: string) => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const targetLayer = next.find((l) => l.layer === layerNum);
-      if (!targetLayer) return prevLayers;
+  const setLetterAtSlot = useCallback(
+    (layerNum: number, slotIndex: number, char: string) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const targetLayer = next.find((l) => l.layer === layerNum);
+        if (!targetLayer) return prevLayers;
 
-      // If this char already exists in another slot and user placed it here, remove it from the old slot to avoid duplicate
-      if (char.trim()) {
-        const norm = normalizeArabicChar(char);
-        next.forEach((l) => {
-          l.arabicLetters.forEach((c, idx) => {
-            if (normalizeArabicChar(c) === norm && (l.layer !== layerNum || idx !== slotIndex)) {
-              l.arabicLetters[idx] = '';
-            }
+        // If this char already exists in another slot and user placed it here, remove it from the old slot to avoid duplicate
+        if (char.trim()) {
+          const norm = normalizeArabicChar(char);
+          next.forEach((l) => {
+            l.arabicLetters.forEach((c, idx) => {
+              if (
+                normalizeArabicChar(c) === norm &&
+                (l.layer !== layerNum || idx !== slotIndex)
+              ) {
+                l.arabicLetters[idx] = "";
+              }
+            });
           });
-        });
-      }
+        }
 
-      targetLayer.arabicLetters[slotIndex] = char.trim();
-      return next;
-    });
-    setSelectedSlot(null);
-  }, []);
+        targetLayer.arabicLetters[slotIndex] = char.trim();
+        return next;
+      });
+      setSelectedSlot(null);
+    },
+    [],
+  );
 
   // Clear a specific slot
-  const clearLetterAtSlot = useCallback((layerNum: number, slotIndex: number) => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const targetLayer = next.find((l) => l.layer === layerNum);
-      if (targetLayer) {
-        targetLayer.arabicLetters[slotIndex] = '';
-      }
-      return next;
-    });
-    setSelectedSlot(null);
-  }, []);
+  const clearLetterAtSlot = useCallback(
+    (layerNum: number, slotIndex: number) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const targetLayer = next.find((l) => l.layer === layerNum);
+        if (targetLayer) {
+          targetLayer.arabicLetters[slotIndex] = "";
+        }
+        return next;
+      });
+      setSelectedSlot(null);
+    },
+    [],
+  );
 
   // Clear all Arabic (Earth) slots
   const clearEarthLetters = useCallback(() => {
@@ -872,7 +1050,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
       next.forEach((l) => {
         const len = (l.arabicLetters || []).length || 4;
-        l.arabicLetters = Array(len).fill('');
+        l.arabicLetters = Array(len).fill("");
       });
       return next;
     });
@@ -885,7 +1063,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
       next.forEach((l) => {
         const len = (l.cipherLetters || []).length || 2;
-        l.cipherLetters = Array(len).fill('');
+        l.cipherLetters = Array(len).fill("");
       });
       return next;
     });
@@ -898,24 +1076,35 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [clearEarthLetters]);
 
   // Add a new layer (can be added at top or bottom)
-  const addLayer = useCallback((layerNum?: number, description?: string, position: 'top' | 'bottom' = 'bottom') => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const existingNums = next.map((l) => l.layer);
-      let newNum = layerNum;
-      if (newNum === undefined || existingNums.includes(newNum)) {
-        newNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
-      }
-      const maxArabicLen = Math.max(4, ...next.map((l) => (l.arabicLetters || []).length));
-      const newLayer: LayerInfo = {
-        layer: newNum,
-        cipherLetters: Array(9).fill(''),
-        arabicLetters: Array(maxArabicLen).fill(''),
-        description: description?.trim() || `الطبقة ${newNum}`,
-      };
-      return position === 'top' ? [newLayer, ...next] : [...next, newLayer];
-    });
-  }, []);
+  const addLayer = useCallback(
+    (
+      layerNum?: number,
+      description?: string,
+      position: "top" | "bottom" = "bottom",
+    ) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const existingNums = next.map((l) => l.layer);
+        let newNum = layerNum;
+        if (newNum === undefined || existingNums.includes(newNum)) {
+          newNum =
+            (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+        }
+        const maxArabicLen = Math.max(
+          4,
+          ...next.map((l) => (l.arabicLetters || []).length),
+        );
+        const newLayer: LayerInfo = {
+          layer: newNum,
+          cipherLetters: Array(9).fill(""),
+          arabicLetters: Array(maxArabicLen).fill(""),
+          description: description?.trim() || `الطبقة ${newNum}`,
+        };
+        return position === "top" ? [newLayer, ...next] : [...next, newLayer];
+      });
+    },
+    [],
+  );
 
   // Delete a layer (must keep at least one layer)
   const deleteLayer = useCallback((layerNum: number): boolean => {
@@ -930,49 +1119,62 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   // Move layer up or down in visual sequence
-  const moveLayer = useCallback((layerNum: number, direction: 'up' | 'down') => {
-    setLayers((prevLayers) => {
-      const idx = prevLayers.findIndex((l) => l.layer === layerNum);
-      if (idx === -1) return prevLayers;
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= prevLayers.length) return prevLayers;
-      const next = [...prevLayers];
-      const temp = next[idx];
-      next[idx] = next[targetIdx];
-      next[targetIdx] = temp;
-      return next;
-    });
-  }, []);
+  const moveLayer = useCallback(
+    (layerNum: number, direction: "up" | "down") => {
+      setLayers((prevLayers) => {
+        const idx = prevLayers.findIndex((l) => l.layer === layerNum);
+        if (idx === -1) return prevLayers;
+        const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= prevLayers.length) return prevLayers;
+        const next = [...prevLayers];
+        const temp = next[idx];
+        next[idx] = next[targetIdx];
+        next[targetIdx] = temp;
+        return next;
+      });
+    },
+    [],
+  );
 
   // Add an Arabic letter slot to a specific layer
-  const addArabicSlotToLayer = useCallback((layerNum: number, initialChar = '') => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const target = next.find((l) => l.layer === layerNum);
-      if (target) {
-        if (!Array.isArray(target.arabicLetters)) target.arabicLetters = [];
-        target.arabicLetters.push(initialChar.trim());
-      }
-      return next;
-    });
-  }, []);
+  const addArabicSlotToLayer = useCallback(
+    (layerNum: number, initialChar = "") => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const target = next.find((l) => l.layer === layerNum);
+        if (target) {
+          if (!Array.isArray(target.arabicLetters)) target.arabicLetters = [];
+          target.arabicLetters.push(initialChar.trim());
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Remove an Arabic letter slot from a specific layer
-  const removeArabicSlotFromLayer = useCallback((layerNum: number, slotIndex: number) => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const target = next.find((l) => l.layer === layerNum);
-      if (target && Array.isArray(target.arabicLetters)) {
-        if (target.arabicLetters.length > 1) {
-          target.arabicLetters.splice(slotIndex, 1);
-        } else {
-          target.arabicLetters[0] = '';
+  const removeArabicSlotFromLayer = useCallback(
+    (layerNum: number, slotIndex: number) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const target = next.find((l) => l.layer === layerNum);
+        if (target && Array.isArray(target.arabicLetters)) {
+          if (target.arabicLetters.length > 1) {
+            target.arabicLetters.splice(slotIndex, 1);
+          } else {
+            target.arabicLetters[0] = "";
+          }
         }
-      }
-      return next;
-    });
-    setSelectedSlot((curr) => (curr?.layerNum === layerNum && curr.slotIndex === slotIndex ? null : curr));
-  }, []);
+        return next;
+      });
+      setSelectedSlot((curr) =>
+        curr?.layerNum === layerNum && curr.slotIndex === slotIndex
+          ? null
+          : curr,
+      );
+    },
+    [],
+  );
 
   // Add an Arabic letter column to all layers across the table
   const addArabicColumnToAllLayers = useCallback(() => {
@@ -980,7 +1182,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
       next.forEach((l) => {
         if (!Array.isArray(l.arabicLetters)) l.arabicLetters = [];
-        l.arabicLetters.push('');
+        l.arabicLetters.push("");
       });
       return next;
     });
@@ -990,7 +1192,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const removeArabicColumnFromAllLayers = useCallback(() => {
     setLayers((prevLayers) => {
       const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const maxLen = Math.max(...next.map((l) => (l.arabicLetters || []).length));
+      const maxLen = Math.max(
+        ...next.map((l) => (l.arabicLetters || []).length),
+      );
       if (maxLen <= 1) return prevLayers;
       next.forEach((l) => {
         if (Array.isArray(l.arabicLetters) && l.arabicLetters.length > 0) {
@@ -1002,33 +1206,39 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   // Add a cipher letter slot to a layer
-  const addCipherSlotToLayer = useCallback((layerNum: number, initialChar = '') => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const target = next.find((l) => l.layer === layerNum);
-      if (target) {
-        if (!Array.isArray(target.cipherLetters)) target.cipherLetters = [];
-        target.cipherLetters.push(initialChar.trim());
-      }
-      return next;
-    });
-  }, []);
+  const addCipherSlotToLayer = useCallback(
+    (layerNum: number, initialChar = "") => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const target = next.find((l) => l.layer === layerNum);
+        if (target) {
+          if (!Array.isArray(target.cipherLetters)) target.cipherLetters = [];
+          target.cipherLetters.push(initialChar.trim());
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Remove a cipher letter slot from a layer
-  const removeCipherSlotFromLayer = useCallback((layerNum: number, slotIndex: number) => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const target = next.find((l) => l.layer === layerNum);
-      if (target && Array.isArray(target.cipherLetters)) {
-        if (target.cipherLetters.length > 1) {
-          target.cipherLetters.splice(slotIndex, 1);
-        } else {
-          target.cipherLetters[0] = '';
+  const removeCipherSlotFromLayer = useCallback(
+    (layerNum: number, slotIndex: number) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const target = next.find((l) => l.layer === layerNum);
+        if (target && Array.isArray(target.cipherLetters)) {
+          if (target.cipherLetters.length > 1) {
+            target.cipherLetters.splice(slotIndex, 1);
+          } else {
+            target.cipherLetters[0] = "";
+          }
         }
-      }
-      return next;
-    });
-  }, []);
+        return next;
+      });
+    },
+    [],
+  );
 
   // Update layer number
   const updateLayerNumber = useCallback((oldNum: number, newNum: number) => {
@@ -1044,21 +1254,26 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   // Update layer description
-  const updateLayerDescription = useCallback((layerNum: number, description: string) => {
-    setLayers((prevLayers) => {
-      const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
-      const target = next.find((l) => l.layer === layerNum);
-      if (target) {
-        target.description = description.trim();
-      }
-      return next;
-    });
-  }, []);
+  const updateLayerDescription = useCallback(
+    (layerNum: number, description: string) => {
+      setLayers((prevLayers) => {
+        const next = JSON.parse(JSON.stringify(prevLayers)) as LayerInfo[];
+        const target = next.find((l) => l.layer === layerNum);
+        if (target) {
+          target.description = description.trim();
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Reverse Arabic letters vertically across layers (Layer 1 swaps with Layer N, etc.)
   const reverseAllLayersArabicLetters = useCallback(() => {
     setLayers((prevLayers) => {
-      const allArabic = prevLayers.map((l) => (Array.isArray(l.arabicLetters) ? [...l.arabicLetters] : []));
+      const allArabic = prevLayers.map((l) =>
+        Array.isArray(l.arabicLetters) ? [...l.arabicLetters] : [],
+      );
       const reversedVertical = [...allArabic].reverse();
       return prevLayers.map((l, idx) => ({
         ...l,
@@ -1070,7 +1285,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Reverse cipher letters vertically across layers (Layer 1 swaps with Layer N, etc.)
   const reverseAllLayersCipherLetters = useCallback(() => {
     setLayers((prevLayers) => {
-      const allCiphers = prevLayers.map((l) => (Array.isArray(l.cipherLetters) ? [...l.cipherLetters] : []));
+      const allCiphers = prevLayers.map((l) =>
+        Array.isArray(l.cipherLetters) ? [...l.cipherLetters] : [],
+      );
       const reversedVertical = [...allCiphers].reverse();
       return prevLayers.map((l, idx) => ({
         ...l,
@@ -1089,27 +1306,33 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           if (Array.isArray(cipherKeysOr1)) {
             const flatChars: string[] = [];
             cipherKeysOr1.forEach((c) => {
-              const trimmed = String(c || '').trim();
+              const trimmed = String(c || "").trim();
               if (trimmed) {
-                const single = trimmed.replace(/[^ء-ي]/g, '').split('');
+                const single = trimmed.replace(/[^ء-ي]/g, "").split("");
                 if (single.length > 0) flatChars.push(...single);
                 else flatChars.push(trimmed);
               }
             });
             const targetLen = Math.max(9, flatChars.length);
-            target.cipherLetters = Array.from({ length: targetLen }, (_, i) => (flatChars[i] || '').trim());
+            target.cipherLetters = Array.from({ length: targetLen }, (_, i) =>
+              (flatChars[i] || "").trim(),
+            );
           } else {
-            const current = Array.isArray(target.cipherLetters) ? [...target.cipherLetters] : Array(9).fill('');
-            current[0] = (cipherKeysOr1 || '').trim();
+            const current = Array.isArray(target.cipherLetters)
+              ? [...target.cipherLetters]
+              : Array(9).fill("");
+            current[0] = (cipherKeysOr1 || "").trim();
             if (cipher2 !== undefined) current[1] = cipher2.trim();
             const targetLen = Math.max(9, current.length);
-            target.cipherLetters = Array.from({ length: targetLen }, (_, i) => (current[i] || '').trim());
+            target.cipherLetters = Array.from({ length: targetLen }, (_, i) =>
+              (current[i] || "").trim(),
+            );
           }
         }
         return next;
       });
     },
-    []
+    [],
   );
 
   // Set single cipher letter at specific slot (0..8)
@@ -1120,17 +1343,17 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const target = next.find((l) => l.layer === layerNum);
         if (target) {
           if (!Array.isArray(target.cipherLetters)) {
-            target.cipherLetters = Array(9).fill('');
+            target.cipherLetters = Array(9).fill("");
           }
           while (target.cipherLetters.length < 9) {
-            target.cipherLetters.push('');
+            target.cipherLetters.push("");
           }
-          target.cipherLetters[cipherSlotIndex] = (char || '').trim();
+          target.cipherLetters[cipherSlotIndex] = (char || "").trim();
         }
         return next;
       });
     },
-    []
+    [],
   );
 
   // Reset to default
@@ -1158,21 +1381,24 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  const updateAllLayers = useCallback((newLayers: LayerInfo[], tableName?: string) => {
-    setLayers(newLayers);
-    if (tableName) {
-      setActiveTableName(tableName);
-    }
-    setSelectedSlot(null);
-  }, []);
+  const updateAllLayers = useCallback(
+    (newLayers: LayerInfo[], tableName?: string) => {
+      setLayers(newLayers);
+      if (tableName) {
+        setActiveTableName(tableName);
+      }
+      setSelectedSlot(null);
+    },
+    [],
+  );
 
   // Bulk fill Arabic letters into table slots in order
   const bulkFillArabicLetters = useCallback(
     (
       rawLetters: string[],
-      orderMode: 'table_order' | 'layer_asc' | 'layer_desc' = 'table_order',
+      orderMode: "table_order" | "layer_asc" | "layer_desc" = "table_order",
       clearRemaining = true,
-      resizeConfig?: { rows: number; cols: number }
+      resizeConfig?: { rows: number; cols: number },
     ) => {
       let filledCount = 0;
       let totalSlots = 0;
@@ -1186,7 +1412,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             next = next.slice(0, resizeConfig.rows);
           } else if (next.length < resizeConfig.rows) {
             const existingNums = next.map((l) => l.layer);
-            const currentMax = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+            const currentMax =
+              existingNums.length > 0 ? Math.max(...existingNums) : 0;
             const toAdd = resizeConfig.rows - next.length;
             for (let i = 0; i < toAdd; i++) {
               const newNum = currentMax + i + 1;
@@ -1198,23 +1425,29 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               });
             }
           }
-          
+
           // Adjust columns for arabicLetters
-          next.forEach(l => {
-             l.arabicLetters = Array.from({ length: resizeConfig.cols }, (_, i) => (l.arabicLetters && l.arabicLetters[i]) || '');
-             if (!l.cipherLetters) l.cipherLetters = [];
+          next.forEach((l) => {
+            l.arabicLetters = Array.from(
+              { length: resizeConfig.cols },
+              (_, i) => (l.arabicLetters && l.arabicLetters[i]) || "",
+            );
+            if (!l.cipherLetters) l.cipherLetters = [];
           });
         }
 
         const orderedIndices: number[] = next.map((_, i) => i);
 
-        if (orderMode === 'layer_asc') {
+        if (orderMode === "layer_asc") {
           orderedIndices.sort((a, b) => next[a].layer - next[b].layer);
-        } else if (orderMode === 'layer_desc') {
+        } else if (orderMode === "layer_desc") {
           orderedIndices.sort((a, b) => next[b].layer - next[a].layer);
         }
 
-        totalSlots = orderedIndices.reduce((acc, idx) => acc + (next[idx].arabicLetters?.length || 0), 0);
+        totalSlots = orderedIndices.reduce(
+          (acc, idx) => acc + (next[idx].arabicLetters?.length || 0),
+          0,
+        );
         let letterIdx = 0;
 
         orderedIndices.forEach((layerIdx) => {
@@ -1227,7 +1460,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               l.arabicLetters[s] = rawLetters[letterIdx];
               letterIdx++;
             } else if (clearRemaining) {
-              l.arabicLetters[s] = '';
+              l.arabicLetters[s] = "";
             }
           }
         });
@@ -1240,21 +1473,24 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSelectedSlot(null);
 
       return {
-        filledCount: Math.min(rawLetters.length, totalSlots || rawLetters.length),
+        filledCount: Math.min(
+          rawLetters.length,
+          totalSlots || rawLetters.length,
+        ),
         totalSlots,
         message: `تم توزيع الحروف بنجاح عبر طبقات الجدول.`,
       };
     },
-    []
+    [],
   );
 
   // Bulk fill Cipher letters into table slots in order
   const bulkFillCipherLetters = useCallback(
     (
       rawLetters: string[],
-      orderMode: 'table_order' | 'layer_asc' | 'layer_desc' = 'table_order',
+      orderMode: "table_order" | "layer_asc" | "layer_desc" = "table_order",
       clearRemaining = true,
-      resizeConfig?: { rows: number; cols: number }
+      resizeConfig?: { rows: number; cols: number },
     ) => {
       let filledCount = 0;
       let totalSlots = 0;
@@ -1268,7 +1504,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             next = next.slice(0, resizeConfig.rows);
           } else if (next.length < resizeConfig.rows) {
             const existingNums = next.map((l) => l.layer);
-            const currentMax = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+            const currentMax =
+              existingNums.length > 0 ? Math.max(...existingNums) : 0;
             const toAdd = resizeConfig.rows - next.length;
             for (let i = 0; i < toAdd; i++) {
               const newNum = currentMax + i + 1;
@@ -1280,23 +1517,29 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               });
             }
           }
-          
+
           // Adjust columns for cipherLetters
-          next.forEach(l => {
-             l.cipherLetters = Array.from({ length: resizeConfig.cols }, (_, i) => (l.cipherLetters && l.cipherLetters[i]) || '');
-             if (!l.arabicLetters) l.arabicLetters = [];
+          next.forEach((l) => {
+            l.cipherLetters = Array.from(
+              { length: resizeConfig.cols },
+              (_, i) => (l.cipherLetters && l.cipherLetters[i]) || "",
+            );
+            if (!l.arabicLetters) l.arabicLetters = [];
           });
         }
 
         const orderedIndices: number[] = next.map((_, i) => i);
 
-        if (orderMode === 'layer_asc') {
+        if (orderMode === "layer_asc") {
           orderedIndices.sort((a, b) => next[a].layer - next[b].layer);
-        } else if (orderMode === 'layer_desc') {
+        } else if (orderMode === "layer_desc") {
           orderedIndices.sort((a, b) => next[b].layer - next[a].layer);
         }
 
-        totalSlots = orderedIndices.reduce((acc, idx) => acc + (next[idx].cipherLetters?.length || 0), 0);
+        totalSlots = orderedIndices.reduce(
+          (acc, idx) => acc + (next[idx].cipherLetters?.length || 0),
+          0,
+        );
         let letterIdx = 0;
 
         orderedIndices.forEach((layerIdx) => {
@@ -1309,7 +1552,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               l.cipherLetters[s] = rawLetters[letterIdx];
               letterIdx++;
             } else if (clearRemaining) {
-              l.cipherLetters[s] = '';
+              l.cipherLetters[s] = "";
             }
           }
         });
@@ -1322,12 +1565,15 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSelectedSlot(null);
 
       return {
-        filledCount: Math.min(rawLetters.length, totalSlots || rawLetters.length),
+        filledCount: Math.min(
+          rawLetters.length,
+          totalSlots || rawLetters.length,
+        ),
         totalSlots,
         message: `تم توزيع أحرف التشفير بنجاح عبر طبقات الجدول.`,
       };
     },
-    []
+    [],
   );
 
   // Save current table into user's personal saved library using two explicit order names
@@ -1335,15 +1581,15 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (
       nooraniOrderName: string,
       arabicOrderName: string,
-      description?: string
+      description?: string,
     ): SavedCustomTable => {
-      const cleanNoorani = nooraniOrderName.trim() || 'سماء مخصصة';
-      const cleanArabic = arabicOrderName.trim() || 'أرض مخصصة';
+      const cleanNoorani = nooraniOrderName.trim() || "سماء مخصصة";
+      const cleanArabic = arabicOrderName.trim() || "أرض مخصصة";
       const cleanName = `سماء: ${cleanNoorani} × أرض: ${cleanArabic}`;
       const newTable: SavedCustomTable = {
         id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: cleanName,
-        description: description?.trim() || '',
+        description: description?.trim() || "",
         nooraniOrderName: cleanNoorani,
         arabicOrderName: cleanArabic,
         createdAt: Date.now(),
@@ -1354,7 +1600,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setActiveTableName(cleanName);
       return newTable;
     },
-    [layers]
+    [layers],
   );
 
   // Save custom layers into library
@@ -1363,15 +1609,15 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       nooraniOrderName: string,
       arabicOrderName: string,
       customLayers: LayerInfo[],
-      description?: string
+      description?: string,
     ): SavedCustomTable => {
-      const cleanNoorani = nooraniOrderName.trim() || 'سماء مخصصة';
-      const cleanArabic = arabicOrderName.trim() || 'أرض مخصصة';
+      const cleanNoorani = nooraniOrderName.trim() || "سماء مخصصة";
+      const cleanArabic = arabicOrderName.trim() || "أرض مخصصة";
       const cleanName = `سماء: ${cleanNoorani} × أرض: ${cleanArabic}`;
       const newTable: SavedCustomTable = {
         id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: cleanName,
-        description: description?.trim() || '',
+        description: description?.trim() || "",
         nooraniOrderName: cleanNoorani,
         arabicOrderName: cleanArabic,
         createdAt: Date.now(),
@@ -1384,7 +1630,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSelectedSlot(null);
       return newTable;
     },
-    []
+    [],
   );
 
   // Load a saved table from library
@@ -1399,7 +1645,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       return false;
     },
-    [savedTables]
+    [savedTables],
   );
 
   // Delete a saved table from library
@@ -1427,13 +1673,15 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Restore initial optional presets into browser library
   const restoreOptionalPresets = useCallback(() => {
-    const restored: SavedCustomTable[] = INITIAL_OPTIONAL_BROWSER_TABLES.map((t) => ({
-      id: `tbl_${Date.now()}_${t.id}`,
-      name: t.name,
-      description: t.description,
-      createdAt: Date.now(),
-      layers: normalizeLayers(t.layers),
-    }));
+    const restored: SavedCustomTable[] = INITIAL_OPTIONAL_BROWSER_TABLES.map(
+      (t) => ({
+        id: `tbl_${Date.now()}_${t.id}`,
+        name: t.name,
+        description: t.description,
+        createdAt: Date.now(),
+        layers: normalizeLayers(t.layers),
+      }),
+    );
 
     setSavedTables((prev) => {
       const existingNames = new Set(prev.map((t) => t.name));
@@ -1445,7 +1693,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Rename a saved table
   const updateSavedTableName = useCallback((id: string, name: string) => {
     setSavedTables((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, name: name.trim() || t.name } : t))
+      prev.map((t) =>
+        t.id === id ? { ...t, name: name.trim() || t.name } : t,
+      ),
     );
   }, []);
 
@@ -1458,26 +1708,37 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         arabicOrderName?: string;
         description?: string;
         updateWithCurrentLayers?: boolean;
-      }
+      },
     ) => {
       setSavedTables((prev) =>
         prev.map((t) => {
           if (t.id !== id) return t;
-          const newNoorani = updates.nooraniOrderName !== undefined ? updates.nooraniOrderName.trim() : (t.nooraniOrderName || '');
-          const newArabic = updates.arabicOrderName !== undefined ? updates.arabicOrderName.trim() : (t.arabicOrderName || '');
+          const newNoorani =
+            updates.nooraniOrderName !== undefined
+              ? updates.nooraniOrderName.trim()
+              : t.nooraniOrderName || "";
+          const newArabic =
+            updates.arabicOrderName !== undefined
+              ? updates.arabicOrderName.trim()
+              : t.arabicOrderName || "";
           const newName = `سماء: ${newNoorani} × أرض: ${newArabic}`;
           return {
             ...t,
             name: newName,
             nooraniOrderName: newNoorani,
             arabicOrderName: newArabic,
-            description: updates.description !== undefined ? updates.description.trim() : t.description,
-            layers: updates.updateWithCurrentLayers ? JSON.parse(JSON.stringify(layers)) : t.layers,
+            description:
+              updates.description !== undefined
+                ? updates.description.trim()
+                : t.description,
+            layers: updates.updateWithCurrentLayers
+              ? JSON.parse(JSON.stringify(layers))
+              : t.layers,
           };
-        })
+        }),
       );
     },
-    [layers]
+    [layers],
   );
 
   // Remove duplicates within the same row (Arabic or Cipher letters)
@@ -1491,9 +1752,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // 1. Arabic letters in this layer:
         const seenArabic = new Set<string>();
         const arabicLen = Math.max(4, (l.arabicLetters || []).length);
-        const newArabic: string[] = Array(arabicLen).fill('');
+        const newArabic: string[] = Array(arabicLen).fill("");
         (l.arabicLetters || []).forEach((ch, idx) => {
-          const raw = (ch || '').trim();
+          const raw = (ch || "").trim();
           if (!raw) return;
           const norm = normalizeArabicChar(raw);
           if (seenArabic.has(norm)) {
@@ -1508,9 +1769,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // 2. Cipher letters in this layer:
         const seenCipher = new Set<string>();
         const cipherLen = Math.max(9, (l.cipherLetters || []).length);
-        const newCipher = Array(cipherLen).fill('');
+        const newCipher = Array(cipherLen).fill("");
         (l.cipherLetters || []).forEach((raw, idx) => {
-          const c = (raw || '').trim();
+          const c = (raw || "").trim();
           if (!c) return;
           if (seenCipher.has(c)) {
             cipherRemoved++;
@@ -1524,7 +1785,11 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return next;
     });
 
-    return { arabicRemoved, cipherRemoved, totalRemoved: arabicRemoved + cipherRemoved };
+    return {
+      arabicRemoved,
+      cipherRemoved,
+      totalRemoved: arabicRemoved + cipherRemoved,
+    };
   }, []);
 
   // Column duplicates summary (cross-layer duplicate check for Arabic and Cipher letters)
@@ -1535,7 +1800,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     layers.forEach((l) => {
       const layerArabic = new Set<string>();
       (l.arabicLetters || []).forEach((char) => {
-        const norm = normalizeArabicChar(char || '');
+        const norm = normalizeArabicChar(char || "");
         if (norm) layerArabic.add(norm);
       });
       layerArabic.forEach((norm) => {
@@ -1545,7 +1810,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       const layerCipher = new Set<string>();
       (l.cipherLetters || []).forEach((raw) => {
-        const c = (raw || '').trim();
+        const c = (raw || "").trim();
         if (c) layerCipher.add(c);
       });
       layerCipher.forEach((c) => {
@@ -1581,15 +1846,21 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Arabic distributions handlers
   const applyArabicDistribution = useCallback(
     (presetOrId: ArabicDistributionPreset | SavedArabicPreset | string) => {
-      let targetLettersMap: Record<number, [string, string, string, string]> | null = null;
-      let presetName = '';
+      let targetLettersMap: Record<
+        number,
+        [string, string, string, string]
+      > | null = null;
+      let presetName = "";
 
-      if (typeof presetOrId === 'string') {
+      if (typeof presetOrId === "string") {
         const cleanInput = presetOrId.trim();
         const numIndex = parseInt(cleanInput, 10);
 
         const matchedStandard = Object.values(ARABIC_PRESETS).find(
-          (p) => p.id === cleanInput || p.name === cleanInput || p.badge === cleanInput
+          (p) =>
+            p.id === cleanInput ||
+            p.name === cleanInput ||
+            p.badge === cleanInput,
         );
 
         if (ARABIC_PRESETS[cleanInput] || matchedStandard) {
@@ -1597,7 +1868,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           presetName = p.name;
           targetLettersMap = {};
           p.arabicLayers.forEach((al) => {
-            targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+            targetLettersMap![al.layer] = [...al.letters] as [
+              string,
+              string,
+              string,
+              string,
+            ];
           });
         } else if (!isNaN(numIndex) && String(numIndex) === cleanInput) {
           // Numeric index matching (1-based index among presets)
@@ -1607,7 +1883,12 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             presetName = p.name;
             targetLettersMap = {};
             p.arabicLayers.forEach((al) => {
-              targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+              targetLettersMap![al.layer] = [...al.letters] as [
+                string,
+                string,
+                string,
+                string,
+              ];
             });
           } else {
             // Check saved presets
@@ -1617,37 +1898,61 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               presetName = sp.name;
               targetLettersMap = {};
               sp.arabicLayers.forEach((al) => {
-                targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+                targetLettersMap![al.layer] = [...al.letters] as [
+                  string,
+                  string,
+                  string,
+                  string,
+                ];
               });
             }
           }
         } else {
           const sp = savedArabicPresets.find(
-            (s) => s.id === cleanInput || `saved_arabic_${s.id}` === cleanInput || s.name === cleanInput
+            (s) =>
+              s.id === cleanInput ||
+              `saved_arabic_${s.id}` === cleanInput ||
+              s.name === cleanInput,
           );
           if (sp) {
             presetName = sp.name;
             targetLettersMap = {};
             sp.arabicLayers.forEach((al) => {
-              targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+              targetLettersMap![al.layer] = [...al.letters] as [
+                string,
+                string,
+                string,
+                string,
+              ];
             });
           } else {
             // Check in savedTables
-            const customMatch = savedTables.find((st) => `custom_table_arabic_${st.id}` === cleanInput || st.arabicOrderName === cleanInput);
+            const customMatch = savedTables.find(
+              (st) =>
+                `custom_table_arabic_${st.id}` === cleanInput ||
+                st.arabicOrderName === cleanInput,
+            );
             if (customMatch && customMatch.arabicOrderName) {
               presetName = customMatch.arabicOrderName;
               targetLettersMap = {};
               customMatch.layers.forEach((l) => {
-                targetLettersMap![l.layer] = [...(l.arabicLetters || ['', '', '', ''])] as [string, string, string, string];
+                targetLettersMap![l.layer] = [
+                  ...(l.arabicLetters || ["", "", "", ""]),
+                ] as [string, string, string, string];
               });
             } else {
               // Check if raw Arabic letters sequence was passed (e.g. 28 letters or hyphenated)
-              if (cleanInput.includes('-') || cleanInput.replace(/[^ء-ي]/g, '').length >= 14) {
+              if (
+                cleanInput.includes("-") ||
+                cleanInput.replace(/[^ء-ي]/g, "").length >= 14
+              ) {
                 let parts: string[][] = [];
-                if (cleanInput.includes('-')) {
-                  parts = cleanInput.split('-').map((p) => p.replace(/[^ء-ي]/g, '').split(''));
+                if (cleanInput.includes("-")) {
+                  parts = cleanInput
+                    .split("-")
+                    .map((p) => p.replace(/[^ء-ي]/g, "").split(""));
                 } else {
-                  const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
+                  const rawChars = cleanInput.replace(/[^ء-ي]/g, "").split("");
                   for (let i = 0; i < 7; i++) {
                     parts.push(rawChars.slice(i * 4, (i + 1) * 4));
                   }
@@ -1658,16 +1963,23 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   for (let layerNum = 7; layerNum >= 1; layerNum--) {
                     const layerIdx = 7 - layerNum;
                     const slice = [...(parts[layerIdx] || [])];
-                    while (slice.length < 4) slice.push('');
-                    targetLettersMap[layerNum] = slice as [string, string, string, string];
+                    while (slice.length < 4) slice.push("");
+                    targetLettersMap[layerNum] = slice as [
+                      string,
+                      string,
+                      string,
+                      string,
+                    ];
                   }
 
                   // Check if this custom sequence matches an existing savedArabicPreset
                   const existingSaved = savedArabicPresets.find((sp) => {
                     return sp.arabicLayers.every((al) => {
                       const layerIdx = 7 - al.layer;
-                      const expected = (parts[layerIdx] || []).join('');
-                      const actual = (al.letters || []).filter(Boolean).join('');
+                      const expected = (parts[layerIdx] || []).join("");
+                      const actual = (al.letters || [])
+                        .filter(Boolean)
+                        .join("");
                       return expected === actual;
                     });
                   });
@@ -1676,7 +1988,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     presetName = existingSaved.name;
                   } else {
                     // Only auto-save the first custom imported code to prevent library accumulation
-                    const importedCount = savedArabicPresets.filter((sp) => sp.id.startsWith('ar_imported_')).length;
+                    const importedCount = savedArabicPresets.filter((sp) =>
+                      sp.id.startsWith("ar_imported_"),
+                    ).length;
                     if (importedCount === 0) {
                       const importedName = `أرض مخصصة #1`;
                       const newPreset: SavedArabicPreset = {
@@ -1687,7 +2001,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         arabicLayers: [7, 6, 5, 4, 3, 2, 1].map((layerNum) => {
                           const layerIdx = 7 - layerNum;
                           const letters = [...(parts[layerIdx] || [])];
-                          while (letters.length < 4) letters.push('');
+                          while (letters.length < 4) letters.push("");
                           return {
                             layer: layerNum,
                             letters: letters,
@@ -1706,11 +2020,16 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
           }
         }
-      } else if ('arabicLayers' in presetOrId) {
+      } else if ("arabicLayers" in presetOrId) {
         presetName = presetOrId.name;
         targetLettersMap = {};
         presetOrId.arabicLayers.forEach((al) => {
-          targetLettersMap![al.layer] = [...al.letters] as [string, string, string, string];
+          targetLettersMap![al.layer] = [...al.letters] as [
+            string,
+            string,
+            string,
+            string,
+          ];
         });
       }
 
@@ -1728,50 +2047,61 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSelectedSlot(null);
       }
     },
-    [savedArabicPresets, savedTables]
+    [savedArabicPresets, savedTables],
   );
 
   const saveCurrentArabicPreset = useCallback(
     (name: string, description?: string): SavedArabicPreset => {
-      const cleanName = name.trim() || `توزيعة أحرف عربية ${new Date().toLocaleDateString('ar-EG')}`;
+      const cleanName =
+        name.trim() ||
+        `توزيعة أحرف عربية ${new Date().toLocaleDateString("ar-EG")}`;
       const newPreset: SavedArabicPreset = {
         id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: cleanName,
-        description: description?.trim() || '',
+        description: description?.trim() || "",
         createdAt: Date.now(),
         arabicLayers: layers.map((l) => ({
           layer: l.layer,
-          letters: (l.arabicLetters || []).map((ch) => ch || ''),
+          letters: (l.arabicLetters || []).map((ch) => ch || ""),
         })),
       };
       setSavedArabicPresets((prev) => [newPreset, ...prev]);
       setActiveArabicPresetName(cleanName);
       return newPreset;
     },
-    [layers]
+    [layers],
   );
 
   const deleteSavedArabicPreset = useCallback((id: string) => {
-  
     setSavedArabicPresets((prev) => prev.filter((p) => p.id !== id));
-  
   }, []);
-  const updateSavedArabicPresetName = useCallback((id: string, name: string) => {
-    setSavedArabicPresets((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
-  }, []);
+  const updateSavedArabicPresetName = useCallback(
+    (id: string, name: string) => {
+      setSavedArabicPresets((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, name } : p)),
+      );
+    },
+    [],
+  );
 
   // Noorani distributions handlers
   const applyNooraniDistribution = useCallback(
     (presetOrId: NooraniDistributionPreset | SavedNooraniPreset | string) => {
-      let targetCipherMap: Record<number, { ciphers: string[]; description?: string }> | null = null;
-      let presetName = '';
+      let targetCipherMap: Record<
+        number,
+        { ciphers: string[]; description?: string }
+      > | null = null;
+      let presetName = "";
 
-      if (typeof presetOrId === 'string') {
+      if (typeof presetOrId === "string") {
         const cleanInput = presetOrId.trim();
         const numIndex = parseInt(cleanInput, 10);
 
         const matchedStandard = Object.values(NOORANI_PRESETS).find(
-          (p) => p.id === cleanInput || p.name === cleanInput || p.badge === cleanInput
+          (p) =>
+            p.id === cleanInput ||
+            p.name === cleanInput ||
+            p.badge === cleanInput,
         );
 
         if (NOORANI_PRESETS[cleanInput] || matchedStandard) {
@@ -1814,7 +2144,10 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         } else {
           const sn = savedNooraniPresets.find(
-            (s) => s.id === cleanInput || `saved_noorani_${s.id}` === cleanInput || s.name === cleanInput
+            (s) =>
+              s.id === cleanInput ||
+              `saved_noorani_${s.id}` === cleanInput ||
+              s.name === cleanInput,
           );
           if (sn) {
             presetName = sn.name;
@@ -1827,7 +2160,11 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             });
           } else {
             // Check in savedTables
-            const customMatch = savedTables.find((st) => `custom_table_noorani_${st.id}` === cleanInput || st.nooraniOrderName === cleanInput);
+            const customMatch = savedTables.find(
+              (st) =>
+                `custom_table_noorani_${st.id}` === cleanInput ||
+                st.nooraniOrderName === cleanInput,
+            );
             if (customMatch && customMatch.nooraniOrderName) {
               presetName = customMatch.nooraniOrderName;
               targetCipherMap = {};
@@ -1839,15 +2176,22 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
               });
             } else {
               // Check if hyphenated or raw Arabic sequence was passed
-              if (cleanInput.includes('-') || cleanInput.replace(/[^ء-ي]/g, '').length >= 7) {
+              if (
+                cleanInput.includes("-") ||
+                cleanInput.replace(/[^ء-ي]/g, "").length >= 7
+              ) {
                 let parts: string[][] = [];
-                if (cleanInput.includes('-')) {
-                  parts = cleanInput.split('-').map((p) => p.replace(/[^ء-ي]/g, '').split(''));
+                if (cleanInput.includes("-")) {
+                  parts = cleanInput
+                    .split("-")
+                    .map((p) => p.replace(/[^ء-ي]/g, "").split(""));
                 } else {
-                  const rawChars = cleanInput.replace(/[^ء-ي]/g, '').split('');
+                  const rawChars = cleanInput.replace(/[^ء-ي]/g, "").split("");
                   const perLayer = rawChars.length >= 28 ? 4 : 2;
                   for (let i = 0; i < 7; i++) {
-                    parts.push(rawChars.slice(i * perLayer, (i + 1) * perLayer));
+                    parts.push(
+                      rawChars.slice(i * perLayer, (i + 1) * perLayer),
+                    );
                   }
                 }
                 targetCipherMap = {};
@@ -1856,7 +2200,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   const ciphers = parts[layerIdx] || [];
                   targetCipherMap[layerNum] = {
                     ciphers: createNineCipherSlotsFromList(ciphers),
-                    description: `سماء ${layerNum}: ${ciphers.join(' ')}`,
+                    description: `سماء ${layerNum}: ${ciphers.join(" ")}`,
                   };
                 }
 
@@ -1864,8 +2208,10 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 const existingSaved = savedNooraniPresets.find((sp) => {
                   return sp.nooraniLayers.every((nl) => {
                     const layerIdx = 7 - nl.layer;
-                    const expected = (parts[layerIdx] || []).join('');
-                    const actual = (nl.cipherLetters || []).filter(Boolean).join('');
+                    const expected = (parts[layerIdx] || []).join("");
+                    const actual = (nl.cipherLetters || [])
+                      .filter(Boolean)
+                      .join("");
                     return expected === actual;
                   });
                 });
@@ -1874,7 +2220,9 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   presetName = existingSaved.name;
                 } else {
                   // Only auto-save the first custom imported code to prevent library accumulation
-                  const importedCount = savedNooraniPresets.filter((sp) => sp.id.startsWith('noor_imported_')).length;
+                  const importedCount = savedNooraniPresets.filter((sp) =>
+                    sp.id.startsWith("noor_imported_"),
+                  ).length;
                   if (importedCount === 0) {
                     const importedName = `سماء مخصصة #1`;
                     const newPreset: SavedNooraniPreset = {
@@ -1888,7 +2236,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         return {
                           layer: layerNum,
                           cipherLetters: ciphers,
-                          description: `سماء ${layerNum}: ${ciphers.join(' ')}`,
+                          description: `سماء ${layerNum}: ${ciphers.join(" ")}`,
                         };
                       }),
                     };
@@ -1903,7 +2251,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
           }
         }
-      } else if ('nooraniLayers' in presetOrId) {
+      } else if ("nooraniLayers" in presetOrId) {
         presetName = presetOrId.name;
         targetCipherMap = {};
         presetOrId.nooraniLayers.forEach((nl) => {
@@ -1931,16 +2279,18 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSelectedSlot(null);
       }
     },
-    [savedNooraniPresets, savedTables]
+    [savedNooraniPresets, savedTables],
   );
 
   const saveCurrentNooraniPreset = useCallback(
     (name: string, description?: string): SavedNooraniPreset => {
-      const cleanName = name.trim() || `توزيعة أحرف الشيفرة ${new Date().toLocaleDateString('ar-EG')}`;
+      const cleanName =
+        name.trim() ||
+        `توزيعة أحرف الشيفرة ${new Date().toLocaleDateString("ar-EG")}`;
       const newPreset: SavedNooraniPreset = {
         id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: cleanName,
-        description: description?.trim() || '',
+        description: description?.trim() || "",
         createdAt: Date.now(),
         nooraniLayers: layers.map((l) => ({
           layer: l.layer,
@@ -1952,24 +2302,29 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setActiveNooraniPresetName(cleanName);
       return newPreset;
     },
-    [layers]
+    [layers],
   );
 
   const deleteSavedNooraniPreset = useCallback((id: string) => {
-  
     setSavedNooraniPresets((prev) => prev.filter((p) => p.id !== id));
-  
   }, []);
-  const updateSavedNooraniPresetName = useCallback((id: string, name: string) => {
-    setSavedNooraniPresets((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
-  }, []);
+  const updateSavedNooraniPresetName = useCallback(
+    (id: string, name: string) => {
+      setSavedNooraniPresets((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, name } : p)),
+      );
+    },
+    [],
+  );
 
   // Export current table with minimal parameters for easy manual editing
   const exportCurrentTableAsFile = useCallback(
     (customNooraniName?: string, customArabicName?: string) => {
-      const parts = (activeTableName || '').split(' × ');
-      const fallbackNoorani = parts[0]?.replace('سماء: ', '').trim() || 'سماء مخصصة';
-      const fallbackArabic = parts[1]?.replace('أرض: ', '').trim() || 'أرض مخصصة';
+      const parts = (activeTableName || "").split(" × ");
+      const fallbackNoorani =
+        parts[0]?.replace("سماء: ", "").trim() || "سماء مخصصة";
+      const fallbackArabic =
+        parts[1]?.replace("أرض: ", "").trim() || "أرض مخصصة";
 
       const nooraniName = customNooraniName || fallbackNoorani;
       const arabicName = customArabicName || fallbackArabic;
@@ -1985,22 +2340,37 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           .sort((a, b) => b.layer - a.layer)
           .map((l) => ({
             layer: l.layer,
-            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
-            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+            cipher: (l.cipherLetters || [])
+              .map((c) => (c || "").trim())
+              .filter(Boolean)
+              .join(" "),
+            arabic: (l.arabicLetters || [])
+              .map((a) => (a || "").trim())
+              .filter(Boolean)
+              .join(" "),
           })),
       };
 
-      const safeFileName = `منظومة_سماء_${nooraniName}_أرض_${arabicName}`.replace(/[\/\\?%*:|"<>]/g, '_');
+      const safeFileName =
+        `منظومة_سماء_${nooraniName}_أرض_${arabicName}`.replace(
+          /[\/\\?%*:|"<>]/g,
+          "_",
+        );
       triggerJsonDownload(`${safeFileName}.json`, fileData);
     },
-    [activeTableName, layers]
+    [activeTableName, layers],
   );
 
   // Export specific Heaven + Earth pair as JSON file
   const exportPairAsFile = useCallback(
-    (nooraniName: string, arabicName: string, customLayers: LayerInfo[], description?: string) => {
-      const cleanNoorani = nooraniName.trim() || 'سماء مخصصة';
-      const cleanArabic = arabicName.trim() || 'أرض مخصصة';
+    (
+      nooraniName: string,
+      arabicName: string,
+      customLayers: LayerInfo[],
+      description?: string,
+    ) => {
+      const cleanNoorani = nooraniName.trim() || "سماء مخصصة";
+      const cleanArabic = arabicName.trim() || "أرض مخصصة";
       const fullName = `سماء: ${cleanNoorani} × أرض: ${cleanArabic}`;
 
       const fileData = {
@@ -2008,21 +2378,31 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         nooraniOrderName: cleanNoorani,
         arabicOrderName: cleanArabic,
         name: fullName,
-        description: description || '',
+        description: description || "",
         layers: customLayers
           .slice()
           .sort((a, b) => b.layer - a.layer)
           .map((l) => ({
             layer: l.layer,
-            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
-            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+            cipher: (l.cipherLetters || [])
+              .map((c) => (c || "").trim())
+              .filter(Boolean)
+              .join(" "),
+            arabic: (l.arabicLetters || [])
+              .map((a) => (a || "").trim())
+              .filter(Boolean)
+              .join(" "),
           })),
       };
 
-      const safeFileName = `منظومة_سماء_${cleanNoorani}_أرض_${cleanArabic}`.replace(/[\/\\?%*:|"<>]/g, '_');
+      const safeFileName =
+        `منظومة_سماء_${cleanNoorani}_أرض_${cleanArabic}`.replace(
+          /[\/\\?%*:|"<>]/g,
+          "_",
+        );
       triggerJsonDownload(`${safeFileName}.json`, fileData);
     },
-    []
+    [],
   );
 
   // Export a single saved table from library in minimal format
@@ -2037,14 +2417,20 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           .sort((a, b) => b.layer - a.layer)
           .map((l) => ({
             layer: l.layer,
-            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
-            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+            cipher: (l.cipherLetters || [])
+              .map((c) => (c || "").trim())
+              .filter(Boolean)
+              .join(" "),
+            arabic: (l.arabicLetters || [])
+              .map((a) => (a || "").trim())
+              .filter(Boolean)
+              .join(" "),
           })),
       };
-      const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, '_');
+      const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, "_");
       triggerJsonDownload(`${safeFileName}.json`, fileData);
     },
-    [savedTables]
+    [savedTables],
   );
 
   // Export all saved tables as a minimal backup
@@ -2058,14 +2444,20 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
           .sort((a, b) => b.layer - a.layer)
           .map((l) => ({
             layer: l.layer,
-            cipher: (l.cipherLetters || []).map((c) => (c || '').trim()).filter(Boolean).join(' '),
-            arabic: (l.arabicLetters || []).map((a) => (a || '').trim()).filter(Boolean).join(' '),
+            cipher: (l.cipherLetters || [])
+              .map((c) => (c || "").trim())
+              .filter(Boolean)
+              .join(" "),
+            arabic: (l.arabicLetters || [])
+              .map((a) => (a || "").trim())
+              .filter(Boolean)
+              .join(" "),
           })),
       })),
     };
     triggerJsonDownload(
       `نسخة_احتياطية_للمنظومات_${new Date().toISOString().slice(0, 10)}.json`,
-      fileData
+      fileData,
     );
   }, [savedTables]);
 
@@ -2074,10 +2466,10 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (customName?: string) => {
       const targetName = customName || activeTableName || BENCHMARK_TABLE_NAME;
       const textContent = serializeLayersToText(targetName, layers);
-      const safeFileName = targetName.replace(/[\/\\?%*:|"<>]/g, '_');
+      const safeFileName = targetName.replace(/[\/\\?%*:|"<>]/g, "_");
       triggerTextDownload(`${safeFileName}.txt`, textContent);
     },
-    [activeTableName, layers]
+    [activeTableName, layers],
   );
 
   // Export a single saved table from library as pure Arabic text file
@@ -2086,15 +2478,18 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const target = savedTables.find((t) => t.id === tableId);
       if (!target) return;
       const textContent = serializeLayersToText(target.name, target.layers);
-      const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, '_');
+      const safeFileName = target.name.replace(/[\/\\?%*:|"<>]/g, "_");
       triggerTextDownload(`${safeFileName}.txt`, textContent);
     },
-    [savedTables]
+    [savedTables],
   );
 
   // Serialize current table to pure Arabic text for inline editor
   const serializeCurrentTableToText = useCallback(() => {
-    return serializeLayersToText(activeTableName || BENCHMARK_TABLE_NAME, layers);
+    return serializeLayersToText(
+      activeTableName || BENCHMARK_TABLE_NAME,
+      layers,
+    );
   }, [activeTableName, layers]);
 
   // Apply table directly from pure Arabic text (used by inline text editor)
@@ -2103,7 +2498,8 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!parsed || parsed.layers.length === 0) {
       return {
         success: false,
-        message: 'تعذر استخراج المنظومة من النص. تأكد من كتابة أرقام الطبقات والشيفرة والأحرف.',
+        message:
+          "تعذر استخراج المنظومة من النص. تأكد من كتابة أرقام الطبقات والشيفرة والأحرف.",
         importedCount: 0,
         appliedDirectly: false,
       };
@@ -2116,11 +2512,14 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const newSaved: SavedCustomTable = {
       id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: parsed.name,
-      description: 'تم تحريرها عبر المحرر النصي المباشر',
+      description: "تم تحريرها عبر المحرر النصي المباشر",
       createdAt: Date.now(),
       layers: parsed.layers,
     };
-    setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== parsed.name)]);
+    setSavedTables((prev) => [
+      newSaved,
+      ...prev.filter((t) => t.name !== parsed.name),
+    ]);
 
     return {
       success: true,
@@ -2131,423 +2530,541 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   // Import file with resilient parser (supports pure Arabic .txt line-by-line, sky-only, earth-only, minimal JSON, legacy formats, backups)
-  const importTablesFromJson = useCallback((jsonOrTextStr: string): ImportResult => {
-    // 1. Try parsing as text format first (full system, sky-only, earth-only, or raw sequences)
-    const textParsed = parseLayersFromText(jsonOrTextStr);
-    if (textParsed && textParsed.layers.length > 0) {
-      if (textParsed.type === 'noorani_only') {
-        const skyName = textParsed.name || 'سماء مخصصة';
-        const newPreset: SavedNooraniPreset = {
-          id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: skyName,
-          description: 'جدول سماء مستورد من ملف نصي',
-          createdAt: Date.now(),
-          nooraniLayers: textParsed.layers.map((l) => ({
-            layer: l.layer,
-            cipherLetters: [...l.cipherLetters],
-            description: l.description,
-          })),
-        };
-        setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
-
-        // Apply only cipher letters to current layers, preserving existing arabicLetters
-        setLayers((prev) =>
-          prev.map((l) => {
-            const match = textParsed.layers.find((tl) => tl.layer === l.layer);
-            return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
-          })
-        );
-        setActiveNooraniPresetName(skyName);
-        setSelectedSlot(null);
-
-        return {
-          success: true,
-          message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      } else if (textParsed.type === 'arabic_only') {
-        const earthName = textParsed.name || 'أرض مخصصة';
-        const newPreset: SavedArabicPreset = {
-          id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: earthName,
-          description: 'جدول أرض مستورد من ملف نصي',
-          createdAt: Date.now(),
-          arabicLayers: textParsed.layers.map((l) => ({
-            layer: l.layer,
-            letters: [
-              l.arabicLetters[0] || '',
-              l.arabicLetters[1] || '',
-              l.arabicLetters[2] || '',
-              l.arabicLetters[3] || '',
-            ] as [string, string, string, string],
-          })),
-        };
-        setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
-
-        // Apply only arabic letters to current layers, preserving existing cipherLetters
-        setLayers((prev) =>
-          prev.map((l) => {
-            const match = textParsed.layers.find((tl) => tl.layer === l.layer);
-            return match ? { ...l, arabicLetters: [...match.arabicLetters] } : l;
-          })
-        );
-        setActiveArabicPresetName(earthName);
-        setSelectedSlot(null);
-
-        return {
-          success: true,
-          message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      } else {
-        // Full System
-        setLayers(textParsed.layers);
-        setActiveTableName(textParsed.name);
-        setSelectedSlot(null);
-
-        const newSaved: SavedCustomTable = {
-          id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: textParsed.name,
-          description: 'منظومة مستوردة من ملف نصي',
-          createdAt: Date.now(),
-          layers: textParsed.layers,
-        };
-        setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== textParsed.name)]);
-
-        return {
-          success: true,
-          message: `تم استيراد المنظومة النصية [${textParsed.name}] بنجاح وحفظها في مكتبتك.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      }
-    }
-
-    // 2. Fall back to JSON parsing
-    try {
-      const parsed = JSON.parse(jsonOrTextStr);
-
-      // JSON Case A: Sky Distribution preset ({ nooraniLayers: [...] } or type === 'noorani')
-      if (
-        (Array.isArray(parsed?.nooraniLayers) && parsed.nooraniLayers.length > 0) ||
-        parsed?.type === 'noorani' ||
-        parsed?.type === 'sky'
-      ) {
-        const rawNoorLayers = Array.isArray(parsed?.nooraniLayers) ? parsed.nooraniLayers : parsed?.layers || [];
-        const skyName = (parsed?.name || parsed?.nooraniName || 'سماء مخصصة').trim();
-        const newPreset: SavedNooraniPreset = {
-          id: parsed?.id || `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: skyName,
-          description: parsed?.description || 'جدول سماء مستورد من ملف JSON',
-          createdAt: parsed?.createdAt || Date.now(),
-          nooraniLayers: rawNoorLayers.map((nl: any, idx: number) => {
-            const lNum = typeof nl?.layer === 'number' ? nl.layer : 7 - idx;
-            let cLetters: string[] = [];
-            if (Array.isArray(nl?.cipherLetters)) cLetters = nl.cipherLetters;
-            else if (typeof nl?.cipher === 'string') cLetters = nl.cipher.split(/[\s,]+/).filter(Boolean);
-            else if (Array.isArray(nl?.letters)) cLetters = nl.letters;
-            return {
-              layer: lNum,
-              cipherLetters: Array.from({ length: 9 }, (_, i) => cLetters[i] || ''),
-              description: nl?.description || `الطبقة ${lNum}`,
-            };
-          }),
-        };
-
-        setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
-        setLayers((prev) =>
-          prev.map((l) => {
-            const match = newPreset.nooraniLayers.find((nl) => nl.layer === l.layer);
-            return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
-          })
-        );
-        setActiveNooraniPresetName(skyName);
-        setSelectedSlot(null);
-
-        return {
-          success: true,
-          message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      }
-
-      // JSON Case B: Earth Distribution preset ({ arabicLayers: [...] } or type === 'arabic')
-      if (
-        (Array.isArray(parsed?.arabicLayers) && parsed.arabicLayers.length > 0) ||
-        parsed?.type === 'arabic' ||
-        parsed?.type === 'earth'
-      ) {
-        const rawArLayers = Array.isArray(parsed?.arabicLayers) ? parsed.arabicLayers : parsed?.layers || [];
-        const earthName = (parsed?.name || parsed?.arabicName || 'أرض مخصصة').trim();
-        const newPreset: SavedArabicPreset = {
-          id: parsed?.id || `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          name: earthName,
-          description: parsed?.description || 'جدول أرض مستورد من ملف JSON',
-          createdAt: parsed?.createdAt || Date.now(),
-          arabicLayers: rawArLayers.map((al: any, idx: number) => {
-            const lNum = typeof al?.layer === 'number' ? al.layer : 7 - idx;
-            let aLetters: string[] = [];
-            if (Array.isArray(al?.letters)) aLetters = al.letters;
-            else if (Array.isArray(al?.arabicLetters)) aLetters = al.arabicLetters;
-            else if (typeof al?.arabic === 'string') aLetters = al.arabic.split(/[\s,]+/).filter(Boolean);
-            return {
-              layer: lNum,
-              letters: [
-                aLetters[0] || '',
-                aLetters[1] || '',
-                aLetters[2] || '',
-                aLetters[3] || '',
-              ] as [string, string, string, string],
-            };
-          }),
-        };
-
-        setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
-        setLayers((prev) =>
-          prev.map((l) => {
-            const match = newPreset.arabicLayers.find((al) => al.layer === l.layer);
-            return match ? { ...l, arabicLetters: [...match.letters] } : l;
-          })
-        );
-        setActiveArabicPresetName(earthName);
-        setSelectedSlot(null);
-
-        return {
-          success: true,
-          message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
-          importedCount: 1,
-          appliedDirectly: true,
-        };
-      }
-
-      const parseLayerItem = (item: any, defaultLayer: number): LayerInfo => {
-        const layerNum = typeof item?.layer === 'number' ? item.layer : defaultLayer;
-
-        // Parse cipher: space/comma separated or array or single string
-        let rawCipher: string[] = [];
-        if (typeof item?.cipher === 'string') {
-          const trimmed = item.cipher.trim();
-          if (trimmed.includes(' ') || trimmed.includes(',')) {
-            rawCipher = trimmed.split(/[\s,]+/).filter(Boolean);
-          } else {
-            rawCipher = trimmed.split('').filter((c: string) => !/\s/.test(c));
-          }
-        } else if (Array.isArray(item?.cipher)) {
-          rawCipher = item.cipher.map(String).filter((s: string) => s.trim());
-        } else if (Array.isArray(item?.cipherLetters)) {
-          rawCipher = item.cipherLetters.map(String).filter((s: string) => s.trim());
-        }
-
-        // Parse arabic: space/comma separated or array or single string
-        let rawArabic: string[] = [];
-        if (typeof item?.arabic === 'string') {
-          const trimmed = item.arabic.trim();
-          if (trimmed.includes(' ') || trimmed.includes(',')) {
-            rawArabic = trimmed.split(/[\s,]+/).filter(Boolean);
-          } else {
-            rawArabic = trimmed.split('').filter((c: string) => !/\s/.test(c));
-          }
-        } else if (Array.isArray(item?.arabic)) {
-          rawArabic = item.arabic.map(String).filter((s: string) => s.trim());
-        } else if (Array.isArray(item?.arabicLetters)) {
-          rawArabic = item.arabicLetters.map(String).filter((s: string) => s.trim());
-        }
-
-        const cipherSlots = Array.from(
-          { length: Math.max(9, rawCipher.length) },
-          (_, i) => (rawCipher[i] || '').trim()
-        );
-        const arabicSlots = Array.from(
-          { length: Math.max(4, rawArabic.length) },
-          (_, i) => (rawArabic[i] || '').trim()
-        );
-
-        return {
-          layer: layerNum,
-          cipherLetters: cipherSlots,
-          arabicLetters: arabicSlots,
-          description: item?.description || `الطبقة ${layerNum}`,
-        };
-      };
-
-      // Case 1: Single table minimal format { name, layers } or { fullMap } or array of layers
-      const rawLayers = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed?.layers)
-        ? parsed.layers
-        : Array.isArray(parsed?.fullMap?.layers)
-        ? parsed.fullMap.layers
-        : null;
-
-      if (rawLayers && rawLayers.length > 0) {
-        const parsedLayers = normalizeLayers(
-          rawLayers.map((l: any, idx: number) => parseLayerItem(l, 7 - idx))
-        );
-
-        // Check if only cipher letters are present (sky only)
-        const hasCipher = parsedLayers.some((l) => (l.cipherLetters || []).some((c) => Boolean((c || '').trim())));
-        const hasArabic = parsedLayers.some((l) => (l.arabicLetters || []).some((a) => Boolean((a || '').trim())));
-
-        if (hasCipher && !hasArabic) {
-          const skyName = (parsed?.name || parsed?.nooraniOrderName || parsed?.nooraniName || 'سماء مخصصة').trim();
+  const importTablesFromJson = useCallback(
+    (jsonOrTextStr: string): ImportResult => {
+      // 1. Try parsing as text format first (full system, sky-only, earth-only, or raw sequences)
+      const textParsed = parseLayersFromText(jsonOrTextStr);
+      if (textParsed && textParsed.layers.length > 0) {
+        if (textParsed.type === "noorani_only") {
+          const skyName = textParsed.name || "سماء مخصصة";
           const newPreset: SavedNooraniPreset = {
             id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             name: skyName,
-            description: 'جدول سماء مستورد من ملف JSON',
+            description: "جدول سماء مستورد من ملف نصي",
             createdAt: Date.now(),
-            nooraniLayers: parsedLayers.map((l) => ({
+            nooraniLayers: textParsed.layers.map((l) => ({
               layer: l.layer,
               cipherLetters: [...l.cipherLetters],
               description: l.description,
             })),
           };
-          setSavedNooraniPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== skyName)]);
+          setSavedNooraniPresets((prev) => [
+            newPreset,
+            ...prev.filter((p) => p.name !== skyName),
+          ]);
+
+          // Apply only cipher letters to current layers, preserving existing arabicLetters
           setLayers((prev) =>
             prev.map((l) => {
-              const match = parsedLayers.find((pl) => pl.layer === l.layer);
-              return match ? { ...l, cipherLetters: [...match.cipherLetters] } : l;
-            })
+              const match = textParsed.layers.find(
+                (tl) => tl.layer === l.layer,
+              );
+              return match
+                ? { ...l, cipherLetters: [...match.cipherLetters] }
+                : l;
+            }),
           );
           setActiveNooraniPresetName(skyName);
           setSelectedSlot(null);
 
           return {
             success: true,
-            message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح.`,
+            message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
             importedCount: 1,
             appliedDirectly: true,
           };
-        }
-
-        if (hasArabic && !hasCipher) {
-          const earthName = (parsed?.name || parsed?.arabicOrderName || parsed?.arabicName || 'أرض مخصصة').trim();
+        } else if (textParsed.type === "arabic_only") {
+          const earthName = textParsed.name || "أرض مخصصة";
           const newPreset: SavedArabicPreset = {
             id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             name: earthName,
-            description: 'جدول أرض مستورد من ملف JSON',
+            description: "جدول أرض مستورد من ملف نصي",
             createdAt: Date.now(),
-            arabicLayers: parsedLayers.map((l) => ({
+            arabicLayers: textParsed.layers.map((l) => ({
               layer: l.layer,
               letters: [
-                l.arabicLetters[0] || '',
-                l.arabicLetters[1] || '',
-                l.arabicLetters[2] || '',
-                l.arabicLetters[3] || '',
+                l.arabicLetters[0] || "",
+                l.arabicLetters[1] || "",
+                l.arabicLetters[2] || "",
+                l.arabicLetters[3] || "",
               ] as [string, string, string, string],
             })),
           };
-          setSavedArabicPresets((prev) => [newPreset, ...prev.filter((p) => p.name !== earthName)]);
+          setSavedArabicPresets((prev) => [
+            newPreset,
+            ...prev.filter((p) => p.name !== earthName),
+          ]);
+
+          // Apply only arabic letters to current layers, preserving existing cipherLetters
           setLayers((prev) =>
             prev.map((l) => {
-              const match = parsedLayers.find((pl) => pl.layer === l.layer);
-              return match ? { ...l, arabicLetters: [...match.arabicLetters] } : l;
-            })
+              const match = textParsed.layers.find(
+                (tl) => tl.layer === l.layer,
+              );
+              return match
+                ? { ...l, arabicLetters: [...match.arabicLetters] }
+                : l;
+            }),
           );
           setActiveArabicPresetName(earthName);
           setSelectedSlot(null);
 
           return {
             success: true,
-            message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح.`,
-            importedCount: 1,
-            appliedDirectly: true,
-          };
-        }
-
-        const extractedNoorani = (parsed?.nooraniOrderName || parsed?.nooraniName || '').trim();
-        const extractedArabic = (parsed?.arabicOrderName || parsed?.arabicName || '').trim();
-        const extractedFullName = (parsed?.name || '').trim();
-
-        if (extractedNoorani && extractedArabic) {
-          saveCustomLayersTable(extractedNoorani, extractedArabic, parsedLayers, parsed?.description);
-          return {
-            success: true,
-            message: `تم استيراد المنظومة المتقاطعة [سماء: ${extractedNoorani} × أرض: ${extractedArabic}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+            message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في قائمة التوزيعات.`,
             importedCount: 1,
             appliedDirectly: true,
           };
         } else {
-          const finalName = extractedFullName || 'منظومة مخصصة مستوردة';
-          setLayers(parsedLayers);
-          setActiveTableName(finalName);
+          // Full System
+          setLayers(textParsed.layers);
+          setActiveTableName(textParsed.name);
           setSelectedSlot(null);
 
           const newSaved: SavedCustomTable = {
             id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            name: finalName,
-            description: parsed?.description || 'منظومة مستوردة من ملف JSON',
+            name: textParsed.name,
+            description: "منظومة مستوردة من ملف نصي",
             createdAt: Date.now(),
-            layers: parsedLayers,
+            layers: textParsed.layers,
           };
-          setSavedTables((prev) => [newSaved, ...prev.filter((t) => t.name !== finalName)]);
+          setSavedTables((prev) => [
+            newSaved,
+            ...prev.filter((t) => t.name !== textParsed.name),
+          ]);
 
           return {
             success: true,
-            message: `تم استيراد المنظومة [${finalName}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+            message: `تم استيراد المنظومة النصية [${textParsed.name}] بنجاح وحفظها في مكتبتك.`,
             importedCount: 1,
             appliedDirectly: true,
           };
         }
       }
 
-      // Case 2: Multi-table backup format { tables: [...] }
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
-        const validTables: SavedCustomTable[] = [];
-        parsed.tables.forEach((item: any, idx: number) => {
-          const itemLayers = Array.isArray(item?.layers) ? item.layers : null;
-          if (itemLayers) {
-            const parsedL = normalizeLayers(
-              itemLayers.map((l: any, lIdx: number) => parseLayerItem(l, 7 - lIdx))
-            );
-            validTables.push({
-              id: item.id || `tbl_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
-              name: item.name?.trim() || `منظومة مستوردة ${idx + 1}`,
-              description: item.description || '',
-              createdAt: item.createdAt || Date.now(),
-              layers: parsedL,
-            });
-          }
-        });
+      // 2. Fall back to JSON parsing
+      try {
+        const parsed = JSON.parse(jsonOrTextStr);
 
-        if (validTables.length > 0) {
-          setSavedTables((prev) => {
-            const existingNames = new Set(prev.map((t) => t.name));
-            const newOnes = validTables.filter((vt) => !existingNames.has(vt.name));
-            return [...newOnes, ...prev];
-          });
-          const first = validTables[0];
-          setLayers(first.layers);
-          setActiveTableName(first.name);
+        // JSON Case A: Sky Distribution preset ({ nooraniLayers: [...] } or type === 'noorani')
+        if (
+          (Array.isArray(parsed?.nooraniLayers) &&
+            parsed.nooraniLayers.length > 0) ||
+          parsed?.type === "noorani" ||
+          parsed?.type === "sky"
+        ) {
+          const rawNoorLayers = Array.isArray(parsed?.nooraniLayers)
+            ? parsed.nooraniLayers
+            : parsed?.layers || [];
+          const skyName = (
+            parsed?.name ||
+            parsed?.nooraniName ||
+            "سماء مخصصة"
+          ).trim();
+          const newPreset: SavedNooraniPreset = {
+            id:
+              parsed?.id ||
+              `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: skyName,
+            description: parsed?.description || "جدول سماء مستورد من ملف JSON",
+            createdAt: parsed?.createdAt || Date.now(),
+            nooraniLayers: rawNoorLayers.map((nl: any, idx: number) => {
+              const lNum = typeof nl?.layer === "number" ? nl.layer : 7 - idx;
+              let cLetters: string[] = [];
+              if (Array.isArray(nl?.cipherLetters)) cLetters = nl.cipherLetters;
+              else if (typeof nl?.cipher === "string")
+                cLetters = nl.cipher.split(/[\s,]+/).filter(Boolean);
+              else if (Array.isArray(nl?.letters)) cLetters = nl.letters;
+              return {
+                layer: lNum,
+                cipherLetters: Array.from(
+                  { length: 9 },
+                  (_, i) => cLetters[i] || "",
+                ),
+                description: nl?.description || `الطبقة ${lNum}`,
+              };
+            }),
+          };
+
+          setSavedNooraniPresets((prev) => [
+            newPreset,
+            ...prev.filter((p) => p.name !== skyName),
+          ]);
+          setLayers((prev) =>
+            prev.map((l) => {
+              const match = newPreset.nooraniLayers.find(
+                (nl) => nl.layer === l.layer,
+              );
+              return match
+                ? { ...l, cipherLetters: [...match.cipherLetters] }
+                : l;
+            }),
+          );
+          setActiveNooraniPresetName(skyName);
           setSelectedSlot(null);
 
           return {
             success: true,
-            message: `تم استيراد ${validTables.length} منظومة وحفظها في مكتبتك، وتطبيق [${first.name}] مباشرة.`,
-            importedCount: validTables.length,
+            message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
+            importedCount: 1,
             appliedDirectly: true,
           };
         }
-      }
 
-      return {
-        success: false,
-        message: 'الملف لا يحتوي على بنية طبقات صالحة. يرجى التأكد من اختيار ملف منظومة صالح.',
-        importedCount: 0,
-        appliedDirectly: false,
-      };
-    } catch (err) {
-      console.error('Failed to import JSON file:', err);
-      return {
-        success: false,
-        message: 'حدث خطأ أثناء قراءة ملف الـ JSON. قد يكون الملف تالفاً أو غير منسق بشكل سليم.',
-        importedCount: 0,
-        appliedDirectly: false,
-      };
-    }
-  }, []);
+        // JSON Case B: Earth Distribution preset ({ arabicLayers: [...] } or type === 'arabic')
+        if (
+          (Array.isArray(parsed?.arabicLayers) &&
+            parsed.arabicLayers.length > 0) ||
+          parsed?.type === "arabic" ||
+          parsed?.type === "earth"
+        ) {
+          const rawArLayers = Array.isArray(parsed?.arabicLayers)
+            ? parsed.arabicLayers
+            : parsed?.layers || [];
+          const earthName = (
+            parsed?.name ||
+            parsed?.arabicName ||
+            "أرض مخصصة"
+          ).trim();
+          const newPreset: SavedArabicPreset = {
+            id:
+              parsed?.id ||
+              `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: earthName,
+            description: parsed?.description || "جدول أرض مستورد من ملف JSON",
+            createdAt: parsed?.createdAt || Date.now(),
+            arabicLayers: rawArLayers.map((al: any, idx: number) => {
+              const lNum = typeof al?.layer === "number" ? al.layer : 7 - idx;
+              let aLetters: string[] = [];
+              if (Array.isArray(al?.letters)) aLetters = al.letters;
+              else if (Array.isArray(al?.arabicLetters))
+                aLetters = al.arabicLetters;
+              else if (typeof al?.arabic === "string")
+                aLetters = al.arabic.split(/[\s,]+/).filter(Boolean);
+              return {
+                layer: lNum,
+                letters: [
+                  aLetters[0] || "",
+                  aLetters[1] || "",
+                  aLetters[2] || "",
+                  aLetters[3] || "",
+                ] as [string, string, string, string],
+              };
+            }),
+          };
+
+          setSavedArabicPresets((prev) => [
+            newPreset,
+            ...prev.filter((p) => p.name !== earthName),
+          ]);
+          setLayers((prev) =>
+            prev.map((l) => {
+              const match = newPreset.arabicLayers.find(
+                (al) => al.layer === l.layer,
+              );
+              return match ? { ...l, arabicLetters: [...match.letters] } : l;
+            }),
+          );
+          setActiveArabicPresetName(earthName);
+          setSelectedSlot(null);
+
+          return {
+            success: true,
+            message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح وحفظه في التوزيعات.`,
+            importedCount: 1,
+            appliedDirectly: true,
+          };
+        }
+
+        const parseLayerItem = (item: any, defaultLayer: number): LayerInfo => {
+          const layerNum =
+            typeof item?.layer === "number" ? item.layer : defaultLayer;
+
+          // Parse cipher: space/comma separated or array or single string
+          let rawCipher: string[] = [];
+          if (typeof item?.cipher === "string") {
+            const trimmed = item.cipher.trim();
+            if (trimmed.includes(" ") || trimmed.includes(",")) {
+              rawCipher = trimmed.split(/[\s,]+/).filter(Boolean);
+            } else {
+              rawCipher = trimmed
+                .split("")
+                .filter((c: string) => !/\s/.test(c));
+            }
+          } else if (Array.isArray(item?.cipher)) {
+            rawCipher = item.cipher.map(String).filter((s: string) => s.trim());
+          } else if (Array.isArray(item?.cipherLetters)) {
+            rawCipher = item.cipherLetters
+              .map(String)
+              .filter((s: string) => s.trim());
+          }
+
+          // Parse arabic: space/comma separated or array or single string
+          let rawArabic: string[] = [];
+          if (typeof item?.arabic === "string") {
+            const trimmed = item.arabic.trim();
+            if (trimmed.includes(" ") || trimmed.includes(",")) {
+              rawArabic = trimmed.split(/[\s,]+/).filter(Boolean);
+            } else {
+              rawArabic = trimmed
+                .split("")
+                .filter((c: string) => !/\s/.test(c));
+            }
+          } else if (Array.isArray(item?.arabic)) {
+            rawArabic = item.arabic.map(String).filter((s: string) => s.trim());
+          } else if (Array.isArray(item?.arabicLetters)) {
+            rawArabic = item.arabicLetters
+              .map(String)
+              .filter((s: string) => s.trim());
+          }
+
+          const cipherSlots = Array.from(
+            { length: Math.max(9, rawCipher.length) },
+            (_, i) => (rawCipher[i] || "").trim(),
+          );
+          const arabicSlots = Array.from(
+            { length: Math.max(4, rawArabic.length) },
+            (_, i) => (rawArabic[i] || "").trim(),
+          );
+
+          return {
+            layer: layerNum,
+            cipherLetters: cipherSlots,
+            arabicLetters: arabicSlots,
+            description: item?.description || `الطبقة ${layerNum}`,
+          };
+        };
+
+        // Case 1: Single table minimal format { name, layers } or { fullMap } or array of layers
+        const rawLayers = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed?.layers)
+            ? parsed.layers
+            : Array.isArray(parsed?.fullMap?.layers)
+              ? parsed.fullMap.layers
+              : null;
+
+        if (rawLayers && rawLayers.length > 0) {
+          const parsedLayers = normalizeLayers(
+            rawLayers.map((l: any, idx: number) => parseLayerItem(l, 7 - idx)),
+          );
+
+          // Check if only cipher letters are present (sky only)
+          const hasCipher = parsedLayers.some((l) =>
+            (l.cipherLetters || []).some((c) => Boolean((c || "").trim())),
+          );
+          const hasArabic = parsedLayers.some((l) =>
+            (l.arabicLetters || []).some((a) => Boolean((a || "").trim())),
+          );
+
+          if (hasCipher && !hasArabic) {
+            const skyName = (
+              parsed?.name ||
+              parsed?.nooraniOrderName ||
+              parsed?.nooraniName ||
+              "سماء مخصصة"
+            ).trim();
+            const newPreset: SavedNooraniPreset = {
+              id: `noor_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              name: skyName,
+              description: "جدول سماء مستورد من ملف JSON",
+              createdAt: Date.now(),
+              nooraniLayers: parsedLayers.map((l) => ({
+                layer: l.layer,
+                cipherLetters: [...l.cipherLetters],
+                description: l.description,
+              })),
+            };
+            setSavedNooraniPresets((prev) => [
+              newPreset,
+              ...prev.filter((p) => p.name !== skyName),
+            ]);
+            setLayers((prev) =>
+              prev.map((l) => {
+                const match = parsedLayers.find((pl) => pl.layer === l.layer);
+                return match
+                  ? { ...l, cipherLetters: [...match.cipherLetters] }
+                  : l;
+              }),
+            );
+            setActiveNooraniPresetName(skyName);
+            setSelectedSlot(null);
+
+            return {
+              success: true,
+              message: `تم استيراد جدول السماء [${skyName}] وتطبيقه بنجاح.`,
+              importedCount: 1,
+              appliedDirectly: true,
+            };
+          }
+
+          if (hasArabic && !hasCipher) {
+            const earthName = (
+              parsed?.name ||
+              parsed?.arabicOrderName ||
+              parsed?.arabicName ||
+              "أرض مخصصة"
+            ).trim();
+            const newPreset: SavedArabicPreset = {
+              id: `ar_pre_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              name: earthName,
+              description: "جدول أرض مستورد من ملف JSON",
+              createdAt: Date.now(),
+              arabicLayers: parsedLayers.map((l) => ({
+                layer: l.layer,
+                letters: [
+                  l.arabicLetters[0] || "",
+                  l.arabicLetters[1] || "",
+                  l.arabicLetters[2] || "",
+                  l.arabicLetters[3] || "",
+                ] as [string, string, string, string],
+              })),
+            };
+            setSavedArabicPresets((prev) => [
+              newPreset,
+              ...prev.filter((p) => p.name !== earthName),
+            ]);
+            setLayers((prev) =>
+              prev.map((l) => {
+                const match = parsedLayers.find((pl) => pl.layer === l.layer);
+                return match
+                  ? { ...l, arabicLetters: [...match.arabicLetters] }
+                  : l;
+              }),
+            );
+            setActiveArabicPresetName(earthName);
+            setSelectedSlot(null);
+
+            return {
+              success: true,
+              message: `تم استيراد جدول الأرض [${earthName}] وتطبيقه بنجاح.`,
+              importedCount: 1,
+              appliedDirectly: true,
+            };
+          }
+
+          const extractedNoorani = (
+            parsed?.nooraniOrderName ||
+            parsed?.nooraniName ||
+            ""
+          ).trim();
+          const extractedArabic = (
+            parsed?.arabicOrderName ||
+            parsed?.arabicName ||
+            ""
+          ).trim();
+          const extractedFullName = (parsed?.name || "").trim();
+
+          if (extractedNoorani && extractedArabic) {
+            saveCustomLayersTable(
+              extractedNoorani,
+              extractedArabic,
+              parsedLayers,
+              parsed?.description,
+            );
+            return {
+              success: true,
+              message: `تم استيراد المنظومة المتقاطعة [سماء: ${extractedNoorani} × أرض: ${extractedArabic}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+              importedCount: 1,
+              appliedDirectly: true,
+            };
+          } else {
+            const finalName = extractedFullName || "منظومة مخصصة مستوردة";
+            setLayers(parsedLayers);
+            setActiveTableName(finalName);
+            setSelectedSlot(null);
+
+            const newSaved: SavedCustomTable = {
+              id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              name: finalName,
+              description: parsed?.description || "منظومة مستوردة من ملف JSON",
+              createdAt: Date.now(),
+              layers: parsedLayers,
+            };
+            setSavedTables((prev) => [
+              newSaved,
+              ...prev.filter((t) => t.name !== finalName),
+            ]);
+
+            return {
+              success: true,
+              message: `تم استيراد المنظومة [${finalName}] وتطبيقها بنجاح وحفظها في مكتبتك.`,
+              importedCount: 1,
+              appliedDirectly: true,
+            };
+          }
+        }
+
+        // Case 2: Multi-table backup format { tables: [...] }
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          Array.isArray(parsed.tables) &&
+          parsed.tables.length > 0
+        ) {
+          const validTables: SavedCustomTable[] = [];
+          parsed.tables.forEach((item: any, idx: number) => {
+            const itemLayers = Array.isArray(item?.layers) ? item.layers : null;
+            if (itemLayers) {
+              const parsedL = normalizeLayers(
+                itemLayers.map((l: any, lIdx: number) =>
+                  parseLayerItem(l, 7 - lIdx),
+                ),
+              );
+              validTables.push({
+                id:
+                  item.id ||
+                  `tbl_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+                name: item.name?.trim() || `منظومة مستوردة ${idx + 1}`,
+                description: item.description || "",
+                createdAt: item.createdAt || Date.now(),
+                layers: parsedL,
+              });
+            }
+          });
+
+          if (validTables.length > 0) {
+            setSavedTables((prev) => {
+              const existingNames = new Set(prev.map((t) => t.name));
+              const newOnes = validTables.filter(
+                (vt) => !existingNames.has(vt.name),
+              );
+              return [...newOnes, ...prev];
+            });
+            const first = validTables[0];
+            setLayers(first.layers);
+            setActiveTableName(first.name);
+            setSelectedSlot(null);
+
+            return {
+              success: true,
+              message: `تم استيراد ${validTables.length} منظومة وحفظها في مكتبتك، وتطبيق [${first.name}] مباشرة.`,
+              importedCount: validTables.length,
+              appliedDirectly: true,
+            };
+          }
+        }
+
+        return {
+          success: false,
+          message:
+            "الملف لا يحتوي على بنية طبقات صالحة. يرجى التأكد من اختيار ملف منظومة صالح.",
+          importedCount: 0,
+          appliedDirectly: false,
+        };
+      } catch (err) {
+        console.error("Failed to import JSON file:", err);
+        return {
+          success: false,
+          message:
+            "حدث خطأ أثناء قراءة ملف الـ JSON. قد يكون الملف تالفاً أو غير منسق بشكل سليم.",
+          importedCount: 0,
+          appliedDirectly: false,
+        };
+      }
+    },
+    [],
+  );
 
   // Raw Import JSON (compatibility helper)
   const importLayersJson = useCallback((jsonStr: string): boolean => {
@@ -2559,7 +3076,7 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return true;
       }
     } catch (e) {
-      console.error('Failed to import JSON layers:', e);
+      console.error("Failed to import JSON layers:", e);
     }
     return false;
   }, []);
@@ -2574,14 +3091,14 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (text: string) => {
       return analyzeWord(text, layers);
     },
-    [layers]
+    [layers],
   );
 
   const decryptChar = useCallback(
     (char: string) => {
       return decryptCipherChar(char, layers);
     },
-    [layers]
+    [layers],
   );
 
   const value = useMemo(
@@ -2738,16 +3255,22 @@ export const CipherLayersProvider: React.FC<{ children: React.ReactNode }> = ({ 
       analyzeText,
       decryptChar,
       updateAllLayers,
-    ]
+    ],
   );
 
-  return <CipherLayersContext.Provider value={value}>{children}</CipherLayersContext.Provider>;
+  return (
+    <CipherLayersContext.Provider value={value}>
+      {children}
+    </CipherLayersContext.Provider>
+  );
 };
 
 export function useCipherLayers(): CipherLayersContextType {
   const context = useContext(CipherLayersContext);
   if (!context) {
-    throw new Error('useCipherLayers must be used within a CipherLayersProvider');
+    throw new Error(
+      "useCipherLayers must be used within a CipherLayersProvider",
+    );
   }
   return context;
 }

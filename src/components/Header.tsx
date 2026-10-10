@@ -4,7 +4,7 @@ import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
 import { useHint } from '../context/HintContext';
 
-export type HeaderTabType = 'gematria' | 'search' | 'fawatih_scale' | 'settings' | 'info';
+export type HeaderTabType = 'gematria' | 'fawatih_gematria' | 'search' | 'fawatih_scale' | 'settings' | 'info';
 
 interface HeaderProps {
   activeTab: HeaderTabType;
@@ -280,7 +280,7 @@ export function Header({
         style={{ backgroundColor: 'var(--dos-bg)', borderColor: 'var(--dos-header)' }}
         className="px-1.5 py-1 flex items-center justify-between gap-1 flex-wrap border-b"
       >
-        <nav className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 w-full" aria-label="أقسام نظام DOS">
+        <nav className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 w-full" aria-label="أقسام نظام DOS">
           <button
             type="button"
             onClick={() => handleTabClick('gematria')}
@@ -299,6 +299,22 @@ export function Header({
 
           <button
             type="button"
+            onClick={() => handleTabClick('fawatih_gematria')}
+            onMouseEnter={() => setHintText('حساب فواتح السور الـ 29: حساب تكرار الحروف النورانية الـ 14 وتصفير الباقي والبحث في المصحف')}
+            onMouseLeave={clearHint}
+            style={
+              activeTab === 'fawatih_gematria'
+                ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
+                : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
+            }
+            className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
+            title="حساب فواتح السور الـ 29 والبحث بالمصحف (F2)"
+          >
+            [<span className={activeTab === 'fawatih_gematria' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] حساب الفواتح
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleTabClick('fawatih_scale')}
             onMouseEnter={() => setHintText('ميزان الفواتح: عدّ تكرار الكلمات في سور الفواتح الـ 29 واستخراج الكلمات النظيرة المتطابقة')}
             onMouseLeave={clearHint}
@@ -308,9 +324,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="ميزان الفواتح وتوزيع السور الـ 29 (F2)"
+            title="ميزان الفواتح وتوزيع السور الـ 29 (F3)"
           >
-            [<span className={activeTab === 'fawatih_scale' ? 'text-black' : 'text-[#ffff55] font-black'}>F2</span>] ميزان الفواتح
+            [<span className={activeTab === 'fawatih_scale' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] ميزان الفواتح
           </button>
 
           <button
@@ -324,9 +340,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="باحث الأوامر والمترجم المزدوج والتشفير (F3)"
+            title="باحث الأوامر والمترجم المزدوج والتشفير (F4)"
           >
-            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F3</span>] الباحث
+            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الباحث
           </button>
 
           <button
@@ -340,9 +356,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="تخصيص قواعد الحساب والجداول المرجعية (F4)"
+            title="تخصيص قواعد الحساب والجداول المرجعية (F5)"
           >
-            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الجداول
+            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F5</span>] الجداول
           </button>
 
           <button
@@ -356,9 +372,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="دليل النظام وتوثيق حساب الجمل القرآني (F5)"
+            title="دليل النظام وتوثيق حساب الجمل القرآني (F6)"
           >
-            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F5</span>] الدليل
+            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F6</span>] الدليل
           </button>
         </nav>
       </div>

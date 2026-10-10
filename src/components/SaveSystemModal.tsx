@@ -165,7 +165,7 @@ export function SaveSystemModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="مثال: سماء 1 مع أرض 7 (منظومة طسم)"
+              placeholder="مثال: سماء 1 مع أرض 5 (منظومة طسم)"
               required
               className="w-full text-xs font-bold px-3 py-2 rounded-xl bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />

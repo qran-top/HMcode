@@ -20,13 +20,15 @@ export interface QuranicChainHistoryItem {
   onlyNoorani: boolean;
   targetMaghribi: number;
   targetMashriqi: number;
+  targetSrqm1?: number;
+  targetSrqt2?: number;
+  targetSrqd3?: number;
+  targetSrtg4?: number;
   isIdentical: boolean;
   multiplier?: number;
   matchesCount?: number;
   isFavorite?: boolean;
-  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale' | 'jabir_desc' | 'jabir_pyramid' | 'jabir_valley' | 'lunar_scale' | 'amiriyyah';
-  targetJafr?: number;
-  targetBayat?: number;
+  nooraniQueryMode?: 'standard' | 'noorani_only' | 'strip_non_noorani_zeros' | 'jabir_scale' | 'jabir_desc' | 'jabir_pyramid' | 'jabir_valley' | 'lunar_scale';
 }
 
 interface QuranicChainHistoryProps {
@@ -268,7 +270,7 @@ export function QuranicChainHistory({
                     <span className="px-1.5 py-0.2 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-mono">
                       {item.isIdentical
                         ? `قيمة = ${item.targetMaghribi}`
-                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}${item.targetJafr ? ` | جفر = ${item.targetJafr}` : ''}${item.targetBayat ? ` | بيات = ${item.targetBayat}` : ''}`}
+                        : `غربي = ${item.targetMaghribi} | شرقي = ${item.targetMashriqi}${item.targetSrqm1 ? ` | صرقم 1 = ${item.targetSrqm1}` : ''}${item.targetSrqt2 ? ` | صرقم 2 = ${item.targetSrqt2}` : ''}${item.targetSrqd3 ? ` | صرقم 3 = ${item.targetSrqd3}` : ''}${item.targetSrtg4 ? ` | صرتغ 4 = ${item.targetSrtg4}` : ''}`}
                     </span>
 
                     {/* Mode Badge */}
@@ -305,11 +307,6 @@ export function QuranicChainHistory({
                     {item.nooraniQueryMode === 'strip_non_noorani_zeros' && (
                       <span className="px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold">
                         شطب الأصفار
-                      </span>
-                    )}
-                    {item.nooraniQueryMode === 'amiriyyah' && (
-                      <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-bold">
-                        العامرية ✨
                       </span>
                     )}
 

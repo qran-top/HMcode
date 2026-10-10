@@ -901,6 +901,10 @@ export function DecryptView({
                 const quranicMeta = quranicStatus.get(item.word);
                 const isDictWord = dictionaryStatus.get(item.word);
                 const hasFilterMatch = normalizedFilter && item.word.includes(normalizedFilter);
+                const targetWord = quranicMeta?.originalQuranicWord || item.word;
+                const isDirectExact = !!quranicMeta?.isDirectExact && item.word === targetWord;
+                const displayPercentage = isDirectExact ? 100 : Math.min(quranicMeta?.confidence || 90, 95);
+                const displayText = (quranicMeta && !isDirectExact && item.word !== targetWord) ? `${item.word} = ${targetWord}` : item.word;
 
                 return (
                   <div
@@ -927,9 +931,14 @@ export function DecryptView({
                       <div className="flex items-center gap-1.5 overflow-hidden">
                         {quranicMeta ? (
                           <span
-                            className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-300 shrink-0 animate-pulse"
-                            title={`لفظ قرآني كريم بسورة ${quranicMeta.surahName}`}
-                          />
+                            className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs shrink-0 ${
+                              isDirectExact
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200'
+                            }`}
+                          >
+                            {displayPercentage}%
+                          </span>
                         ) : isDictWord ? (
                           <span
                             className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"
@@ -941,7 +950,7 @@ export function DecryptView({
                             quranicMeta ? 'text-amber-950 dark:text-amber-200 font-black text-base' : ''
                           }`}
                         >
-                          {item.word}
+                          {displayText}
                         </span>
                       </div>
 

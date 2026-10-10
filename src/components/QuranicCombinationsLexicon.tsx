@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   QuranicWordMeta,
   QuranicNearestMatch,
@@ -50,7 +50,33 @@ export function QuranicCombinationsLexicon({
   };
 
   const hasExact = exactMatches.length > 0;
-  const displayedNearest = showAllNearest ? nearestMatches.slice(0, 30) : nearestMatches.slice(0, 10);
+  const sortedExact = useMemo(() => {
+    return [...exactMatches].sort((a, b) => {
+      const targetA = a.meta.originalQuranicWord || a.meta.word || a.combo;
+      const targetB = b.meta.originalQuranicWord || b.meta.word || b.combo;
+      const isDirectA = !!a.meta.isDirectExact && a.combo === targetA;
+      const isDirectB = !!b.meta.isDirectExact && b.combo === targetB;
+      const confA = isDirectA ? 100 : Math.min(a.meta.confidence || 90, 95);
+      const confB = isDirectB ? 100 : Math.min(b.meta.confidence || 90, 95);
+      if (confB !== confA) {
+        return confB - confA;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.meta.occurrences || 0) - (a.meta.occurrences || 0);
+    });
+  }, [exactMatches]);
+
+  const sortedNearest = useMemo(() => {
+    return [...nearestMatches].sort((a, b) => {
+      if (b.nearest.similarity !== a.nearest.similarity) {
+        return b.nearest.similarity - a.nearest.similarity;
+      }
+      return (b.nearest.occurrences || 0) - (a.nearest.occurrences || 0);
+    });
+  }, [nearestMatches]);
+  const displayedNearest = showAllNearest ? sortedNearest.slice(0, 30) : sortedNearest.slice(0, 10);
 
   return (
     <div
@@ -192,23 +218,33 @@ export function QuranicCombinationsLexicon({
                   </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                    {exactMatches.map(({ combo, meta, isReversed }, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white dark:bg-stone-800 rounded-xl border border-emerald-300 dark:border-emerald-700/60 hover:border-emerald-500 p-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-2 group"
-                      >
-                        <div className="flex items-start justify-between gap-1">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-base font-normal font-quran text-emerald-900 dark:text-emerald-300 tracking-wider">
-                                {combo}
-                              </span>
-                              {meta.originalQuranicWord !== combo && (
-                                <span className="text-2xs text-stone-500 dark:text-stone-400 font-medium">
-                                  (أصلها: {meta.originalQuranicWord})
+                    {sortedExact.map(({ combo, meta, isReversed }, idx) => {
+                      const targetWord = meta.originalQuranicWord || meta.word || combo;
+                      const isDirectExact = !!meta.isDirectExact && combo === targetWord;
+                      const displayPercentage = isDirectExact ? 100 : Math.min(meta.confidence || 90, 95);
+                      const displayText = isDirectExact ? combo : `${combo} = ${targetWord}`;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-white dark:bg-stone-800 rounded-xl border border-emerald-300 dark:border-emerald-700/60 hover:border-emerald-500 p-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-2 group"
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs shrink-0 ${
+                                    isDirectExact
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200'
+                                  }`}
+                                >
+                                  {displayPercentage}%
                                 </span>
-                              )}
-                            </div>
+                                <span className="text-base font-bold font-quran text-emerald-900 dark:text-emerald-300 tracking-wider">
+                                  {displayText}
+                                </span>
+                              </div>
                             {meta.occurrences > 1 ? (
                               <a
                                 href={getQuranTopSearchUrl(meta.originalQuranicWord || combo)}
@@ -286,7 +322,8 @@ export function QuranicCombinationsLexicon({
                           )}
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
                   </div>
                 </div>
               ) : (
@@ -335,13 +372,9 @@ export function QuranicCombinationsLexicon({
                           className="bg-white dark:bg-stone-800 rounded-xl border border-amber-200 dark:border-stone-700 hover:border-amber-400 p-2.5 text-xs flex flex-col justify-between gap-2 shadow-2xs hover:shadow-xs transition-all"
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1">
-                              <span className="font-extrabold text-stone-700 dark:text-stone-300 tracking-wider font-mono">
-                                {combo}
-                              </span>
-                              <span className="text-stone-300 dark:text-stone-600">←</span>
-                              <span className="font-extrabold text-amber-950 dark:text-amber-300 text-sm">
-                                {nearest.originalQuranicWord}
+                            <div className="flex items-center gap-1 font-bold font-quran text-xs sm:text-sm">
+                              <span className="text-stone-800 dark:text-stone-200">
+                                {combo} = {nearest.originalQuranicWord || nearest.word}
                               </span>
                             </div>
 

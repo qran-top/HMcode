@@ -6,6 +6,7 @@ import { NotebookDrawer } from './components/NotebookDrawer';
 import { PWAPrompt } from './components/PWAPrompt';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { FawatihScaleView } from './components/FawatihScaleView';
+import { FawatihGematriaView } from './components/FawatihGematriaView';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
 import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
@@ -82,7 +83,12 @@ export function App() {
           <QuranicChainMatcher initialQuery={sharedText} isWideMode={isWideMode} toggleWideMode={toggleWideMode} />
         </div>
 
-        {/* Tab 2: Fawatih Scale & 29-Surah Fingerprint Distribution (F2) */}
+        {/* Tab 2: Fawatih 29-Surah Direct Noorani Gematria & Quran Matcher (F2) */}
+        <div className={activeTab === 'fawatih_gematria' ? 'block' : 'hidden'}>
+          <FawatihGematriaView initialQuery={sharedText || 'الم'} />
+        </div>
+
+        {/* Tab 3: Fawatih Scale & 29-Surah Fingerprint Distribution (F3) */}
         <div className={activeTab === 'fawatih_scale' ? 'block' : 'hidden'}>
           <FawatihScaleView
             initialQuery={sharedText || 'كتاب'}

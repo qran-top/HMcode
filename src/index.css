@@ -398,38 +398,84 @@ html.theme-dos button[class*="bg-white"]:hover {
   font-weight: bold !important;
 }
 
-/* 5. الجفر (Jafr: بسط الحروف وأسماؤها) - Mystical Purple / Fuchsia (#d946ef) */
-.dos-card-jafr {
+/* 5. صرقم 1 (SRQM 1: صرقم - فبضز) - Vivid Emerald Green (#55ff55 / #33ff33) */
+.dos-card-srqm1 {
+  background-color: #00290a !important;
+  border: 2px solid #33ff33 !important;
+  color: #55ff55 !important;
+}
+.dos-card-srqm1:hover {
+  background-color: #003d10 !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-srqm1 {
+  background-color: #004d14 !important;
+  color: #55ff55 !important;
+  border: 1px solid #33ff33 !important;
+  font-weight: bold !important;
+}
+.dos-phrase-srqm1 {
+  color: #55ff55 !important;
+}
+
+/* 6. صرقم 2 (SRQT 2: صرقم - خبعضغ) - Fuchsia / Purple (#d946ef / #f5d0fe) */
+.dos-card-srqt2 {
   background-color: #2a0836 !important;
   border: 2px solid #d946ef !important;
   color: #f5d0fe !important;
 }
-.dos-card-jafr:hover {
+.dos-card-srqt2:hover {
   background-color: #3f0c52 !important;
   border-color: #ffffff !important;
 }
-.dos-badge-jafr {
+.dos-badge-srqt2 {
   background-color: #4a0459 !important;
   color: #f5d0fe !important;
   border: 1px solid #d946ef !important;
   font-weight: bold !important;
 }
-
-/* 6. البيات (Bayat: جدول البيات المخصوص) - Teal / Emerald Cyan (#14b8a6) */
-.dos-card-bayat {
-  background-color: #002b28 !important;
-  border: 2px solid #14b8a6 !important;
-  color: #99f6e4 !important;
+.dos-phrase-srqt2 {
+  color: #f5d0fe !important;
 }
-.dos-card-bayat:hover {
-  background-color: #00403c !important;
+
+/* 7. صرقم 3 (SRQD 3: صرقم - غخضظ) - Rose / Coral (#f43f5e / #fecdd3) */
+.dos-card-srqd3 {
+  background-color: #3b0d18 !important;
+  border: 2px solid #f43f5e !important;
+  color: #fecdd3 !important;
+}
+.dos-card-srqd3:hover {
+  background-color: #4c1120 !important;
   border-color: #ffffff !important;
 }
-.dos-badge-bayat {
-  background-color: #004d47 !important;
-  color: #99f6e4 !important;
-  border: 1px solid #14b8a6 !important;
+.dos-badge-srqd3 {
+  background-color: #500717 !important;
+  color: #fecdd3 !important;
+  border: 1px solid #f43f5e !important;
   font-weight: bold !important;
+}
+.dos-phrase-srqd3 {
+  color: #fb7185 !important;
+}
+
+/* 8. صرتغ 4 (SRTG 4: صرتغ - كطثظ) - Golden Amber / Bronze (#f59e0b / #fde68a) */
+.dos-card-srtg4 {
+  background-color: #291b00 !important;
+  border: 2px solid #f59e0b !important;
+  color: #fbbf24 !important;
+}
+.dos-card-srtg4:hover {
+  background-color: #3d2900 !important;
+  border-color: #ffffff !important;
+}
+.dos-badge-srtg4 {
+  background-color: #451a03 !important;
+  color: #fde68a !important;
+  border: 1px solid #f59e0b !important;
+  font-weight: bold !important;
+}
+.dos-phrase-srtg4 {
+  color: #fde68a !important;
 }
 
 /* ========================================================================= */

@@ -14,6 +14,10 @@ import {
   BAYAT_MAGHRIBI_VALUES,
   JAFR_VALUES,
   BAYAT_VALUES,
+  SRQM_1_VALUES,
+  SRQT_2_VALUES,
+  SRQD_3_VALUES,
+  SRTG_4_VALUES,
 } from '../context/GematriaContext';
 
 export {
@@ -21,6 +25,10 @@ export {
   JAFR_MAGHRIBI_VALUES,
   BAYAT_MASHRIQI_VALUES,
   BAYAT_MAGHRIBI_VALUES,
+  SRQM_1_VALUES,
+  SRQT_2_VALUES,
+  SRQD_3_VALUES,
+  SRTG_4_VALUES,
 };
 
 /** أسماء الحروف العربية القياسية لبسط الحروف واشتقاق العامرية */
@@ -338,11 +346,11 @@ export function getCurrentHijriLunarDay(date: Date = new Date()): HijriLunarDate
 }
 
 export const DEFAULT_GEMATRIA_OPTIONS: GematriaCalculationOptions = {
-  daggerAlif: 'count_as_1',
-  taMarbuta: 'ha_5',
+  daggerAlif: 'ignore_0',
+  taMarbuta: 'ta_400',
   alifMaqsura: 'ya_10',
   hamzaMode: 'carrier_value',
-  shaddahMode: 'single_1x',
+  shaddahMode: 'double_2x',
   definiteArticleMode: 'include_all',
   orthographyMode: 'uthmani',
   silentWawMode: 'count_as_6',
@@ -519,7 +527,8 @@ function calculateSingleWordGematria(
     }
   }
 
-  let daggerAlifVal = tableValues['ا'] || 1;
+  const isPartialTable = Object.keys(tableValues).length < 24;
+  let daggerAlifVal = tableValues['ا'] ?? (isPartialTable ? 0 : 1);
   if (opts.lunarScaleMode) {
     const day = Math.min(28, Math.max(1, Math.round(opts.lunarDay ?? 14)));
     if (day <= 14) {
@@ -534,24 +543,34 @@ function calculateSingleWordGematria(
 
     // 1. Ta Marbuta
     if (char === 'ة' || char === 'ۃ') {
-      charVal = opts.taMarbuta === 'ta_400' ? (tableValues['ت'] || 400) : (tableValues['ه'] || tableValues['ة'] || 5);
+      charVal = opts.taMarbuta === 'ta_400'
+        ? (tableValues['ت'] ?? (isPartialTable ? 0 : 400))
+        : (tableValues['ه'] ?? tableValues['هـ'] ?? tableValues['ة'] ?? 0);
     }
     // 2. Alif Maqsura
     else if (char === 'ى') {
-      charVal = opts.alifMaqsura === 'alif_1' ? (tableValues['ا'] || 1) : (tableValues['ي'] || tableValues['ى'] || 10);
+      charVal = opts.alifMaqsura === 'alif_1'
+        ? (tableValues['ا'] ?? (isPartialTable ? 0 : 1))
+        : (tableValues['ي'] ?? tableValues['ى'] ?? (isPartialTable ? 0 : 10));
     }
     // 3. Hamza modes
     else if (char === 'ء') {
-      charVal = opts.hamzaMode === 'ignore_isolated_0' ? 0 : (tableValues['ء'] || tableValues['ا'] || 1);
+      charVal = opts.hamzaMode === 'ignore_isolated_0'
+        ? 0
+        : (tableValues['ء'] ?? tableValues['ا'] ?? (isPartialTable ? 0 : 1));
     } else if (['أ', 'إ', 'آ', 'ٱ'].includes(char)) {
-      charVal = tableValues['ا'] || tableValues[char] || 1;
+      charVal = tableValues['ا'] ?? tableValues[char] ?? (isPartialTable ? 0 : 1);
     } else if (char === 'ؤ') {
-      charVal = opts.hamzaMode === 'all_as_alif_1' ? (tableValues['ا'] || 1) : (tableValues['و'] || tableValues['ؤ'] || 6);
+      charVal = opts.hamzaMode === 'all_as_alif_1'
+        ? (tableValues['ا'] ?? (isPartialTable ? 0 : 1))
+        : (tableValues['و'] ?? tableValues['ؤ'] ?? (isPartialTable ? 0 : 6));
     } else if (char === 'ئ') {
-      charVal = opts.hamzaMode === 'all_as_alif_1' ? (tableValues['ا'] || 1) : (tableValues['ي'] || tableValues['ئ'] || 10);
+      charVal = opts.hamzaMode === 'all_as_alif_1'
+        ? (tableValues['ا'] ?? (isPartialTable ? 0 : 1))
+        : (tableValues['ي'] ?? tableValues['ئ'] ?? (isPartialTable ? 0 : 10));
     } else {
       // Standard lookup
-      charVal = tableValues[char] || tableValues[normalizeAbjadChar(char)] || 0;
+      charVal = getCharValFromTable(char, tableValues);
     }
 
     const isTaHa = opts.taMarbuta !== 'ta_400';
@@ -596,8 +615,8 @@ function calculateSingleWordGematria(
   if (opts.silentWawMode === 'ignore_0') {
     const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
     if (/^(أولو|أولي|أولئك|أولات|عمرو|أولاء)$/.test(cleanWord)) {
-      if (!opts.nooraniOnlyMode) {
-        sum -= (tableValues['و'] || 6);
+      if (!opts.nooraniOnlyMode && !isPartialTable) {
+        sum -= (tableValues['و'] ?? 6);
       }
     }
   }
@@ -606,12 +625,10 @@ function calculateSingleWordGematria(
   if (opts.uthmaniWawMode === 'as_alif_1') {
     const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
     if (/^(الصلوة|صلوة|الزكوة|زكوة|الحيوة|حيوة|الربوا|ربوا|مشكوة|النجوة|الغدوة)$/.test(cleanWord)) {
-      if (opts.nooraniOnlyMode) {
-        // Waw was 0 because non-Noorani, but as Alif (Noorani) it gains 1
-        sum += (tableValues['ا'] || 1);
+      if (opts.nooraniOnlyMode || isPartialTable) {
+        sum += (tableValues['ا'] ?? 0);
       } else {
-        // Waw is counted as 1 (Alif) instead of 6 (Waw), so delta = -5
-        sum -= ((tableValues['و'] || 6) - (tableValues['ا'] || 1));
+        sum -= ((tableValues['و'] ?? 6) - (tableValues['ا'] ?? 1));
       }
     }
   }
@@ -620,7 +637,7 @@ function calculateSingleWordGematria(
   if (opts.silentAlifMode === 'ignore_0') {
     const cleanWord = processedText.replace(/[^\u0621-\u064A]/g, '');
     if (cleanWord.length >= 4 && cleanWord.endsWith('وا') && !/^(عفوا|دعوا|شكوا)$/.test(cleanWord)) {
-      sum -= (tableValues['ا'] || 1);
+      sum -= (tableValues['ا'] ?? (isPartialTable ? 0 : 1));
     }
   }
 
@@ -679,6 +696,26 @@ export function normalizeAbjadChar(char: string): string {
   if (['ى', 'ئ', 'ي', 'ىء', 'ئـ', 'يـ', 'ۍ', 'ې'].includes(char)) return 'ي';
   if (['ؤ', 'و', 'ٶ', 'ۇ'].includes(char)) return 'و';
   return char;
+}
+
+/**
+ * Safely looks up character value in a given gematria table.
+ * If the table is a partial/14-letter Noorani table (< 24 letter definitions), missing letters strictly evaluate to 0.
+ */
+export function getCharValFromTable(c: string, tableValues: Record<string, number>): number {
+  if (!c) return 0;
+  if (tableValues[c] !== undefined) return tableValues[c];
+  const norm = normalizeAbjadChar(c);
+  if (tableValues[norm] !== undefined) return tableValues[norm];
+  
+  // If table is a partial/Noorani 14-letter table (< 24 entries), missing letters MUST be 0
+  const isPartialTable = Object.keys(tableValues).length < 24;
+  if (isPartialTable) {
+    return 0;
+  }
+  
+  // Only for complete 28-letter tables, fallback to ABJAD_VALUES if needed
+  return ABJAD_VALUES[c] ?? ABJAD_VALUES[norm] ?? 0;
 }
 
 /**
@@ -1665,7 +1702,7 @@ export function findNooraniCombinations(
   const letterMap = nooraniChars
     .map((ch) => ({
       char: ch,
-      val: tableValues[ch] ?? ABJAD_VALUES[ch] ?? 0,
+      val: getCharValFromTable(ch, tableValues),
     }))
     .filter((item) => item.val > 0);
 
@@ -1682,14 +1719,14 @@ export function findNooraniCombinations(
     const hasDup = new Set(rawLetters).size !== rawLetters.length;
     if (effectiveUniqueOnly && hasDup) continue;
 
-    const fSum = rawLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+    const fSum = rawLetters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0);
     if (fSum === targetValue) {
       const multisetKey = [...rawLetters].sort().join('');
       seenMultisets.add(multisetKey);
       results.push({
         formula: f.formula,
         letters: rawLetters,
-        values: rawLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+        values: rawLetters.map((c) => getCharValFromTable(c, tableValues)),
         sum: fSum,
         isAuthenticQuranicFawatih: true,
         surahs: f.surahs,
@@ -1742,7 +1779,7 @@ export function findNooraniCombinations(
     { word: 'ن', letters: ['ن'], surahs: ['القلم'] },
   ].map((b) => ({
     ...b,
-    val: b.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0),
+    val: b.letters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0),
   })).filter((b) => b.val > 0 && b.val <= targetValue);
 
   // Dynamic max blocks based on target value
@@ -1772,7 +1809,7 @@ export function findNooraniCombinations(
         results.push({
           formula: formulaStr,
           letters: allLetters,
-          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
           sum: currentSum,
           isAuthenticQuranicFawatih: true,
           surahs: allSurahs,
@@ -1878,7 +1915,7 @@ export function findNooraniCombinations(
     results.push({
       formula: ordering.orderedString,
       letters: ordering.orderedLetters,
-      values: ordering.orderedLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+      values: ordering.orderedLetters.map((c) => getCharValFromTable(c, tableValues)),
       sum: combo.sum,
       isAuthenticQuranicFawatih: ordering.isAuthentic,
       surahs: ordering.surahs,
@@ -1970,9 +2007,14 @@ export interface MergedNooraniFormulaItem {
   values: number[];
   sumMashriqi: number;
   sumMaghribi: number;
+  sumSrqm1?: number;
+  sumSrqt2?: number;
+  sumSrqd3?: number;
+  sumSrtg4?: number;
   displaySum: string;
-  system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
-  systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
+  system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4';
+  systemLabel: string;
+  matchingSystems?: ('maghribi' | 'mashriqi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4')[];
   isAuthenticQuranicFawatih: boolean;
   surahs?: string[];
   surahOrders?: number[];
@@ -2169,11 +2211,11 @@ export const QURANIC_FAWATIH_OCCURRENCE_CAPS: Record<string, number> = {
  */
 export function getPrepared29QuranicSurahs(tableValues: Record<string, number>) {
   return QURANIC_29_SURAH_FAWATIH.map((s) => {
-    const val = s.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+    const val = s.letters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0);
     const subUnits = s.subFormulas
       ? s.subFormulas.map((sub, idx) => {
           const subLetters = sub.split('');
-          const subVal = subLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+          const subVal = subLetters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0);
           return {
             formula: sub,
             letters: subLetters,
@@ -2213,7 +2255,7 @@ export function getPrepared30QuranicAyahs(tableValues: Record<string, number>) {
       // Split Surah 42 (Ash-Shura) into its two distinct consecutive Ayat
       s.subFormulas.forEach((sub, idx) => {
         const subLetters = sub.split('');
-        const val = subLetters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+        const val = subLetters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0);
         list.push({
           surahNumber: s.surahNumber,
           surahName: s.surahName,
@@ -2227,7 +2269,7 @@ export function getPrepared30QuranicAyahs(tableValues: Record<string, number>) {
         });
       });
     } else {
-      const val = s.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0);
+      const val = s.letters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0);
       list.push({
         surahNumber: s.surahNumber,
         surahName: s.surahName,
@@ -2417,7 +2459,7 @@ export function findNooraniByPhrasePartitioning(
           results.push({
             formula: formulaStr,
             letters: allLetters,
-            values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+            values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
             sum: sumTotal,
             isAuthenticQuranicFawatih: true,
             surahs: matchedAyahs.map(
@@ -2468,7 +2510,7 @@ export function findNooraniByPhrasePartitioning(
         results.push({
           formula: formulaStr,
           letters: allLetters,
-          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
           sum: targetValue,
           isAuthenticQuranicFawatih: true,
           surahs: surahLabels,
@@ -2504,7 +2546,7 @@ export function findNooraniByPhrasePartitioning(
         results.push({
           formula: a1.formula,
           letters: a1.letters,
-          values: a1.letters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          values: a1.letters.map((c) => getCharValFromTable(c, tableValues)),
           sum: targetValue,
           isAuthenticQuranicFawatih: true,
           surahs: surahLabels,
@@ -2526,7 +2568,7 @@ export function findNooraniByPhrasePartitioning(
       results.push({
         formula: s.formula,
         letters: s.letters,
-        values: s.letters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+        values: s.letters.map((c) => getCharValFromTable(c, tableValues)),
         sum: targetValue,
         isAuthenticQuranicFawatih: true,
         surahs: [`${s.formula} (${s.surahName} ${s.surahNumber})`],
@@ -2558,7 +2600,7 @@ export function findNooraniByPhrasePartitioning(
             results.push({
               formula: formulaStr,
               letters: allLetters,
-              values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+              values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
               sum: targetValue,
               isAuthenticQuranicFawatih: true,
               surahs: [
@@ -2670,7 +2712,7 @@ export function findNooraniByDPKnapsack(
     results.push({
       formula: formulaStr,
       letters: allLetters,
-      values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+      values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
       sum: targetValue,
       isAuthenticQuranicFawatih: true,
       surahs: surahList,
@@ -2743,7 +2785,7 @@ export function findNooraniByMinBlocksGreedy(
             results.push({
               formula: formulaStr,
               letters: allLetters,
-              values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+              values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
               sum: currentSum,
               isAuthenticQuranicFawatih: true,
               surahs: surahList,
@@ -2845,7 +2887,7 @@ export function findNooraniByHarmonicSearch(
         results.push({
           formula: formulaStr,
           letters: allLetters,
-          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
           sum: curr.sum,
           isAuthenticQuranicFawatih: true,
           surahs: surahList,
@@ -2949,7 +2991,7 @@ export function findNooraniByStrictUniqueFawatih(
         results.push({
           formula: formulaStr,
           letters: allLetters,
-          values: allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0),
+          values: allLetters.map((c) => getCharValFromTable(c, tableValues)),
           sum: currentSum,
           isAuthenticQuranicFawatih: true,
           surahs: surahList,
@@ -3099,32 +3141,13 @@ export function inferSurahOrdersFromFormula(formulaStr: string): number[] {
   return Array.from(new Set(matchedOrders)).sort((a, b) => a - b);
 }
 
-/**
- * Merged & Classified Noorani Formula Item with full system metadata
- */
-export interface MergedNooraniFormulaItem {
-  key: string;
-  formula: string;
-  letters: string[];
-  values: number[];
-  sumMashriqi: number;
-  sumMaghribi: number;
-  displaySum: string;
-  system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
-  systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
-  isAuthenticQuranicFawatih: boolean;
-  surahs?: string[];
-  surahOrders?: number[];
-  description?: string;
-  hasDuplicates?: boolean;
-}
 
 /**
  * Progress payload for asynchronous Noorani processing
  */
 export interface ClassifyProgressUpdate {
   percent: number;
-  stage: 'idle' | 'mashriqi' | 'maghribi' | 'merging' | 'completed' | 'cancelled';
+  stage: 'idle' | 'mashriqi' | 'maghribi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4' | 'merging' | 'completed' | 'cancelled';
   message: string;
   foundCount: number;
 }
@@ -3208,7 +3231,7 @@ export function findNooraniMaxHamimCombinations(
     .filter((b) => !b.letters.some((c) => exclSet.has(c)))
     .map((b) => ({
       ...b,
-      val: b.letters.reduce((acc, c) => acc + (tableValues[c] ?? ABJAD_VALUES[c] ?? 0), 0),
+      val: b.letters.reduce((acc, c) => acc + getCharValFromTable(c, tableValues), 0),
     }))
     .filter((b) => b.val > 0)
     .sort((a, b) => b.val - a.val);
@@ -3254,7 +3277,7 @@ export function findNooraniMaxHamimCombinations(
       seenFormulas.add(formulaStr);
 
       const allLetters = formulaStr.replace(/\s+/g, '').split('');
-      const values = allLetters.map((c) => tableValues[c] ?? ABJAD_VALUES[c] ?? 0);
+      const values = allLetters.map((c) => getCharValFromTable(c, tableValues));
       const isHawamim7 = k === 7 && rem === 0;
 
       const surahOrders = inferSurahOrdersFromFormula(formulaStr);
@@ -3281,13 +3304,25 @@ export function findNooraniMaxHamimCombinations(
 }
 
 /**
- * Helper to build merged items from raw mashriqi and maghribi matches
+ * Helper to build merged items from raw candidate matches across all active Gematria tables
  */
 function buildMergedNooraniItems(
-  mashList: NooraniFormulaMatch[],
-  magList: NooraniFormulaMatch[],
-  targetMashriqi: number,
-  targetMaghribi: number,
+  candidateLists: {
+    mashList?: NooraniFormulaMatch[];
+    magList?: NooraniFormulaMatch[];
+    srqm1List?: NooraniFormulaMatch[];
+    srqt2List?: NooraniFormulaMatch[];
+    srqd3List?: NooraniFormulaMatch[];
+    srtg4List?: NooraniFormulaMatch[];
+  },
+  targets: {
+    targetMashriqi: number;
+    targetMaghribi: number;
+    targetSrqm1?: number;
+    targetSrqt2?: number;
+    targetSrqd3?: number;
+    targetSrtg4?: number;
+  },
   maxResults: number,
   queryText: string = '',
   options: {
@@ -3297,6 +3332,14 @@ function buildMergedNooraniItems(
 ): MergedNooraniFormulaItem[] {
   const { excludedLetters = [], onlyRepeated = false } = options;
   const excludedSet = new Set(excludedLetters.filter(Boolean));
+  const {
+    targetMashriqi = 0,
+    targetMaghribi = 0,
+    targetSrqm1 = 0,
+    targetSrqt2 = 0,
+    targetSrqd3 = 0,
+    targetSrtg4 = 0,
+  } = targets;
 
   const formulaMap = new Map<string, {
     formula: string;
@@ -3309,8 +3352,16 @@ function buildMergedNooraniItems(
     matchScore: number;
   }>();
 
-  for (const m of [...mashList, ...magList]) {
-    // Check excluded letters
+  const allCandidates = [
+    ...(candidateLists.mashList || []),
+    ...(candidateLists.magList || []),
+    ...(candidateLists.srqm1List || []),
+    ...(candidateLists.srqt2List || []),
+    ...(candidateLists.srqd3List || []),
+    ...(candidateLists.srtg4List || []),
+  ];
+
+  for (const m of allCandidates) {
     if (excludedSet.size > 0 && m.letters.some((c) => excludedSet.has(c))) {
       continue;
     }
@@ -3340,9 +3391,13 @@ function buildMergedNooraniItems(
 
   // Guaranteed Hamim-maximizing combinations for target values
   if (!excludedSet.has('ح') && !excludedSet.has('م')) {
-    const hamimCombsMash = targetMashriqi > 0 ? findNooraniMaxHamimCombinations(targetMashriqi, MASHRIQI_VALUES, { excludedLetters, maxResults: 20 }) : [];
-    const hamimCombsMag = targetMaghribi > 0 ? findNooraniMaxHamimCombinations(targetMaghribi, MAGHRIBI_VALUES, { excludedLetters, maxResults: 20 }) : [];
-    for (const hc of [...hamimCombsMash, ...hamimCombsMag]) {
+    const hamimMash = targetMashriqi > 0 ? findNooraniMaxHamimCombinations(targetMashriqi, MASHRIQI_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    const hamimMag = targetMaghribi > 0 ? findNooraniMaxHamimCombinations(targetMaghribi, MAGHRIBI_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    const hamimSrqm1 = targetSrqm1 > 0 ? findNooraniMaxHamimCombinations(targetSrqm1, SRQM_1_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    const hamimSrqt2 = targetSrqt2 > 0 ? findNooraniMaxHamimCombinations(targetSrqt2, SRQT_2_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    const hamimSrqd3 = targetSrqd3 > 0 ? findNooraniMaxHamimCombinations(targetSrqd3, SRQD_3_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    const hamimSrtg4 = targetSrtg4 > 0 ? findNooraniMaxHamimCombinations(targetSrtg4, SRTG_4_VALUES, { excludedLetters, maxResults: 15 }) : [];
+    for (const hc of [...hamimMash, ...hamimMag, ...hamimSrqm1, ...hamimSrqt2, ...hamimSrqd3, ...hamimSrtg4]) {
       if (!formulaMap.has(hc.formula)) {
         formulaMap.set(hc.formula, {
           formula: hc.formula,
@@ -3358,8 +3413,10 @@ function buildMergedNooraniItems(
     }
   }
 
-  // 1. Guaranteed Inclusion: 7 Hawamim when target is 336 (7 * 48 = 336 in both systems)
-  if ((targetMashriqi === 336 || targetMaghribi === 336) && !excludedSet.has('ح') && !excludedSet.has('م')) {
+  const allTargetValues = [targetMashriqi, targetMaghribi, targetSrqm1, targetSrqt2, targetSrqd3, targetSrtg4];
+
+  // 1. Guaranteed Inclusion: 7 Hawamim when target is 336 (7 * 48 = 336)
+  if (allTargetValues.includes(336) && !excludedSet.has('ح') && !excludedSet.has('م')) {
     const f7 = 'حم حم حم حم حم حم حم';
     formulaMap.set(f7, {
       formula: f7,
@@ -3381,8 +3438,8 @@ function buildMergedNooraniItems(
     });
   }
 
-  // 2. Guaranteed Inclusion: 7 Hawamim + Ayn-Sin-Qaf when target is 566 (336 + 230 = 566)
-  if ((targetMashriqi === 566 || targetMaghribi === 566) && !['ح', 'م', 'ع', 'س', 'ق'].some((c) => excludedSet.has(c))) {
+  // 2. Guaranteed Inclusion: 7 Hawamim + Ayn-Sin-Qaf when target is 566
+  if (allTargetValues.includes(566) && !['ح', 'م', 'ع', 'س', 'ق'].some((c) => excludedSet.has(c))) {
     const f8 = 'حم حم حم عسق حم حم حم حم';
     formulaMap.set(f8, {
       formula: f8,
@@ -3404,8 +3461,8 @@ function buildMergedNooraniItems(
     });
   }
 
-  // 3. Guaranteed Inclusion: Single Hamim (48) with all 7 Hawamim surahs
-  if ((targetMashriqi === 48 || targetMaghribi === 48) && !excludedSet.has('ح') && !excludedSet.has('م')) {
+  // 3. Guaranteed Inclusion: Single Hamim
+  if (allTargetValues.some((v) => v > 0 && (v === 48 || v === (SRQM_1_VALUES['ح'] + SRQM_1_VALUES['م']) || v === (SRTG_4_VALUES['ح'] + SRTG_4_VALUES['م']))) && !excludedSet.has('ح') && !excludedSet.has('م')) {
     const f1 = 'حم';
     formulaMap.set(f1, {
       formula: f1,
@@ -3427,7 +3484,7 @@ function buildMergedNooraniItems(
     });
   }
 
-  // 4. If queryText is composed of fawatih tokens, guarantee it as an authentic entry
+  // 4. If queryText is composed of fawatih tokens
   if (queryText && queryText.trim()) {
     const qTrim = queryText.trim();
     const qTokens = qTrim.split(/\s+/).filter(Boolean);
@@ -3439,7 +3496,18 @@ function buildMergedNooraniItems(
       if (!qLetters.some((c) => excludedSet.has(c))) {
         const qSumMash = qLetters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
         const qSumMag = qLetters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
-        if ((targetMashriqi > 0 && qSumMash === targetMashriqi) || (targetMaghribi > 0 && qSumMag === targetMaghribi)) {
+        const qSumSrqm1 = qLetters.reduce((acc, c) => acc + (SRQM_1_VALUES[c] ?? 0), 0);
+        const qSumSrqt2 = qLetters.reduce((acc, c) => acc + (SRQT_2_VALUES[c] ?? 0), 0);
+        const qSumSrqd3 = qLetters.reduce((acc, c) => acc + (SRQD_3_VALUES[c] ?? 0), 0);
+        const qSumSrtg4 = qLetters.reduce((acc, c) => acc + (SRTG_4_VALUES[c] ?? 0), 0);
+        if (
+          (targetMashriqi > 0 && qSumMash === targetMashriqi) ||
+          (targetMaghribi > 0 && qSumMag === targetMaghribi) ||
+          (targetSrqm1 > 0 && qSumSrqm1 === targetSrqm1) ||
+          (targetSrqt2 > 0 && qSumSrqt2 === targetSrqt2) ||
+          (targetSrqd3 > 0 && qSumSrqd3 === targetSrqd3) ||
+          (targetSrtg4 > 0 && qSumSrtg4 === targetSrtg4)
+        ) {
           const qOrders = inferSurahOrdersFromFormula(qTrim);
           formulaMap.set(qTrim, {
             formula: qTrim,
@@ -3457,6 +3525,24 @@ function buildMergedNooraniItems(
     }
   }
 
+  const SYSTEM_NAMES: Record<string, string> = {
+    maghribi: 'غربي',
+    mashriqi: 'شرقي',
+    srqm1: 'صرقم 1',
+    srqt2: 'صرقم 2',
+    srqd3: 'صرقم 3',
+    srtg4: 'صرتغ 4',
+  };
+
+  const activeTargetsCount = [
+    targetMaghribi > 0,
+    targetMashriqi > 0,
+    targetSrqm1 > 0,
+    targetSrqt2 > 0,
+    targetSrqd3 > 0,
+    targetSrtg4 > 0,
+  ].filter(Boolean).length;
+
   const mergedItems: MergedNooraniFormulaItem[] = [];
 
   for (const [formulaStr, item] of formulaMap.entries()) {
@@ -3464,57 +3550,80 @@ function buildMergedNooraniItems(
       continue;
     }
 
-    // Strict Hamim Rule: Any formula containing 'حم' must be composed purely of 'حم' or 'حم' with complete authentic Quranic Fawatih tokens only (no loose letters)
     if (!isStrictlyAuthenticHamimFormula(formulaStr)) {
       continue;
     }
 
     const sumMash = item.letters.reduce((acc, c) => acc + (MASHRIQI_VALUES[c] ?? 0), 0);
     const sumMag = item.letters.reduce((acc, c) => acc + (MAGHRIBI_VALUES[c] ?? 0), 0);
+    const sumSrqm1 = item.letters.reduce((acc, c) => acc + (SRQM_1_VALUES[c] ?? 0), 0);
+    const sumSrqt2 = item.letters.reduce((acc, c) => acc + (SRQT_2_VALUES[c] ?? 0), 0);
+    const sumSrqd3 = item.letters.reduce((acc, c) => acc + (SRQD_3_VALUES[c] ?? 0), 0);
+    const sumSrtg4 = item.letters.reduce((acc, c) => acc + (SRTG_4_VALUES[c] ?? 0), 0);
 
-    const matchesMash = (targetMashriqi > 0 && sumMash === targetMashriqi);
-    const matchesMag = (targetMaghribi > 0 && sumMag === targetMaghribi);
+    const matchingSystems: ('maghribi' | 'mashriqi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4')[] = [];
+    if (targetMaghribi > 0 && sumMag === targetMaghribi) matchingSystems.push('maghribi');
+    if (targetMashriqi > 0 && sumMash === targetMashriqi) matchingSystems.push('mashriqi');
+    if (targetSrqm1 > 0 && sumSrqm1 === targetSrqm1) matchingSystems.push('srqm1');
+    if (targetSrqt2 > 0 && sumSrqt2 === targetSrqt2) matchingSystems.push('srqt2');
+    if (targetSrqd3 > 0 && sumSrqd3 === targetSrqd3) matchingSystems.push('srqd3');
+    if (targetSrtg4 > 0 && sumSrtg4 === targetSrtg4) matchingSystems.push('srtg4');
 
-    if (!matchesMash && !matchesMag) continue;
+    if (matchingSystems.length === 0) continue;
 
     const rep = getFormulaRepetitionDetails(formulaStr, item.letters);
     if (onlyRepeated && !rep.hasRepeats) {
       continue;
     }
 
-    let system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi';
-    let systemLabel: 'مشترك' | 'مطابق للنظامين' | 'شرقي' | 'غربي';
+    let system: 'both' | 'dual_match' | 'mashriqi' | 'maghribi' | 'srqm1' | 'srqt2' | 'srqd3' | 'srtg4';
+    let systemLabel: string;
     let displaySum: string;
 
-    if (matchesMash && matchesMag) {
+    if (matchingSystems.length >= activeTargetsCount && activeTargetsCount > 1) {
       system = 'both';
-      systemLabel = 'مشترك';
+      systemLabel = 'مشترك (كافة الجداول)';
+      displaySum = `${sumMag || sumMash || sumSrqm1}`;
+    } else if (matchingSystems.length === 2 && matchingSystems.includes('mashriqi') && matchingSystems.includes('maghribi')) {
+      system = 'dual_match';
+      systemLabel = 'مطابق للمشرقي والمغربي';
       displaySum = `${sumMash}`;
-    } else if (matchesMash) {
-      system = 'mashriqi';
-      systemLabel = 'شرقي';
-      displaySum = `${sumMash}`;
+    } else if (matchingSystems.length > 1) {
+      system = 'both';
+      systemLabel = `مشترك (${matchingSystems.map((s) => SYSTEM_NAMES[s]).join(' + ')})`;
+      displaySum = `${sumMag || sumMash || sumSrqm1 || sumSrqt2 || sumSrqd3 || sumSrtg4}`;
     } else {
-      system = 'maghribi';
-      systemLabel = 'غربي';
-      displaySum = `${sumMag}`;
+      system = matchingSystems[0];
+      systemLabel = SYSTEM_NAMES[matchingSystems[0]];
+      if (system === 'maghribi') displaySum = `${sumMag}`;
+      else if (system === 'mashriqi') displaySum = `${sumMash}`;
+      else if (system === 'srqm1') displaySum = `${sumSrqm1}`;
+      else if (system === 'srqt2') displaySum = `${sumSrqt2}`;
+      else if (system === 'srqd3') displaySum = `${sumSrqd3}`;
+      else displaySum = `${sumSrtg4}`;
     }
 
-    const values = item.letters.map((c) => (system === 'maghribi' ? MAGHRIBI_VALUES[c] : MASHRIQI_VALUES[c]) ?? 0);
+    const primaryTable = system === 'maghribi' ? MAGHRIBI_VALUES : system === 'srqm1' ? SRQM_1_VALUES : system === 'srqt2' ? SRQT_2_VALUES : system === 'srqd3' ? SRQD_3_VALUES : system === 'srtg4' ? SRTG_4_VALUES : MASHRIQI_VALUES;
+    const values = item.letters.map((c) => primaryTable[c] ?? 0);
     const surahOrders = item.surahOrders && item.surahOrders.length > 0
       ? item.surahOrders
       : inferSurahOrdersFromFormula(formulaStr);
 
     mergedItems.push({
-      key: `formula_${formulaStr}_${system}`,
+      key: `formula_${formulaStr}_${system}_${matchingSystems.join('_')}`,
       formula: formulaStr,
       letters: item.letters,
       values,
       sumMashriqi: sumMash,
       sumMaghribi: sumMag,
+      sumSrqm1,
+      sumSrqt2,
+      sumSrqd3,
+      sumSrtg4,
       displaySum,
       system,
       systemLabel,
+      matchingSystems,
       isAuthenticQuranicFawatih: item.isAuthenticQuranicFawatih,
       surahs: item.surahs,
       surahOrders,
@@ -3526,7 +3635,6 @@ function buildMergedNooraniItems(
     });
   }
 
-  // Sort merged items: Exact query match or authentic combinations with highest matchScore / repeat counts first
   const cleanQ = queryText.trim();
   mergedItems.sort((a, b) => {
     if (cleanQ && a.formula === cleanQ) return -1;
@@ -3536,10 +3644,9 @@ function buildMergedNooraniItems(
     const countA = a.surahOrders?.length || 0;
     const countB = b.surahOrders?.length || 0;
     if (countA !== countB) return countB - countA;
-    const sysPriority = (s: string) => (s === 'dual_match' ? 3 : s === 'both' ? 2 : 1);
-    if (sysPriority(b.system) !== sysPriority(a.system)) {
-      return sysPriority(b.system) - sysPriority(a.system);
-    }
+    const countMatchA = a.matchingSystems?.length || 1;
+    const countMatchB = b.matchingSystems?.length || 1;
+    if (countMatchB !== countMatchA) return countMatchB - countMatchA;
     return a.letters.length - b.letters.length;
   });
 
@@ -3553,6 +3660,10 @@ export function classifyAndMergeNooraniFormulas(
   targetMashriqi: number,
   targetMaghribi: number,
   options: {
+    targetSrqm1?: number;
+    targetSrqt2?: number;
+    targetSrqd3?: number;
+    targetSrtg4?: number;
     uniqueLettersOnly?: boolean;
     maxResults?: number;
     algorithmId?: NooraniAlgorithmId;
@@ -3563,6 +3674,10 @@ export function classifyAndMergeNooraniFormulas(
   } = {}
 ): MergedNooraniFormulaItem[] {
   const {
+    targetSrqm1 = 0,
+    targetSrqt2 = 0,
+    targetSrqd3 = 0,
+    targetSrtg4 = 0,
     uniqueLettersOnly = false,
     maxResults = 80,
     algorithmId = 1,
@@ -3596,7 +3711,46 @@ export function classifyAndMergeNooraniFormulas(
     shouldAbort,
   }) : [];
 
-  return buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText, {
+  if (shouldAbort && shouldAbort()) return [];
+
+  // Search SRQM 1 formulas
+  const srqm1List = targetSrqm1 > 0 ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrqm1, SRQM_1_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+    queryText,
+    excludedLetters,
+    onlyRepeated,
+    shouldAbort,
+  }) : [];
+
+  if (shouldAbort && shouldAbort()) return [];
+
+  // Search SRQD 3 formulas
+  const srqd3List = targetSrqd3 > 0 ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrqd3, SRQD_3_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+    queryText,
+    excludedLetters,
+    onlyRepeated,
+    shouldAbort,
+  }) : [];
+
+  if (shouldAbort && shouldAbort()) return [];
+
+  // Search SRTG 4 formulas
+  const srtg4List = targetSrtg4 > 0 ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrtg4, SRTG_4_VALUES, {
+    maxResults: 70,
+    uniqueLettersOnly,
+    queryText,
+    excludedLetters,
+    onlyRepeated,
+    shouldAbort,
+  }) : [];
+
+  const candidateLists = { mashList, magList, srqm1List, srqd3List, srtg4List };
+  const targets = { targetMashriqi, targetMaghribi, targetSrqm1, targetSrqd3, targetSrtg4 };
+
+  return buildMergedNooraniItems(candidateLists, targets, maxResults, queryText, {
     excludedLetters,
     onlyRepeated,
   });
@@ -3611,6 +3765,9 @@ export async function classifyAndMergeNooraniFormulasAsync(
   targetMashriqi: number,
   targetMaghribi: number,
   options: {
+    targetSrqm1?: number;
+    targetSrqd3?: number;
+    targetSrtg4?: number;
     uniqueLettersOnly?: boolean;
     maxResults?: number;
     algorithmId?: NooraniAlgorithmId;
@@ -3622,6 +3779,9 @@ export async function classifyAndMergeNooraniFormulasAsync(
   } = {}
 ): Promise<MergedNooraniFormulaItem[]> {
   const {
+    targetSrqm1 = 0,
+    targetSrqd3 = 0,
+    targetSrtg4 = 0,
     uniqueLettersOnly = false,
     maxResults = 80,
     algorithmId = 1,
@@ -3633,13 +3793,13 @@ export async function classifyAndMergeNooraniFormulasAsync(
   } = options;
 
   if (signal?.aborted) return [];
-  if (targetMashriqi <= 0 && targetMaghribi <= 0) return [];
+  if (targetMashriqi <= 0 && targetMaghribi <= 0 && targetSrqm1 <= 0 && targetSrqd3 <= 0 && targetSrtg4 <= 0) return [];
 
   // Phase 1: Initializing
   onProgress?.({
-    percent: 15,
+    percent: 10,
     stage: 'mashriqi',
-    message: 'جاري فحص توافقات النظام المشرقي...',
+    message: 'جاري فحص توافقات صيغ الأحرف المقطعة عبر النظم الحسابية...',
     foundCount: 0,
   });
 
@@ -3663,7 +3823,7 @@ export async function classifyAndMergeNooraniFormulasAsync(
 
   // Phase 3: Maghribi Search
   onProgress?.({
-    percent: 55,
+    percent: 25,
     stage: 'maghribi',
     message: 'جاري فحص توافقات النظام المغربي...',
     foundCount: mashList.length,
@@ -3685,27 +3845,102 @@ export async function classifyAndMergeNooraniFormulasAsync(
 
   if (signal?.aborted) return [];
 
-  // Phase 4: Merging and sequence analysis
+  // Phase 4: SRQM 1 Search
+  onProgress?.({
+    percent: 45,
+    stage: 'srqm1',
+    message: 'جاري فحص توافقات جدول صرقم 1 (طكاهلي)...',
+    foundCount: mashList.length + magList.length,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  if (signal?.aborted) return [];
+
+  const srqm1List = targetSrqm1 > 0
+    ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrqm1, SRQM_1_VALUES, {
+        maxResults: 70,
+        uniqueLettersOnly,
+        queryText,
+        excludedLetters,
+        onlyRepeated,
+        shouldAbort: () => !!signal?.aborted,
+      })
+    : [];
+
+  if (signal?.aborted) return [];
+
+  // Phase 5: SRQD 3 Search
+  onProgress?.({
+    percent: 65,
+    stage: 'srqd3',
+    message: 'جاري فحص توافقات جدول صرقم 3 (سنعح)...',
+    foundCount: mashList.length + magList.length + srqm1List.length,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  if (signal?.aborted) return [];
+
+  const srqd3List = targetSrqd3 > 0
+    ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrqd3, SRQD_3_VALUES, {
+        maxResults: 70,
+        uniqueLettersOnly,
+        queryText,
+        excludedLetters,
+        onlyRepeated,
+        shouldAbort: () => !!signal?.aborted,
+      })
+    : [];
+
+  if (signal?.aborted) return [];
+
+  // Phase 6: SRTG 4 Search
   onProgress?.({
     percent: 85,
+    stage: 'srtg4',
+    message: 'جاري فحص توافقات جدول صرتغ 4...',
+    foundCount: mashList.length + magList.length + srqm1List.length + srqd3List.length,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  if (signal?.aborted) return [];
+
+  const srtg4List = targetSrtg4 > 0
+    ? findNooraniCombinationsByAlgorithm(algorithmId, targetSrtg4, SRTG_4_VALUES, {
+        maxResults: 70,
+        uniqueLettersOnly,
+        queryText,
+        excludedLetters,
+        onlyRepeated,
+        shouldAbort: () => !!signal?.aborted,
+      })
+    : [];
+
+  if (signal?.aborted) return [];
+
+  // Phase 7: Merging and sequence analysis
+  onProgress?.({
+    percent: 92,
     stage: 'merging',
-    message: 'مطابقة التراكيب المشتركة وترتيب السور المصحفية...',
-    foundCount: mashList.length + magList.length,
+    message: 'مطابقة التراكيب المشتركة وترتيب السور المصحفية عبر الجداول...',
+    foundCount: mashList.length + magList.length + srqm1List.length + srqd3List.length + srtg4List.length,
   });
 
   await new Promise((resolve) => setTimeout(resolve, 10));
   if (signal?.aborted) return [];
 
-  const merged = buildMergedNooraniItems(mashList, magList, targetMashriqi, targetMaghribi, maxResults, queryText, {
+  const candidateLists = { mashList, magList, srqm1List, srqd3List, srtg4List };
+  const targets = { targetMashriqi, targetMaghribi, targetSrqm1, targetSrqd3, targetSrtg4 };
+
+  const merged = buildMergedNooraniItems(candidateLists, targets, maxResults, queryText, {
     excludedLetters,
     onlyRepeated,
   });
 
-  // Phase 5: Completed
+  // Phase 8: Completed
   onProgress?.({
     percent: 100,
     stage: 'completed',
-    message: `اكتملت المعالجة بنجاح (تم العثور على ${merged.length} تركيبة)`,
+    message: `اكتملت المعالجة بنجاح (تم العثور على ${merged.length} تركيبة في الجداول الحسابية)`,
     foundCount: merged.length,
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCipherLayers } from '../context/CipherLayersContext';
 import { useNotebook } from '../context/NotebookContext';
 import { useTheme } from '../context/ThemeContext';
+import { useHint } from '../context/HintContext';
 import { PRESET_TABLES, cleanText, normalizeArabicChar, getLayerColor, getAllCombinations, segmentIntoQuranicWords, LAYER_RAINBOW_COLORS, NOORANI_LETTERS_SET, analyzeWord, NOORANI_PRESETS, ARABIC_PRESETS, getShortPresetId, getExpandedPresetId } from '../cipherData';
 import { CompactLayersIndicator } from './CompactLayersIndicator';
 import { arabicDictionary } from '../utils/arabicDictionary';
@@ -53,10 +54,38 @@ import { AddToNotebookButton } from './AddToNotebookButton';
 import { SaveSystemModal } from './SaveSystemModal';
 import { SearchHistoryDrawer, SearchHistoryItem } from './SearchHistoryDrawer';
 import { getAllNooraniItems, getAllArabicItems, applyWawToCelestialLayers, buildCrossLayersFromPair } from '../utils/multiSystemSearch';
-import { getWordGematriaValue } from '../utils/gematriaEngine';
-import { useGematria } from '../context/GematriaContext';
-import { GematriaResultsCard } from './GematriaResultsCard';
 import { DosBlinkBlockInput } from './DosBlinkBlockInput';
+
+function highlightWordInAyah(ayahText: string, targetWord: string, highlightClass: string): React.ReactNode {
+  if (!ayahText || !targetWord) return ayahText;
+  const cleanTarget = normalizeArabicChar(targetWord).replace(/[^ء-ي]/g, '');
+  if (!cleanTarget) return ayahText;
+
+  const tokens = ayahText.split(/(\s+)/);
+  return (
+    <>
+      {tokens.map((token, idx) => {
+        const cleanToken = normalizeArabicChar(token).replace(/[^ء-ي]/g, '');
+        const matches =
+          cleanToken === cleanTarget ||
+          (cleanTarget.length >= 3 && cleanToken.includes(cleanTarget)) ||
+          (cleanToken.length >= 3 && cleanTarget.includes(cleanToken));
+
+        if (matches) {
+          return (
+            <mark
+              key={idx}
+              className={`${highlightClass} px-1.5 py-0.5 rounded font-bold mx-0.5 inline-block shadow-2xs`}
+            >
+              {token}
+            </mark>
+          );
+        }
+        return <React.Fragment key={idx}>{token}</React.Fragment>;
+      })}
+    </>
+  );
+}
 
 interface DualTranslatorProps {
   onNavigateToEncrypt?: (text: string) => void;
@@ -104,12 +133,17 @@ export function DualTranslator({
   const importFileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [importStatusMessage, setImportStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const { activeTable, activeTableId, tables, setActiveTableId, calculateWordGematria } = useGematria();
   const { isDos, playDosBeep } = useTheme();
+  const { setHintText, clearHint } = useHint();
 
   const [inputText, setInputText] = useState(externalInputText || '');
   const [submittedText, setSubmittedText] = useState(externalInputText || '');
-  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt' | 'gematria'>(mode || 'decrypt');
+  const [viewMode, setViewMode] = useState<'both' | 'decrypt' | 'encrypt'>('both');
+  const [expandedQuranicKey, setExpandedQuranicKey] = useState<string | null>(null);
+
+  const toggleQuranicAccordion = (key: string) => {
+    setExpandedQuranicKey((prev) => (prev === key ? null : key));
+  };
 
   // Track externalInputText updates from parent (e.g. clicking links or tab transfers)
   const prevExternalRef = React.useRef(externalInputText);
@@ -922,53 +956,135 @@ export function DualTranslator({
     return list;
   }, [rawEncCombinations]);
 
-  // Exact Quranic matches for encryption combinations
-  const encQuranicMatches = useMemo(() => {
-    const list: { word: string; meta: QuranicWordMeta; isReversed: boolean; original: string }[] = [];
-    const seen = new Set<string>();
-    for (const item of processedEncCombinations) {
-      const meta = quranicDictionary.getWordDetails(item.word);
-      if (meta && !seen.has(item.word)) {
-        seen.add(item.word);
-        list.push({ word: item.word, meta, isReversed: item.isReversed, original: item.original });
-      }
+  // ----------------- SEQUENTIAL SEARCH ENGINE (المصحف الشريف -> المعجم العربي) -----------------
+  const [isDecryptSearching, setIsDecryptSearching] = useState<boolean>(false);
+  const [decryptSearchPhase, setDecryptSearchPhase] = useState<'idle' | 'quran' | 'lexicon' | 'complete'>('idle');
+  const [decryptProgress, setDecryptProgress] = useState<number>(0);
+  const [decryptStatusText, setDecryptStatusText] = useState<string>('');
+  const [streamedQuranicMatches, setStreamedQuranicMatches] = useState<{ word: string; meta: QuranicWordMeta; isReversed: boolean }[]>([]);
+  const [streamedArabicMatches, setStreamedArabicMatches] = useState<{ word: string; isReversed: boolean; meta?: any }[]>([]);
+
+  const [isEncSearching, setIsEncSearching] = useState<boolean>(false);
+  const [encSearchPhase, setEncSearchPhase] = useState<'idle' | 'quran' | 'lexicon' | 'complete'>('idle');
+  const [encProgress, setEncProgress] = useState<number>(0);
+  const [encStatusText, setEncStatusText] = useState<string>('');
+  const [streamedEncQuranicMatches, setStreamedEncQuranicMatches] = useState<{ word: string; meta: QuranicWordMeta; isReversed: boolean; original: string }[]>([]);
+  const [streamedEncArabicMatches, setStreamedEncArabicMatches] = useState<{ word: string; isReversed: boolean; original: string; meta?: any }[]>([]);
+
+  // Sequential Search Effect for Encryption
+  useEffect(() => {
+    let isCancelled = false;
+    if (processedEncCombinations.length === 0) {
+      setStreamedEncQuranicMatches([]);
+      setStreamedEncArabicMatches([]);
+      setEncSearchPhase('idle');
+      setEncProgress(0);
+      return;
     }
-    return list;
-  }, [processedEncCombinations, quranicCount]);
+
+    const runSequentialEnc = async () => {
+      setIsEncSearching(true);
+      setEncSearchPhase('quran');
+      setEncProgress(10);
+      setEncStatusText('جاري مسح آيات المصحف الشريف وقواعد الرسم العثماني (الألف الخنجرية، التضعيف، السوابق)...');
+
+      // Phase 1: Search Quranic Corpus & Orthography Rules (0% -> 50%)
+      const qMatches = await quranicDictionary.searchQuranicWordsAsync(processedEncCombinations, (percent, item) => {
+        if (!isCancelled) {
+          setEncProgress(Math.round(percent * 0.5));
+          if (item) setEncStatusText(`مسح قرآني: [${item}]`);
+        }
+      });
+
+      if (isCancelled) return;
+
+      // Emit Quranic matches to UI first!
+      setStreamedEncQuranicMatches(qMatches);
+      setEncProgress(50);
+      setEncSearchPhase('lexicon');
+      setEncStatusText('جاري مطابقة المعاجم العربية والجذور الصرفية والاشتقاق...');
+
+      // Phase 2: Search Lexicon for non-quranic matches (50% -> 100%)
+      const quranSet = new Set(qMatches.map((m) => m.word));
+      const nonQuranic = processedEncCombinations.filter((c) => !quranSet.has(c.word));
+
+      const dictMatches = await arabicDictionary.searchDictionaryAsync(nonQuranic, (percent, item) => {
+        if (!isCancelled) {
+          setEncProgress(50 + Math.round(percent * 0.5));
+          if (item) setEncStatusText(`فحص معجمي: [${item}]`);
+        }
+      });
+
+      if (isCancelled) return;
+
+      setStreamedEncArabicMatches(dictMatches);
+      setEncProgress(100);
+      setEncSearchPhase('complete');
+      setEncStatusText('اكتملت المطابقة القرآنية والمعجمية بنجاح');
+      setIsEncSearching(false);
+    };
+
+    runSequentialEnc();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [processedEncCombinations]);
+
+  // Exact Quranic matches for encryption combinations (derived from streamed results or immediate lookup)
+  // Automatically sorted from most matching to least matching:
+  // 1. Highest match confidence descending (100% direct exact matches first, then non-exact < 100%)
+  // 2. Direct matches before reversed
+  // 3. Occurrences descending
+  const encQuranicMatches = useMemo(() => {
+    return [...streamedEncQuranicMatches].sort((a, b) => {
+      const targetA = a.meta.originalQuranicWord || a.meta.word || a.word;
+      const targetB = b.meta.originalQuranicWord || b.meta.word || b.word;
+      const isDirectA = !!a.meta.isDirectExact && a.word === targetA;
+      const isDirectB = !!b.meta.isDirectExact && b.word === targetB;
+      const confA = isDirectA ? 100 : Math.min(a.meta.confidence || 90, 95);
+      const confB = isDirectB ? 100 : Math.min(b.meta.confidence || 90, 95);
+      if (confB !== confA) {
+        return confB - confA;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.meta.occurrences || 0) - (a.meta.occurrences || 0);
+    });
+  }, [streamedEncQuranicMatches]);
 
   // Nearest Quranic vocabulary matches for encryption combinations
+  // Automatically sorted from most matching to least matching: highest similarity descending
   const encNearestQuranicMatches = useMemo(() => {
     const list: { combo: string; nearest: QuranicNearestMatch; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
     const exactSet = new Set(encQuranicMatches.map(m => m.word));
     let evaluated = 0;
     for (const item of processedEncCombinations) {
-      if (evaluated >= 40) break;
+      if (evaluated >= 120) break;
       if (!exactSet.has(item.word) && !seen.has(item.word)) {
         const nearest = quranicDictionary.findClosestQuranicWord(item.word);
-        if (nearest && nearest.similarity < 100 && nearest.similarity >= 60) {
+        if (nearest && nearest.similarity < 100 && nearest.similarity >= 45) {
           seen.add(item.word);
           list.push({ combo: item.word, nearest, isReversed: item.isReversed, original: item.original });
         }
         evaluated++;
       }
     }
-    return list.sort((a, b) => b.nearest.similarity - a.nearest.similarity).slice(0, 10);
-  }, [processedEncCombinations, encQuranicMatches, quranicCount]);
+    return list.sort((a, b) => {
+      if (b.nearest.similarity !== a.nearest.similarity) {
+        return b.nearest.similarity - a.nearest.similarity;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.nearest.occurrences || 0) - (a.nearest.occurrences || 0);
+    }).slice(0, 25);
+  }, [processedEncCombinations, encQuranicMatches]);
 
   // Confirmed Arabic dictionary matches for encryption combinations
-  const encArabicDictionaryMatches = useMemo(() => {
-    const list: { word: string; isReversed: boolean; original: string }[] = [];
-    const quranicSet = new Set(encQuranicMatches.map(m => m.word));
-    const seen = new Set<string>();
-    for (const item of processedEncCombinations) {
-      if (!quranicSet.has(item.word) && !seen.has(item.word) && arabicDictionary.isWord(item.word)) {
-        seen.add(item.word);
-        list.push({ word: item.word, isReversed: item.isReversed, original: item.original });
-      }
-    }
-    return list;
-  }, [processedEncCombinations, encQuranicMatches, dictCount]);
+  const encArabicDictionaryMatches = streamedEncArabicMatches;
 
   // Noorani openings / segmentation for the primary cipher output
   const encCipherSegmentation = useMemo(() => {
@@ -984,7 +1100,8 @@ export function DualTranslator({
   }, [rawEncCombinations, encPermutationSearch]);
 
   // ------------------- DECRYPTION ANALYSIS -------------------
-  const cleanChars = Array.from(cleanText(submittedText));
+  const cleanChars = useMemo(() => Array.from(cleanText(submittedText)), [submittedText]);
+
   const decodedItems = useMemo(() => {
     return cleanChars.map((char) => {
       if (char === ' ' || char === '\n' || char === '\t') {
@@ -1010,10 +1127,15 @@ export function DualTranslator({
     });
   }, [cleanChars, effectiveLayers]);
 
-  const meaningfulItems = decodedItems.filter(d => !d.isSpace && d.matchingLayers.length > 0);
-  const totalCombinationsCount = meaningfulItems.length > 0
-    ? meaningfulItems.reduce((acc, item) => acc * Math.max(1, item.candidates.length), 1)
-    : 0;
+  const meaningfulItems = useMemo(() => {
+    return decodedItems.filter(d => !d.isSpace && d.matchingLayers.length > 0);
+  }, [decodedItems]);
+
+  const totalCombinationsCount = useMemo(() => {
+    return meaningfulItems.length > 0
+      ? meaningfulItems.reduce((acc, item) => acc * Math.max(1, item.candidates.length), 1)
+      : 0;
+  }, [meaningfulItems]);
 
   // Generate permutations (capped for instant zero-lag response)
   const rawCombinations = useMemo(() => {
@@ -1038,51 +1160,142 @@ export function DualTranslator({
     return results;
   }, [meaningfulItems, totalCombinationsCount]);
 
-  // Find exact Quranic matches
-  const quranicMatches = useMemo(() => {
-    const list: { word: string; meta: QuranicWordMeta; isReversed: boolean }[] = [];
-    const seen = new Set<string>();
+  // Sequential Search Effect for Decryption
+  useEffect(() => {
+    let isCancelled = false;
+    if (rawCombinations.length === 0) {
+      setStreamedQuranicMatches([]);
+      setStreamedArabicMatches([]);
+      setDecryptSearchPhase('idle');
+      setDecryptProgress(0);
+      return;
+    }
 
-    for (const word of rawCombinations) {
-      // Normal direction
-      const metaNormal = quranicDictionary.getWordDetails(word);
-      if (metaNormal && !seen.has(word)) {
-        seen.add(word);
-        list.push({ word, meta: metaNormal, isReversed: false });
-      }
+    const runSequentialDecrypt = async () => {
+      setIsDecryptSearching(true);
+      setDecryptSearchPhase('quran');
+      setDecryptProgress(10);
+      setDecryptStatusText('جاري مسح آيات المصحف الشريف وقواعد الرسم العثماني (الألف الخنجرية، التضعيف، السوابق)...');
 
-      // Reversed direction (معكوس الكلمة)
-      const reversed = word.split('').reverse().join('');
-      if (reversed !== word) {
-        const metaRev = quranicDictionary.getWordDetails(reversed);
-        if (metaRev && !seen.has(reversed)) {
-          seen.add(reversed);
-          list.push({ word: reversed, meta: metaRev, isReversed: true });
+      const candidates: { word: string; isReversed: boolean }[] = [];
+      const seen = new Set<string>();
+      for (const word of rawCombinations) {
+        if (!seen.has(word)) {
+          candidates.push({ word, isReversed: false });
+          seen.add(word);
+        }
+        const rev = word.split('').reverse().join('');
+        if (rev !== word && !seen.has(rev)) {
+          candidates.push({ word: rev, isReversed: true });
+          seen.add(rev);
         }
       }
-    }
-    return list;
-  }, [rawCombinations, quranicCount]);
 
-  // Find confirmed Arabic dictionary matches (excluding duplicates from quranic list)
-  const arabicDictionaryMatches = useMemo(() => {
-    const list: { word: string; isReversed: boolean }[] = [];
-    const quranicSet = new Set(quranicMatches.map(m => m.word));
+      // Phase 1: Search Quranic Corpus & Orthography Rules (0% -> 50%)
+      const qMatches = await quranicDictionary.searchQuranicWordsAsync(candidates, (percent, item) => {
+        if (!isCancelled) {
+          setDecryptProgress(Math.round(percent * 0.5));
+          if (item) setDecryptStatusText(`مسح قرآني: [${item}]`);
+        }
+      });
+
+      if (isCancelled) return;
+
+      // Emit Quranic matches to UI first!
+      setStreamedQuranicMatches(qMatches);
+      setDecryptProgress(50);
+      setDecryptSearchPhase('lexicon');
+      setDecryptStatusText('جاري البحث في المعجم العربي اللغوي والجذور الصرفية والاشتقاق...');
+
+      // Phase 2: Search Lexicon for non-quranic matches (50% -> 100%)
+      const quranSet = new Set(qMatches.map((m) => m.word));
+      const nonQuranicCandidates = candidates.filter((c) => !quranSet.has(c.word));
+
+      const dictMatches = await arabicDictionary.searchDictionaryAsync(nonQuranicCandidates, (percent, item) => {
+        if (!isCancelled) {
+          setDecryptProgress(50 + Math.round(percent * 0.5));
+          if (item) setDecryptStatusText(`فحص معجمي: [${item}]`);
+        }
+      });
+
+      if (isCancelled) return;
+
+      setStreamedArabicMatches(dictMatches);
+      setDecryptProgress(100);
+      setDecryptSearchPhase('complete');
+      setDecryptStatusText('اكتمل البحث والتحقق القرآني والمعجمي بنجاح');
+      setIsDecryptSearching(false);
+    };
+
+    runSequentialDecrypt();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [rawCombinations]);
+
+  // Quranic matches from sequential search
+  // Automatically sorted from most matching to least matching:
+  // 1. Highest match confidence descending (100% direct exact matches first, then non-exact < 100%)
+  // 2. Direct matches before reversed
+  // 3. Occurrences descending
+  const quranicMatches = useMemo(() => {
+    return [...streamedQuranicMatches].sort((a, b) => {
+      const targetA = a.meta.originalQuranicWord || a.meta.word || a.word;
+      const targetB = b.meta.originalQuranicWord || b.meta.word || b.word;
+      const isDirectA = !!a.meta.isDirectExact && a.word === targetA;
+      const isDirectB = !!b.meta.isDirectExact && b.word === targetB;
+      const confA = isDirectA ? 100 : Math.min(a.meta.confidence || 90, 95);
+      const confB = isDirectB ? 100 : Math.min(b.meta.confidence || 90, 95);
+      if (confB !== confA) {
+        return confB - confA;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.meta.occurrences || 0) - (a.meta.occurrences || 0);
+    });
+  }, [streamedQuranicMatches]);
+
+  // Nearest Quranic vocabulary matches for decryption combinations
+  const nearestQuranicMatches = useMemo(() => {
+    const list: { combo: string; nearest: QuranicNearestMatch; isReversed: boolean; original: string }[] = [];
     const seen = new Set<string>();
-
-    for (const word of rawCombinations) {
-      if (!quranicSet.has(word) && !seen.has(word) && arabicDictionary.isWord(word)) {
-        seen.add(word);
-        list.push({ word, isReversed: false });
+    const exactSet = new Set(quranicMatches.map(m => m.word));
+    let evaluated = 0;
+    for (const item of rawCombinations) {
+      if (evaluated >= 120) break;
+      if (!exactSet.has(item) && !seen.has(item)) {
+        const nearest = quranicDictionary.findClosestQuranicWord(item);
+        if (nearest && nearest.similarity < 100 && nearest.similarity >= 45) {
+          seen.add(item);
+          list.push({ combo: item, nearest, isReversed: false, original: item });
+        }
+        evaluated++;
       }
-      const reversed = word.split('').reverse().join('');
-      if (reversed !== word && !quranicSet.has(reversed) && !seen.has(reversed) && arabicDictionary.isWord(reversed)) {
-        seen.add(reversed);
-        list.push({ word: reversed, isReversed: true });
+      const rev = item.split('').reverse().join('');
+      if (rev !== item && !exactSet.has(rev) && !seen.has(rev) && evaluated < 120) {
+        const nearest = quranicDictionary.findClosestQuranicWord(rev);
+        if (nearest && nearest.similarity < 100 && nearest.similarity >= 45) {
+          seen.add(rev);
+          list.push({ combo: rev, nearest, isReversed: true, original: item });
+        }
+        evaluated++;
       }
     }
-    return list;
-  }, [rawCombinations, quranicMatches, dictCount]);
+    return list.sort((a, b) => {
+      if (b.nearest.similarity !== a.nearest.similarity) {
+        return b.nearest.similarity - a.nearest.similarity;
+      }
+      if (a.isReversed !== b.isReversed) {
+        return a.isReversed ? 1 : -1;
+      }
+      return (b.nearest.occurrences || 0) - (a.nearest.occurrences || 0);
+    }).slice(0, 25);
+  }, [rawCombinations, quranicMatches]);
+
+  // Arabic dictionary matches from sequential search
+  const arabicDictionaryMatches = streamedArabicMatches;
 
   // Filtered list of permutations for researcher view
   const filteredPermutations = useMemo(() => {
@@ -1186,6 +1399,8 @@ export function DualTranslator({
                 onChange={(e) => {
                   applyNooraniDistribution(e.target.value);
                 }}
+                onMouseEnter={() => setHintText('تحديد جدول السماء: اختيار توزيع الأحرف النورانية الـ 14 على الطبقات السبع')}
+                onMouseLeave={clearHint}
                 className="flex-1 min-w-0 text-xs font-medium py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-indigo-200 dark:border-indigo-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-sans"
                 title="اختيار منظومة السماء (الأحرف النورانية)"
               >
@@ -1198,6 +1413,8 @@ export function DualTranslator({
               <button
                 type="button"
                 onClick={() => setIsNooraniReversed(!isNooraniReversed)}
+                onMouseEnter={() => setHintText(isNooraniReversed ? 'إلغاء عكس طبقات السماء (العودة للترتيب 1 إلى 7)' : 'عكس طبقات السماء (الترتيب 7 إلى 1)')}
+                onMouseLeave={clearHint}
                 className={`p-1.5 rounded-md border text-2xs font-medium transition-all shrink-0 cursor-pointer ${
                   isNooraniReversed
                     ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
@@ -1220,6 +1437,8 @@ export function DualTranslator({
                 onChange={(e) => {
                   applyArabicDistribution(e.target.value);
                 }}
+                onMouseEnter={() => setHintText('تحديد جدول الأرض: اختيار توزيع الأبجدية العربية الـ 28 (مشرقي / مغربي / بسملة)')}
+                onMouseLeave={clearHint}
                 className="flex-1 min-w-0 text-xs font-medium py-1 px-1.5 rounded-md bg-white dark:bg-stone-800 border border-amber-200 dark:border-amber-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer font-sans"
                 title="اختيار منظومة الأرض (الأحرف الهجائية)"
               >
@@ -1232,6 +1451,8 @@ export function DualTranslator({
               <button
                 type="button"
                 onClick={() => setIsArabicReversed(!isArabicReversed)}
+                onMouseEnter={() => setHintText(isArabicReversed ? 'إلغاء عكس طبقات الأرض (العودة للترتيب 1 إلى 7)' : 'عكس طبقات الأرض (الترتيب 7 إلى 1)')}
+                onMouseLeave={clearHint}
                 className={`p-1.5 rounded-md border text-2xs font-medium transition-all shrink-0 cursor-pointer ${
                   isArabicReversed
                     ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
@@ -1250,6 +1471,8 @@ export function DualTranslator({
             <button
               type="button"
               onClick={() => openDrawer('systems')}
+              onMouseEnter={() => setHintText(`فتح مفكرة المنظومات (${savedSystems.length} منظومة محفوظة)`)}
+              onMouseLeave={clearHint}
               className="p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer flex items-center justify-center shrink-0 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 shadow-2xs relative"
               title="مفكرة المنظومات"
             >
@@ -1265,6 +1488,8 @@ export function DualTranslator({
             <button
               type="button"
               onClick={() => setShowSaveCurrentSystemModal(true)}
+              onMouseEnter={() => setHintText('حفظ توزيع المنظومة الحالية (سماء وأرض) في المفكرة للرجوع إليها')}
+              onMouseLeave={clearHint}
               className={`p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer flex items-center justify-center shrink-0 ${
                 isCurrentSystemSaved
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
@@ -1279,6 +1504,8 @@ export function DualTranslator({
             <button
               type="button"
               onClick={() => setShowToolsDrawer((prev) => !prev)}
+              onMouseEnter={() => setHintText(showToolsDrawer ? 'إغلاق شريط أدوات المنظومة' : 'فتح أدوات المنظومة والمشاركة والتصدير والاستيراد')}
+              onMouseLeave={clearHint}
               className={`p-1.5 rounded-lg border text-2xs font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                 showToolsDrawer
                   ? 'bg-stone-800 text-white border-stone-900 dark:bg-stone-700 dark:border-stone-600'
@@ -1436,9 +1663,13 @@ export function DualTranslator({
               autoFocus={true}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onMouseEnter={() => setHintText('مربع إدخال الكلمة أو الشفرة: اكتب أو الصق النص ثم اضغط Enter للبحث والمطابقة الفورية')}
+              onMouseLeave={clearHint}
               onFocus={() => {
                 if (isDos) playDosBeep(980, 20);
+                setHintText('مربع الإدخال النشط: اكتب كلمة أو شفرة نورانية ثم اضغط Enter');
               }}
+              onBlur={clearHint}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -1480,6 +1711,8 @@ export function DualTranslator({
                     console.warn('Clipboard read error:', err);
                   }
                 }}
+                onMouseEnter={() => setHintText('لصق فوري للنص من الحافظة وبدء التحليل مباشرة')}
+                onMouseLeave={clearHint}
                 className="p-1 rounded-md text-stone-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                 title="لصق مباشر ومسح السابق"
               >
@@ -1498,6 +1731,8 @@ export function DualTranslator({
                       onInputTextChange('');
                     }
                   }}
+                  onMouseEnter={() => setHintText('مسح النص الحالي وإعادة تعيين حقل البحث')}
+                  onMouseLeave={clearHint}
                   className="p-1 rounded-md text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                   title="مسح النص"
                 >
@@ -1511,6 +1746,8 @@ export function DualTranslator({
           <button
             type="button"
             onClick={handleGenerate}
+            onMouseEnter={() => setHintText('تنفيذ البحث وفك التشفير ومطابقة القرآن والمعجم في المنظومة الحالية (Enter)')}
+            onMouseLeave={clearHint}
             disabled={!showMultiSystemScanner && !inputText.trim() && !submittedText.trim()}
             className="p-2 sm:p-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white transition-all shadow-xs flex items-center justify-center cursor-pointer shrink-0"
             title="بحث وفحص النص في المنظومة الحالية (Enter)"
@@ -1522,6 +1759,8 @@ export function DualTranslator({
           <button
             type="button"
             onClick={handleComprehensiveSearchClick}
+            onMouseEnter={() => setHintText('الفحص الشامل: مسح الكلمة والشفرة عبر كافة المنظومات الـ 50+ دفعة واحدة (Ctrl + Enter)')}
+            onMouseLeave={clearHint}
             disabled={!inputText.trim() && !submittedText.trim()}
             className={`p-2 sm:p-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center cursor-pointer shrink-0 min-w-[40px] min-h-[40px] ${
               showMultiSystemScanner
@@ -1545,6 +1784,8 @@ export function DualTranslator({
             {/* Mobile Waw Option */}
             <div className="flex items-center gap-1.5 shrink-0 sm:hidden font-sans">
               <label
+                onMouseEnter={() => setHintText('تضمين حرف الواو (و) كعنصر رابط في جميع طبقات السماء السبع')}
+                onMouseLeave={clearHint}
                 className="inline-flex items-center gap-1 cursor-pointer select-none group px-1.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700"
                 title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
               >
@@ -1565,7 +1806,11 @@ export function DualTranslator({
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto min-w-0 border-t sm:border-t-0 border-stone-200/80 dark:border-stone-800 pt-1 sm:pt-0">
             {/* Short Path Message */}
             {nooraniAnalysis ? (
-              <div className="flex items-center gap-1.5 font-medium text-xs text-stone-600 dark:text-stone-400 font-sans min-w-0 flex-wrap">
+              <div
+                onMouseEnter={() => setHintText(nooraniAnalysis.isPureNoorani ? 'المدخل بأحرف نورانية: المسار التلقائي هو فك التشفير إلى معانٍ وألفاظ' : 'المدخل بأحرف هجائية: المسار التلقائي هو التشفير إلى حروف نورانية')}
+                onMouseLeave={clearHint}
+                className="flex items-center gap-1.5 font-medium text-xs text-stone-600 dark:text-stone-400 font-sans min-w-0 flex-wrap"
+              >
                 <span className="text-stone-500 text-2xs sm:text-xs shrink-0">المسار:</span>
                 <span
                   className={`px-1.5 sm:px-2 py-0.5 rounded font-medium text-2xs sm:text-xs inline-flex items-center gap-1 shrink-0 ${
@@ -1614,6 +1859,8 @@ export function DualTranslator({
             {/* Desktop Waw Option */}
             <div className="hidden sm:flex items-center gap-1.5 shrink-0 font-sans">
               <label
+                onMouseEnter={() => setHintText('تضمين حرف الواو (و) كعنصر رابط في كافة طبقات السماء السبع')}
+                onMouseLeave={clearHint}
                 className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-750 transition-colors"
                 title="اعتبار حرف الواو (و) مع الأحرف السماوية (ن، ق، ص)"
               >
@@ -1652,25 +1899,29 @@ export function DualTranslator({
 
         {/* Step C: View Modes & Compact Swipable Recent Search History Pills */}
         <div className="pt-2 border-t border-stone-200/80 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 max-w-full overflow-hidden">
-          {/* View Mode Toggle: Pure Icon-first buttons with immediate tooltips */}
+          {/* View Mode Toggle: Dual mode switcher (الكل / فك التشفير / التشفير) */}
           <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-850 p-1 rounded-xl text-xs font-medium self-start shrink-0 border border-stone-200/80 dark:border-stone-800">
             <button
               type="button"
               onClick={() => setViewMode('both')}
+              onMouseEnter={() => setHintText('عرض متزامن: إظهار فك التشفير والتشفير جنباً إلى جنب')}
+              onMouseLeave={clearHint}
               className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'both'
                   ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
-              title="عرض كافة النتائج معاً (فك التشفير، التشفير، وحساب الجُمَّل والمطابقة)"
-              aria-label="عرض كافة النتائج معاً"
+              title="عرض فك التشفير والتشفير جنباً إلى جنب مع تمييز المسار النشط"
+              aria-label="عرض فك التشفير والتشفير معاً"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-stone-700 dark:text-stone-300" />
-              <span className="text-2xs hidden xs:inline">الكل</span>
+              <span className="text-2xs hidden xs:inline">الكل (فك وتشفير)</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('decrypt')}
+              onMouseEnter={() => setHintText('عرض فك التشفير فقط: تحويل الحروف النورانية إلى مفردات عربية وقرآنية مطابقة')}
+              onMouseLeave={clearHint}
               className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'decrypt'
                   ? 'bg-white dark:bg-stone-700 text-indigo-700 dark:text-indigo-300 shadow-2xs font-semibold'
@@ -1680,11 +1931,13 @@ export function DualTranslator({
               aria-label="عرض نتائج فك التشفير فقط"
             >
               <Unlock className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-2xs hidden xs:inline">فك</span>
+              <span className="text-2xs hidden xs:inline">فك التشفير</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('encrypt')}
+              onMouseEnter={() => setHintText('عرض التشفير فقط: تحويل الكلمات العربية إلى شفرات نورانية مطابقة للطبقات')}
+              onMouseLeave={clearHint}
               className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
                 viewMode === 'encrypt'
                   ? 'bg-white dark:bg-stone-700 text-amber-700 dark:text-amber-300 shadow-2xs font-semibold'
@@ -1694,21 +1947,7 @@ export function DualTranslator({
               aria-label="عرض نتائج التشفير فقط"
             >
               <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span className="text-2xs hidden xs:inline">تشفير</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('gematria')}
-              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
-                viewMode === 'gematria'
-                  ? 'bg-white dark:bg-stone-700 text-emerald-700 dark:text-emerald-300 shadow-2xs font-semibold'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-              title="عرض نتائج حساب الجُمَّل والمطابقة القرآنية فقط"
-              aria-label="عرض نتائج حساب الجُمَّل والمطابقة القرآنية فقط"
-            >
-              <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-2xs hidden xs:inline">الجُمَّل</span>
+              <span className="text-2xs hidden xs:inline">التشفير</span>
             </button>
           </div>
 
@@ -1718,6 +1957,8 @@ export function DualTranslator({
             <button
               type="button"
               onClick={() => setIsHistoryDrawerOpen((prev) => !prev)}
+              onMouseEnter={() => setHintText(`فتح سجل الكلمات الكامل (${searchHistoryItems.length} كلمة محفوظة في السجل)`)}
+              onMouseLeave={clearHint}
               className={`p-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer shrink-0 relative ${
                 isHistoryDrawerOpen
                   ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
@@ -1744,6 +1985,8 @@ export function DualTranslator({
                     key={`hist_pill_${item.id}`}
                     type="button"
                     onClick={() => handleSelectHistoryItem(item)}
+                    onMouseEnter={() => setHintText(`سجل البحث: استرجاع الكلمة [${item.word}] وفحصها فوراً`)}
+                    onMouseLeave={clearHint}
                     className={`text-xs font-medium px-2 py-0.5 rounded-md transition-all cursor-pointer shrink-0 inline-flex items-center gap-1 font-sans border whitespace-nowrap ${
                       submittedText === item.word
                         ? isItemPureNoorani
@@ -1767,447 +2010,1118 @@ export function DualTranslator({
         </div>
       </div>
 
-      {/* 4. Dense Output Results Layout (عرض متزامن لنتائج التشفير وفك التشفير والجُمَّل بجنب بعض) */}
+      {/* 4. Dense Output Results Layout (توزيع متوازن لفك التشفير والتشفير جنباً إلى جنب مع إطار مميز للمسار النشط) */}
       {submittedText && !showMultiSystemScanner && (
-        <div className={viewMode === 'both' ? "grid grid-cols-1 lg:grid-cols-3 gap-3 items-start" : "space-y-3"}>
+        <div className={viewMode === 'both' ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start" : "space-y-4"}>
 
           {/* Column 1: Decryption Results (فك التشفير - Indigo Theme) */}
-          {(viewMode === 'both' || viewMode === 'decrypt') && (
-            <div
-              className={`bg-white dark:bg-stone-900 rounded-xl p-3 shadow-2xs space-y-2 transition-all duration-300 ${
-                nooraniAnalysis?.isPureNoorani
-                  ? 'border border-indigo-500/80 shadow-xs ring-2 ring-indigo-500/10 dark:ring-indigo-500/20 bg-indigo-50/5 dark:bg-indigo-950/10'
-                  : 'border border-stone-200 dark:border-stone-800 opacity-95'
-              }`}
-            >
-              <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4.5 h-4.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs">
-                    <Unlock className="w-3 h-3" />
-                  </div>
-                  <h3 className="text-xs font-medium text-stone-900 dark:text-stone-100 font-sans">
-                    فك التشفير
-                  </h3>
-                </div>
+          {(viewMode === 'both' || viewMode === 'decrypt') && (() => {
+            const isDecryptionActive = viewMode === 'decrypt' || (viewMode === 'both' && Boolean(nooraniAnalysis?.isPureNoorani));
 
-                {onNavigateToDecrypt && (
-                  <button
-                    onClick={() => onNavigateToDecrypt(submittedText)}
-                    className="p-0.5 rounded text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
-                    title="عرض فك التشفير"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Exact Quranic Matches */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-2xs font-normal text-stone-600 dark:text-stone-400 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                    <span>مفردات قرآنية ({quranicMatches.length})</span>
-                  </h4>
-                </div>
-
-                {quranicMatches.length === 0 ? (
-                  <div className="py-2 px-2 bg-stone-50/60 dark:bg-stone-950/40 rounded-lg border border-stone-200 dark:border-stone-800 text-3xs text-stone-500 text-center font-normal">
-                    لا توجد ألفاظ قرآنية مباشرة
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 w-full">
-                    {quranicMatches.map((item, idx) => {
-                      const url = getQuranTopWordUrl(item.word, item.meta.surahNumber, item.meta.ayahNum, item.meta.occurrences);
-                      const isCopied = copiedText === `q_${idx}`;
-                      return (
-                        <div
-                          key={`quran_${item.word}_${idx}`}
-                          className="px-2 py-1 rounded-md bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 flex items-center justify-between gap-1 shadow-2xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all select-none group"
-                        >
-                          <div className="flex items-center gap-1 min-w-0">
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-normal font-quran text-indigo-950 dark:text-indigo-100 hover:text-indigo-600 dark:hover:text-indigo-300 hover:underline leading-tight"
-                              title={`البحث عن [${item.word}] في المصحف`}
-                            >
-                              {item.word}
-                            </a>
-                            {isCopied && (
-                              <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal">
-                                تم
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {item.isReversed && (
-                              <RotateCcw
-                                className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0"
-                                title="معكوس الكلمة"
-                              />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(item.word, `q_${idx}`)}
-                              className="p-0.5 text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
-                              title="نسخ الكلمة"
-                            >
-                              {isCopied ? (
-                                <Check className="w-2.5 h-2.5 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-2.5 h-2.5" />
-                              )}
-                            </button>
-                            <AddToNotebookButton
-                              word={submittedText}
-                              cipher={item.word}
-                              systemName={activeTableName}
-                              surahInfo={item.meta.surahName}
-                              ayahNum={item.meta.ayahNum}
-                              isReversed={item.isReversed}
-                              type="quranic"
-                              variant="icon-only"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+            return (
+              <div
+                className={`bg-white dark:bg-stone-900 rounded-2xl p-4 shadow-sm space-y-3 transition-all duration-300 ${
+                  isDecryptionActive
+                    ? 'border-2 border-indigo-500 ring-4 ring-indigo-500/20 shadow-md bg-indigo-50/15 dark:bg-indigo-950/20 relative'
+                    : 'border border-stone-200 dark:border-stone-800 opacity-80 hover:opacity-100 transition-opacity'
+                }`}
+              >
+                {/* Active Path Header Banner */}
+                {viewMode === 'both' && isDecryptionActive && (
+                  <div className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                      <span>المسار المختار: فك التشفير (مدخل بأحرف نورانية)</span>
+                    </div>
+                    <span className="text-indigo-200 text-3xs font-mono">← اقرأ هنا</span>
                   </div>
                 )}
-              </div>
 
-              {/* Confirmed Arabic Lexicon Matches */}
-              {(arabicDictionaryMatches.length > 0 || dictLoading) && (
-                <div className="space-y-1 pt-1.5 border-t border-stone-100 dark:border-stone-800">
-                  <h4 className="text-2xs font-normal text-stone-600 dark:text-stone-400 flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                      <span>معجمية ({arabicDictionaryMatches.length})</span>
+                <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs shadow-2xs font-bold">
+                      <Unlock className="w-3.5 h-3.5" />
                     </div>
-                    {dictLoading && (
-                      isDos ? (
-                        <span className="font-mono text-3xs text-[#ffff55] bg-[#0000aa] px-1 border border-[#55ffff]">
-                          [WAIT {dictProgress}%]
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-3xs font-normal text-indigo-600 dark:text-indigo-400 animate-pulse">
-                          <Loader2 className="w-2.5 h-2.5 animate-spin shrink-0" />
-                          <span>({dictProgress}%)</span>
-                        </span>
-                      )
-                    )}
-                  </h4>
+                    <div>
+                      <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 font-sans flex items-center gap-1.5">
+                        <span>فك التشفير</span>
+                        {isDecryptionActive && (
+                          <span className="text-3xs px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 font-normal">
+                            نشط
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-3xs text-stone-500 dark:text-stone-400">
+                        استخراج الاحتمالات والمطابقات القرآنية والمعجمية
+                      </p>
+                    </div>
+                  </div>
 
-                  {arabicDictionaryMatches.length === 0 && dictLoading ? (
-                    <div className="py-1.5 px-2 rounded-md bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-between gap-1 text-3xs text-indigo-900 dark:text-indigo-200 animate-pulse">
-                      <span>جاري فحص المعجم...</span>
-                      <span className="font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-1 py-0.2 rounded">
-                        {dictProgress}%
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1 w-full p-1 rounded-md bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800">
-                      {arabicDictionaryMatches.slice(0, 40).map((item, idx) => (
-                        <div
-                          key={`dict_${item.word}_${idx}`}
-                          className="px-1.5 py-0.5 rounded bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-normal hover:scale-102 transition-all inline-flex items-center gap-1"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(item.word, `d_${idx}`)}
-                            className="inline-flex items-center gap-0.5 cursor-pointer font-quran text-xs font-normal"
-                            title="انقر لنسخ الكلمة"
-                          >
-                            <span>{item.word}</span>
-                            {item.isReversed && (
-                              <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
-                            )}
-                            {copiedText === `d_${idx}` ? <Check className="w-2.5 h-2.5 text-indigo-600" /> : null}
-                          </button>
-                          <a
-                            href={getArabicDictSearchUrl(item.word)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-300 p-0.5"
-                            title={`البحث عن "${item.word}" في Google`}
-                          >
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
-                          </a>
-                        </div>
-                      ))}
-                    </div>
+                  {onNavigateToDecrypt && (
+                    <button
+                      onClick={() => onNavigateToDecrypt(submittedText)}
+                      className="p-1 rounded text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
+                      title="عرض فك التشفير في صفحة مخصصة"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Column 2: Encryption Results (التشفير - Amber Theme) */}
-          {(viewMode === 'both' || viewMode === 'encrypt') && (
-            <div
-              className={`bg-white dark:bg-stone-900 rounded-xl p-3 shadow-2xs space-y-2 transition-all duration-300 ${
-                !nooraniAnalysis?.isPureNoorani
-                  ? 'border border-amber-500/80 shadow-xs ring-2 ring-amber-500/10 dark:ring-amber-500/20 bg-amber-50/5 dark:bg-amber-950/10'
-                  : 'border border-stone-200 dark:border-stone-800 opacity-95'
-              }`}
-            >
-              <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4.5 h-4.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center text-xs">
-                    <Lock className="w-3 h-3" />
+                {/* Sequential Search Progress Bar for Decryption */}
+                {isDecryptSearching && (
+                  <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-200">
+                        <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
+                        <span className="truncate">{decryptStatusText || 'جاري المسح المتتابع...'}</span>
+                      </div>
+                      <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-xs shrink-0">
+                        {decryptProgress}%
+                      </span>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="w-full bg-indigo-100 dark:bg-indigo-900/60 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 transition-all duration-300 rounded-full"
+                        style={{ width: `${decryptProgress}%` }}
+                      />
+                    </div>
+
+                    {/* 2 Sequential Stages */}
+                    <div className="grid grid-cols-2 gap-1.5 text-3xs pt-0.5">
+                      <div
+                        className={`flex items-center justify-between px-2 py-1 rounded-lg border transition-all ${
+                          decryptSearchPhase === 'quran'
+                            ? 'bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 text-indigo-950 dark:text-indigo-100 font-bold shadow-2xs'
+                            : quranicMatches.length > 0 || decryptProgress >= 50
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 font-medium'
+                            : 'bg-stone-100 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-500'
+                        }`}
+                      >
+                        <span>١. مسح المصحف وقواعد الرسم</span>
+                        <span>{decryptSearchPhase === 'quran' ? '⏳ جاري' : `✅ (${quranicMatches.length})`}</span>
+                      </div>
+
+                      <div
+                        className={`flex items-center justify-between px-2 py-1 rounded-lg border transition-all ${
+                          decryptSearchPhase === 'lexicon'
+                            ? 'bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 text-indigo-950 dark:text-indigo-100 font-bold shadow-2xs'
+                            : decryptSearchPhase === 'complete'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 font-medium'
+                            : 'bg-stone-100 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-400'
+                        }`}
+                      >
+                        <span>٢. المعجم اللغوي والجذور</span>
+                        <span>
+                          {decryptSearchPhase === 'lexicon'
+                            ? '⏳ جاري'
+                            : decryptSearchPhase === 'complete'
+                            ? `✅ (${arabicDictionaryMatches.length})`
+                            : '⏱️ بالانتظار'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-xs font-medium text-stone-900 dark:text-stone-100 font-sans">
-                    التشفير
-                  </h3>
-                </div>
-
-                {onNavigateToEncrypt && (
-                  <button
-                    onClick={() => onNavigateToEncrypt(submittedText)}
-                    className="p-0.5 rounded text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
-                    title="عرض التشفير"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </button>
                 )}
-              </div>
 
-              {hasMissingArabic ? (
-                <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-center text-3xs font-normal text-rose-700 dark:text-rose-300">
-                  بعض أحرف هذه الكلمة غير موجودة في جدول التشفير الحالي.
-                </div>
-              ) : (
+                {/* Exact Quranic Matches with Interactive Ayah Accordion */}
                 <div className="space-y-2">
-                  {/* Dense Letter Breakdown with Color Micro Tiles */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {encryptionDetails.map((detail, idx) => {
-                      if (detail.isSpecialOrSpace) return null;
-                      const layerNum = detail.layer ? detail.layer.layer : 0;
-                      const color = LAYER_RAINBOW_COLORS[layerNum] || {
-                        name: 'رمادي',
-                        activeBg: 'bg-stone-800',
-                        activeText: 'text-white',
-                        activeBorder: 'border-stone-900',
-                      };
-                      const ciphers = detail.layer
-                        ? (detail.layer.cipherLetters || []).filter((c) => Boolean(c) && c !== 'و')
-                        : [];
-                      const displayChar = detail.originalChar || detail.normalizedChar || '';
-
-                      return (
-                        <div
-                          key={`char_${idx}`}
-                          className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
-                          title={`الحرف [${displayChar}] - سماء ${layerNum}`}
-                        >
-                          <span
-                            className={`w-5.5 h-5.5 rounded font-normal text-xs font-quran flex items-center justify-center shrink-0 shadow-2xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
-                          >
-                            {displayChar}
-                          </span>
-                          <div className="flex items-center gap-0.5">
-                            {ciphers.map((cipherChar, cIdx) => (
-                              <span
-                                key={cIdx}
-                                className="w-5.5 h-5.5 rounded font-normal text-xs font-quran flex items-center justify-center shrink-0 bg-stone-100 dark:bg-stone-700/90 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 shadow-2xs"
-                                title={`رمز التشفير: [${cipherChar}]`}
-                              >
-                                {cipherChar}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center justify-between">
+                    <h4
+                      onMouseEnter={() => setHintText(`المفردات القرآنية المتطابقة كلياً (${quranicMatches.length} مفردة) مع نصوص الآيات والرسم العثماني`)}
+                      onMouseLeave={clearHint}
+                      className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5 cursor-default"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>مفردات قرآنية مطابقة ({quranicMatches.length})</span>
+                    </h4>
+                    <span className="text-3xs text-stone-500 dark:text-stone-400">
+                      اضغط على المفردة لفتح الآية الكريمة
+                    </span>
                   </div>
 
-                  {/* Priority 1: Exact Quranic Matches from Encryption */}
-                  {encQuranicMatches.length > 0 && (
-                    <div className="space-y-1 pt-1.5 border-t border-stone-100 dark:border-stone-800">
-                      <h4 className="text-2xs font-normal text-stone-600 dark:text-stone-400 flex items-center gap-1">
-                        <BookOpen className="w-3 h-3 text-amber-600" />
-                        <span>مفردات قرآنية ({encQuranicMatches.length})</span>
-                      </h4>
+                  {quranicMatches.length === 0 ? (
+                    <div className="py-3 px-3 bg-stone-50/60 dark:bg-stone-950/40 rounded-xl border border-stone-200 dark:border-stone-800 text-xs text-stone-500 text-center font-normal">
+                      {isDecryptSearching && decryptSearchPhase === 'quran'
+                        ? 'جاري فحص المصحف الشريف والرسم العثماني...'
+                        : 'لا توجد ألفاظ قرآنية مباشرة من هذه التوليفة'}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 w-full">
+                      {quranicMatches.map((item, idx) => {
+                        const itemKey = `dec_q_${idx}`;
+                        const isExpanded = expandedQuranicKey === itemKey;
+                        const isCopied = copiedText === itemKey;
+                        const targetWord = item.meta.originalQuranicWord || item.meta.word || item.word;
+                        const isDirectExact = !!item.meta.isDirectExact && item.word === targetWord;
+                        const displayPercentage = isDirectExact ? 100 : Math.min(item.meta.confidence || 90, 95);
+                        const displayText = isDirectExact ? item.word : `${item.word} = ${targetWord}`;
+                        const ayahInfo = quranicDictionary.getAyahForWord(targetWord, item.meta.surahName, item.meta.ayahNum);
+                        const fullAyahText = ayahInfo?.ayahText || item.meta.ayahText || item.meta.sampleAyahText || '';
+                        const surahName = ayahInfo?.surahName || item.meta.surahName || 'القرآن الكريم';
+                        const ayahNum = ayahInfo?.ayahNum || item.meta.ayahNum || 1;
+                        const isCopiedAyah = copiedText === `ayah_${itemKey}`;
+                        const url = getQuranTopWordUrl(targetWord, item.meta.surahNumber, ayahNum, item.meta.occurrences);
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 w-full">
-                        {encQuranicMatches.map((item, idx) => {
-                          const url = getQuranTopWordUrl(item.word, item.meta.surahNumber, item.meta.ayahNum, item.meta.occurrences);
-                          const isCopied = copiedText === `enc_q_${idx}`;
-                          return (
+                        return (
+                          <div
+                            key={`quran_${item.word}_${idx}`}
+                            onMouseEnter={() => setHintText(isDirectExact ? `لفظ قرآني مباشر (100%): [${item.word}] في سورة ${surahName} الآية [${ayahNum}] - انقر لعرض الآية الكاملة` : `${item.meta.matchRule || 'لفظ قرآني مقارِب'}: (${displayText}) بنسبة تطابق ${displayPercentage}% في سورة ${surahName} [الآية ${ayahNum}]`)}
+                            onMouseLeave={clearHint}
+                            className="flex flex-col rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/30 overflow-hidden shadow-2xs transition-all"
+                          >
+                            {/* Card Summary Header (Clickable to toggle accordion) */}
                             <div
-                              key={`enc_quran_${item.word}_${idx}`}
-                              className="px-2 py-1 rounded-md bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-between gap-1 shadow-2xs hover:border-amber-400 dark:hover:border-amber-600 transition-all select-none group"
+                              onClick={() => toggleQuranicAccordion(itemKey)}
+                              className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none ${
+                                isExpanded
+                                  ? 'bg-indigo-100/90 dark:bg-indigo-900/60 border-b border-indigo-200 dark:border-indigo-800'
+                                  : 'hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40'
+                              }`}
                             >
-                              <div className="flex items-center gap-1 min-w-0">
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs font-normal font-quran text-amber-950 dark:text-amber-100 hover:text-amber-600 dark:hover:text-amber-300 hover:underline leading-tight"
-                                  title={`البحث عن [${item.word}] في المصحف`}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs shrink-0 ${
+                                    isDirectExact
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-indigo-200/90 dark:bg-indigo-900/90 text-indigo-950 dark:text-indigo-200'
+                                  }`}
                                 >
-                                  {item.word}
-                                </a>
+                                  {displayPercentage}%
+                                </span>
+                                <span className="text-sm font-bold font-quran text-indigo-950 dark:text-indigo-100 leading-tight">
+                                  {displayText}
+                                </span>
                                 {isCopied && (
                                   <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal">
-                                    تم
+                                    تم النسخ
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 {item.isReversed && (
                                   <RotateCcw
-                                    className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0"
-                                    title="معكوس التوليفة"
+                                    className="w-3 h-3 text-rose-500 dark:text-rose-400 shrink-0"
+                                    title="معكوس الكلمة"
                                   />
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleCopy(item.word, `enc_q_${idx}`)}
-                                  className="p-0.5 text-stone-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors cursor-pointer"
+                                  onClick={() => toggleQuranicAccordion(itemKey)}
+                                  onMouseEnter={() => setHintText(isExpanded ? 'إغلاق عرض نص الآية الكريمة' : 'عرض نص الآية الكريمة كاملة مع تمييز الموضع')}
+                                  onMouseLeave={clearHint}
+                                  className="p-1 rounded-md text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200/60 dark:hover:bg-indigo-800/60 transition-colors cursor-pointer"
+                                  title={isExpanded ? "إغلاق الآية" : "عرض الآية الكريمة كاملة"}
+                                >
+                                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(targetWord, itemKey)}
+                                  onMouseEnter={() => setHintText(`نسخ الكلمة [${targetWord}] إلى الحافظة`)}
+                                  onMouseLeave={clearHint}
+                                  className="p-1 text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
                                   title="نسخ الكلمة"
                                 >
-                                  {isCopied ? (
-                                    <Check className="w-2.5 h-2.5 text-amber-600" />
-                                  ) : (
-                                    <Copy className="w-2.5 h-2.5" />
-                                  )}
+                                  {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                                 </button>
                                 <AddToNotebookButton
                                   word={submittedText}
                                   cipher={item.word}
                                   systemName={activeTableName}
-                                  surahInfo={item.meta.surahName}
-                                  ayahNum={item.meta.ayahNum}
+                                  surahInfo={surahName}
+                                  ayahNum={ayahNum}
                                   isReversed={item.isReversed}
                                   type="quranic"
                                   variant="icon-only"
                                 />
                               </div>
                             </div>
+
+                            {/* Accordion Expanded Content (Full Ayah display with highlighted word) */}
+                            {isExpanded && (
+                              <div className="p-3 bg-white/90 dark:bg-stone-900/90 space-y-2.5 animate-in fade-in zoom-in-95 duration-150 border-t border-indigo-100 dark:border-indigo-900">
+                                <div className="flex items-center justify-between text-2xs">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded-md font-semibold text-2xs bg-indigo-600 text-white">
+                                      سورة {surahName} — الآية [{ayahNum}]
+                                    </span>
+                                    {item.meta.occurrences > 0 && (
+                                      <span className="text-stone-500 text-3xs">
+                                        (تكرار اللفظ: {item.meta.occurrences} مرة في القرآن)
+                                      </span>
+                                    )}
+                                    {item.meta.matchRule && (
+                                      <span className="text-amber-700 dark:text-amber-300 text-3xs font-medium">
+                                        • {item.meta.matchRule}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {fullAyahText ? (
+                                  <div className="font-quran text-base sm:text-lg leading-loose text-center text-stone-900 dark:text-stone-100 p-3 rounded-xl bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 select-text">
+                                    {highlightWordInAyah(
+                                      fullAyahText,
+                                      targetWord,
+                                      'bg-indigo-200 dark:bg-indigo-900 text-indigo-950 dark:text-indigo-100 border border-indigo-400'
+                                    )}
+                                    <span className="text-amber-600 dark:text-amber-400 font-bold ms-1.5">
+                                      ﴿{ayahNum}﴾
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-stone-500 text-center py-2">
+                                    المفردة واردة في سورة {surahName} الآية {ayahNum}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-200/60 dark:border-stone-800 text-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    {fullAyahText && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy(fullAyahText, `ayah_${itemKey}`)}
+                                        onMouseEnter={() => setHintText('نسخ نص الآية الكريمة كاملة مع رقمها')}
+                                        onMouseLeave={clearHint}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer text-2xs font-medium"
+                                        title="نسخ الآية الكريمة كاملة"
+                                      >
+                                        {isCopiedAyah ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                        <span>{isCopiedAyah ? 'تم نسخ الآية' : 'نسخ الآية'}</span>
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onMouseEnter={() => setHintText('فتح صفحة الآية في المصحف الإلكتروني القرآني')}
+                                    onMouseLeave={clearHint}
+                                    className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline text-2xs font-medium"
+                                    title="عرض الآية في المصحف الإلكتروني"
+                                  >
+                                    <span>عرض في المصحف</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nearest Quranic Vocabulary Matches (أقرب المفردات القرآنية شبهاً) */}
+                <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                  <button
+                    type="button"
+                    onClick={toggleNearestQuranicOpen}
+                    onMouseEnter={() => setHintText(`أقرب الألفاظ القرآنية شبهاً بالاحتمالات (${nearestQuranicMatches.length} مفردة) مع نسبة التشابه وسياق الآيات`)}
+                    onMouseLeave={clearHint}
+                    className="w-full flex items-center justify-between py-1 px-1 rounded-lg hover:bg-stone-100/70 dark:hover:bg-stone-800/60 transition-colors cursor-pointer text-start"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                        أقرب المفردات القرآنية شبهاً ({nearestQuranicMatches.length})
+                      </h4>
+                    </div>
+                    {isNearestQuranicOpen ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-stone-400" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+                    )}
+                  </button>
+
+                  {isNearestQuranicOpen && (
+                    nearestQuranicMatches.length === 0 ? (
+                      <div className="py-2.5 px-3 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-xl border border-indigo-200/50 dark:border-indigo-800/50 text-xs text-stone-500 text-center">
+                        {isDecryptSearching ? 'جاري فحص أقرب المفردات القرآنية شبهاً...' : 'لا توجد ألفاظ قرآنية قريبة بنسبة تقارب تتجاوز 45%'}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 pt-1">
+                        {nearestQuranicMatches.map((item, idx) => {
+                          const itemKey = `dec_near_${idx}`;
+                          const isExpanded = expandedQuranicKey === itemKey;
+                          const isCopied = copiedText === itemKey;
+                          const ayahInfo = quranicDictionary.getAyahForWord(item.nearest.word, item.nearest.surahName, item.nearest.ayahNum);
+                          const fullAyahText = ayahInfo?.ayahText || item.nearest.ayahText || item.nearest.sampleAyahText || '';
+                          const surahName = ayahInfo?.surahName || item.nearest.surahName || 'القرآن الكريم';
+                          const ayahNum = ayahInfo?.ayahNum || item.nearest.ayahNum || 1;
+                          const isCopiedAyah = copiedText === `ayah_${itemKey}`;
+                          const url = getQuranTopWordUrl(item.nearest.word, item.nearest.surahNumber, ayahNum);
+
+                          return (
+                            <div
+                              key={`dec_near_${item.combo}_${idx}`}
+                              onMouseEnter={() => setHintText(`لفظ قرآني قريب: [${item.nearest.word}] بنسبة تطابق ${Math.round(item.nearest.similarity)}% (${item.combo} = ${item.nearest.word}) - انقر لفتح الآية الكريمة`)}
+                              onMouseLeave={clearHint}
+                              className="flex flex-col rounded-xl border border-indigo-200/70 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/30 overflow-hidden shadow-2xs transition-all"
+                            >
+                              <div
+                                onClick={() => toggleQuranicAccordion(itemKey)}
+                                className={`px-3 py-1.5 flex items-center justify-between gap-1.5 cursor-pointer transition-colors select-none ${
+                                  isExpanded
+                                    ? 'bg-indigo-100/90 dark:bg-indigo-900/60 border-b border-indigo-200 dark:border-indigo-800'
+                                    : 'hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-3xs font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-200/90 dark:bg-indigo-900/90 text-indigo-950 dark:text-indigo-200 shrink-0">
+                                    {Math.round(item.nearest.similarity)}%
+                                  </span>
+                                  <span className="font-bold font-quran text-stone-900 dark:text-stone-100 text-xs sm:text-sm tracking-wide">
+                                    {item.combo} = {item.nearest.word}
+                                  </span>
+                                  {isCopied && (
+                                    <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal">
+                                      تم النسخ
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  {item.isReversed && (
+                                    <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleQuranicAccordion(itemKey)}
+                                    onMouseEnter={() => setHintText(isExpanded ? 'إغلاق الآية' : 'عرض سياق الآية الكريمة')}
+                                    onMouseLeave={clearHint}
+                                    className="p-1 rounded text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200/60 dark:hover:bg-indigo-800/60 transition-colors cursor-pointer"
+                                    title={isExpanded ? "إغلاق الآية" : "عرض الآية الكريمة"}
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(item.nearest.word, itemKey)}
+                                    onMouseEnter={() => setHintText(`نسخ اللفظ القرآني [${item.nearest.word}]`)}
+                                    onMouseLeave={clearHint}
+                                    className="p-1 rounded text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 transition-colors cursor-pointer"
+                                    title="نسخ الكلمة"
+                                  >
+                                    {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <AddToNotebookButton
+                                    word={submittedText}
+                                    cipher={item.nearest.word}
+                                    systemName={activeTableName}
+                                    surahInfo={surahName}
+                                    ayahNum={ayahNum}
+                                    isReversed={item.isReversed}
+                                    type="quranic"
+                                    variant="icon-only"
+                                  />
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="p-3 bg-white/90 dark:bg-stone-900/90 space-y-2.5 animate-in fade-in zoom-in-95 duration-150 border-t border-indigo-100 dark:border-indigo-900">
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-2 py-0.5 rounded-md font-semibold text-2xs bg-indigo-600 text-white">
+                                        سورة {surahName} — الآية [{ayahNum}]
+                                      </span>
+                                      <span className="text-3xs text-stone-500">
+                                        نسبة التقارب الصوتي: {item.nearest.similarity}%
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {fullAyahText ? (
+                                    <div className="font-quran text-base sm:text-lg leading-loose text-center text-stone-900 dark:text-stone-100 p-3 rounded-xl bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 select-text">
+                                      {highlightWordInAyah(
+                                        fullAyahText,
+                                        item.nearest.word,
+                                        'bg-indigo-200 dark:bg-indigo-900 text-indigo-950 dark:text-indigo-100 border border-indigo-400'
+                                      )}
+                                      <span className="text-amber-600 dark:text-amber-400 font-bold ms-1.5">
+                                        ﴿{ayahNum}﴾
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-stone-500 text-center py-2">
+                                      المفردة واردة في سورة {surahName} الآية {ayahNum}
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-200/60 dark:border-stone-800 text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                      {fullAyahText && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopy(fullAyahText, `ayah_${itemKey}`)}
+                                          onMouseEnter={() => setHintText('نسخ نص الآية الكريمة كاملة')}
+                                          onMouseLeave={clearHint}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer text-2xs font-medium"
+                                          title="نسخ الآية الكريمة كاملة"
+                                        >
+                                          {isCopiedAyah ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                          <span>{isCopiedAyah ? 'تم نسخ الآية' : 'نسخ الآية'}</span>
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onMouseEnter={() => setHintText('عرض موقع المفردة في المصحف الإلكتروني')}
+                                      onMouseLeave={clearHint}
+                                      className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline text-2xs font-medium"
+                                      title="عرض الآية في المصحف الإلكتروني"
+                                    >
+                                      <span>عرض في المصحف</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
-                    </div>
+                    )
                   )}
+                </div>
 
-                  {/* Priority 2: Nearest Quranic Vocabulary */}
-                  {encNearestQuranicMatches.length > 0 && (
-                    <div className="space-y-1 pt-1.5 border-t border-stone-100 dark:border-stone-800">
-                      <button
-                        type="button"
-                        onClick={toggleNearestQuranicOpen}
-                        className="w-full flex items-center justify-between py-0.5 px-1 rounded hover:bg-stone-100/70 dark:hover:bg-stone-800/60 transition-colors cursor-pointer text-start"
-                      >
-                        <div className="flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-sky-600 dark:text-sky-400" />
-                          <h4 className="text-2xs font-normal text-stone-600 dark:text-stone-400">
-                            أقرب المفردات ({encNearestQuranicMatches.length})
-                          </h4>
-                        </div>
-                        {isNearestQuranicOpen ? (
-                          <ChevronUp className="w-3 h-3 text-stone-400" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3 text-stone-400" />
+                {/* Confirmed Arabic Lexicon Matches with Root and Category */}
+                {(arabicDictionaryMatches.length > 0 || isDecryptSearching) && (
+                  <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <h4
+                      onMouseEnter={() => setHintText(`المطابقات المعجمية العربية الموثقة (${arabicDictionaryMatches.length} مفردة) مع الجذور والأوزان الصرفية`)}
+                      onMouseLeave={clearHint}
+                      className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1 cursor-default"
+                    >
+                      <div className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>مطابقات معجمية ولغوية ({arabicDictionaryMatches.length})</span>
+                      </div>
+                      {isDecryptSearching && decryptSearchPhase === 'lexicon' && (
+                        <span className="inline-flex items-center gap-1 text-3xs font-normal text-indigo-600 dark:text-indigo-400 animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          <span>جاري البحث المعجمي...</span>
+                        </span>
+                      )}
+                    </h4>
+
+                    {arabicDictionaryMatches.length === 0 && isDecryptSearching && decryptSearchPhase === 'lexicon' ? (
+                      <div className="py-2 px-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-between gap-1 text-xs text-indigo-900 dark:text-indigo-200 animate-pulse">
+                        <span>جاري فحص المعجم العربي والجذور...</span>
+                        <span className="font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded">
+                          {decryptProgress}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 w-full p-2 rounded-xl bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800 max-h-40 overflow-y-auto">
+                        {arabicDictionaryMatches.slice(0, 50).map((item, idx) => (
+                          <div
+                            key={`dict_${item.word}_${idx}`}
+                            onMouseEnter={() => setHintText(`مفردة معجمية: [${item.word}] - الجذر: [${item.meta?.root || '—'}]`)}
+                            onMouseLeave={clearHint}
+                            className="px-2 py-1 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-200 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-normal hover:scale-102 transition-all inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(item.word, `d_${idx}`)}
+                              className="inline-flex items-center gap-1 cursor-pointer font-quran text-xs font-medium"
+                              title="انقر لنسخ الكلمة"
+                            >
+                              <span>{item.word}</span>
+                              {item.meta?.root && (
+                                <span className="text-3xs text-indigo-600 dark:text-indigo-400 font-sans opacity-80">
+                                  ({item.meta.root})
+                                </span>
+                              )}
+                              {item.isReversed && (
+                                <RotateCcw
+                                  className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0"
+                                  title="معكوس الكلمة"
+                                />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(item.word, `d_${idx}`)}
+                              onMouseEnter={() => setHintText(`نسخ المفردة [${item.word}]`)}
+                              onMouseLeave={clearHint}
+                              className="text-stone-400 hover:text-indigo-600 transition-colors p-0.5"
+                              title="نسخ"
+                            >
+                              {copiedText === `d_${idx}` ? <Check className="w-2.5 h-2.5 text-emerald-600" /> : <Copy className="w-2.5 h-2.5" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Column 2: Encryption Results (التشفير - Amber Theme) */}
+          {(viewMode === 'both' || viewMode === 'encrypt') && (() => {
+            const isEncryptionActive = viewMode === 'encrypt' || (viewMode === 'both' && !Boolean(nooraniAnalysis?.isPureNoorani));
+
+            return (
+              <div
+                className={`bg-white dark:bg-stone-900 rounded-2xl p-4 shadow-sm space-y-3 transition-all duration-300 ${
+                  isEncryptionActive
+                    ? 'border-2 border-amber-500 ring-4 ring-amber-500/20 shadow-md bg-amber-50/15 dark:bg-amber-950/20 relative'
+                    : 'border border-stone-200 dark:border-stone-800 opacity-80 hover:opacity-100 transition-opacity'
+                }`}
+              >
+                {/* Active Path Header Banner */}
+                {viewMode === 'both' && isEncryptionActive && (
+                  <div className="px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
+                      <span>المسار المختار: التشفير (مدخل بأحرف هجائية)</span>
+                    </div>
+                    <span className="text-amber-200 text-3xs font-mono">← اقرأ هنا</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400 flex items-center justify-center text-xs shadow-2xs font-bold">
+                      <Lock className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 font-sans flex items-center gap-1.5">
+                        <span>التشفير</span>
+                        {isEncryptionActive && (
+                          <span className="text-3xs px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-900/70 text-amber-700 dark:text-amber-300 font-normal">
+                            نشط
+                          </span>
                         )}
-                      </button>
+                      </h3>
+                      <p className="text-3xs text-stone-500 dark:text-stone-400">
+                        تحويل الأحرف إلى رموز السماوات السبع وتوليد المقابلات
+                      </p>
+                    </div>
+                  </div>
 
-                      {isNearestQuranicOpen && (
-                        <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto pt-0.5">
-                          {encNearestQuranicMatches.map((item, idx) => {
-                            const isCopied = copiedText === `enc_near_${idx}`;
+                  {onNavigateToEncrypt && (
+                    <button
+                      onClick={() => onNavigateToEncrypt(submittedText)}
+                      className="p-1 rounded text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors inline-flex items-center cursor-pointer"
+                      title="عرض التشفير في صفحة مخصصة"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sequential Search Progress Bar for Encryption */}
+                {isEncSearching && (
+                  <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-950 dark:text-amber-200">
+                        <Loader2 className="w-3.5 h-3.5 text-amber-600 animate-spin shrink-0" />
+                        <span className="truncate">{encStatusText || 'جاري المسح المتتابع للتشفير...'}</span>
+                      </div>
+                      <span className="font-mono font-bold text-amber-700 dark:text-amber-300 text-xs shrink-0">
+                        {encProgress}%
+                      </span>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="w-full bg-amber-100 dark:bg-amber-900/60 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500 transition-all duration-300 rounded-full"
+                        style={{ width: `${encProgress}%` }}
+                      />
+                    </div>
+
+                    {/* 2 Sequential Stages */}
+                    <div className="grid grid-cols-2 gap-1.5 text-3xs pt-0.5">
+                      <div
+                        className={`flex items-center justify-between px-2 py-1 rounded-lg border transition-all ${
+                          encSearchPhase === 'quran'
+                            ? 'bg-amber-100/90 dark:bg-amber-900/80 border-amber-400 text-amber-950 dark:text-amber-100 font-bold shadow-2xs'
+                            : encQuranicMatches.length > 0 || encProgress >= 50
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 font-medium'
+                            : 'bg-stone-100 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-500'
+                        }`}
+                      >
+                        <span>١. مسح المصحف وقواعد الرسم</span>
+                        <span>{encSearchPhase === 'quran' ? '⏳ جاري' : `✅ (${encQuranicMatches.length})`}</span>
+                      </div>
+
+                      <div
+                        className={`flex items-center justify-between px-2 py-1 rounded-lg border transition-all ${
+                          encSearchPhase === 'lexicon'
+                            ? 'bg-amber-100/90 dark:bg-amber-900/80 border-amber-400 text-amber-950 dark:text-amber-100 font-bold shadow-2xs'
+                            : encSearchPhase === 'complete'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 font-medium'
+                            : 'bg-stone-100 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-400'
+                        }`}
+                      >
+                        <span>٢. المعجم اللغوي والجذور</span>
+                        <span>
+                          {encSearchPhase === 'lexicon'
+                            ? '⏳ جاري'
+                            : encSearchPhase === 'complete'
+                            ? `✅ (${encArabicDictionaryMatches.length})`
+                            : '⏱️ بالانتظار'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasMissingArabic ? (
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-center text-xs font-normal text-rose-700 dark:text-rose-300">
+                    بعض أحرف هذه الكلمة غير موجودة في جدول التشفير الحالي.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Dense Letter Breakdown with Color Micro Tiles */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {encryptionDetails.map((detail, idx) => {
+                        if (detail.isSpecialOrSpace) return null;
+                        const layerNum = detail.layer ? detail.layer.layer : 0;
+                        const color = LAYER_RAINBOW_COLORS[layerNum] || {
+                          name: 'رمادي',
+                          activeBg: 'bg-stone-800',
+                          activeText: 'text-white',
+                          activeBorder: 'border-stone-900',
+                        };
+                        const ciphers = detail.layer
+                          ? (detail.layer.cipherLetters || []).filter((c) => Boolean(c) && c !== 'و')
+                          : [];
+                        const displayChar = detail.originalChar || detail.normalizedChar || '';
+
+                        return (
+                          <div
+                            key={`char_${idx}`}
+                            className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xs text-xs"
+                            title={`الحرف [${displayChar}] - سماء ${layerNum}`}
+                          >
+                            <span
+                              className={`w-6 h-6 rounded font-semibold text-xs font-quran flex items-center justify-center shrink-0 shadow-2xs ${color.activeBg} ${color.activeText} border ${color.activeBorder}`}
+                            >
+                              {displayChar}
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              {ciphers.map((cipherChar, cIdx) => (
+                                <span
+                                  key={cIdx}
+                                  className="w-6 h-6 rounded font-semibold text-xs font-quran flex items-center justify-center shrink-0 bg-stone-100 dark:bg-stone-700/90 text-stone-800 dark:text-stone-100 border border-stone-300 dark:border-stone-600 shadow-2xs"
+                                  title={`رمز التشفير: [${cipherChar}]`}
+                                >
+                                  {cipherChar}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Priority 1: Exact Quranic Matches from Encryption with Interactive Ayah Accordion */}
+                    {encQuranicMatches.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-stone-800">
+                        <div className="flex items-center justify-between">
+                          <h4
+                            onMouseEnter={() => setHintText(`المفردات القرآنية المطابقة لشفرة النص (${encQuranicMatches.length} مفردة) مع نصوص الآيات والسور`)}
+                            onMouseLeave={clearHint}
+                            className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5 cursor-default"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                            <span>مفردات قرآنية من التشفير ({encQuranicMatches.length})</span>
+                          </h4>
+                          <span className="text-3xs text-stone-500 dark:text-stone-400">
+                            اضغط على المفردة لعرض الآية الكريمة
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 w-full">
+                          {encQuranicMatches.map((item, idx) => {
+                            const itemKey = `enc_q_${idx}`;
+                            const isExpanded = expandedQuranicKey === itemKey;
+                            const isCopied = copiedText === itemKey;
+                            const targetWord = item.meta.originalQuranicWord || item.meta.word || item.word;
+                            const isDirectExact = !!item.meta.isDirectExact && item.word === targetWord;
+                            const displayPercentage = isDirectExact ? 100 : Math.min(item.meta.confidence || 90, 95);
+                            const displayText = isDirectExact ? item.word : `${item.word} = ${targetWord}`;
+                            const ayahInfo = quranicDictionary.getAyahForWord(targetWord, item.meta.surahName, item.meta.ayahNum);
+                            const fullAyahText = ayahInfo?.ayahText || item.meta.ayahText || item.meta.sampleAyahText || '';
+                            const surahName = ayahInfo?.surahName || item.meta.surahName || 'القرآن الكريم';
+                            const ayahNum = ayahInfo?.ayahNum || item.meta.ayahNum || 1;
+                            const isCopiedAyah = copiedText === `ayah_${itemKey}`;
+                            const url = getQuranTopWordUrl(targetWord, item.meta.surahNumber, ayahNum, item.meta.occurrences);
+
                             return (
                               <div
-                                key={`enc_near_${item.combo}_${idx}`}
-                                className="px-1.5 py-0.5 rounded bg-sky-50/50 dark:bg-sky-950/30 border border-sky-200/70 dark:border-sky-800/60 hover:border-sky-400 flex items-center gap-1 text-xs transition-all shadow-2xs"
-                                title={`احتمال الشفرة: [${item.combo}] ← أقرب مفردة قرآنية: [${item.nearest.word}]`}
+                                key={`enc_quran_${item.word}_${idx}`}
+                                onMouseEnter={() => setHintText(isDirectExact ? `مفردة قرآنية مشفرة (100%): [${item.word}] في سورة ${surahName} الآية [${ayahNum}]` : `${item.meta.matchRule || 'مفردة قرآنية مقارِبة'}: (${displayText}) بنسبة تطابق ${displayPercentage}% في سورة ${surahName} [الآية ${ayahNum}]`)}
+                                onMouseLeave={clearHint}
+                                className="flex flex-col rounded-xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/30 overflow-hidden shadow-2xs transition-all"
                               >
-                                <span className="text-3xs font-normal px-1 py-0.2 rounded bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">
-                                  {item.nearest.similarity}%
-                                </span>
-                                <span
-                                  onClick={() => handleCopy(item.nearest.word, `enc_near_${idx}`)}
-                                  className="font-normal font-quran text-stone-900 dark:text-stone-100 text-xs cursor-pointer hover:underline"
+                                <div
+                                  onClick={() => toggleQuranicAccordion(itemKey)}
+                                  className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none ${
+                                    isExpanded
+                                      ? 'bg-amber-100/90 dark:bg-amber-900/60 border-b border-amber-200 dark:border-amber-800'
+                                      : 'hover:bg-amber-100/50 dark:hover:bg-amber-900/40'
+                                  }`}
                                 >
-                                  {item.nearest.word}
-                                </span>
-                                {item.isReversed && (
-                                  <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس" />
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs shrink-0 ${
+                                        isDirectExact
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'bg-amber-200/90 dark:bg-amber-900/90 text-amber-950 dark:text-amber-200'
+                                      }`}
+                                    >
+                                      {displayPercentage}%
+                                    </span>
+                                    <span className="text-sm font-bold font-quran text-amber-950 dark:text-amber-100 leading-tight">
+                                      {displayText}
+                                    </span>
+                                    {isCopied && (
+                                      <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal">
+                                        تم النسخ
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    {item.isReversed && (
+                                      <RotateCcw
+                                        className="w-3 h-3 text-rose-500 dark:text-rose-400 shrink-0"
+                                        title="معكوس التوليفة"
+                                      />
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleQuranicAccordion(itemKey)}
+                                      onMouseEnter={() => setHintText(isExpanded ? 'إغلاق الآية' : 'عرض نص الآية الكريمة كاملة')}
+                                      onMouseLeave={clearHint}
+                                      className="p-1 rounded-md text-amber-700 dark:text-amber-300 hover:bg-amber-200/60 dark:hover:bg-amber-800/60 transition-colors cursor-pointer"
+                                      title={isExpanded ? "إغلاق الآية" : "عرض الآية الكريمة كاملة"}
+                                    >
+                                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy(targetWord, itemKey)}
+                                      onMouseEnter={() => setHintText(`نسخ الكلمة [${targetWord}]`)}
+                                      onMouseLeave={clearHint}
+                                      className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors cursor-pointer"
+                                      title="نسخ الكلمة"
+                                    >
+                                      {isCopied ? <Check className="w-3.5 h-3.5 text-amber-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <AddToNotebookButton
+                                      word={submittedText}
+                                      cipher={item.word}
+                                      systemName={activeTableName}
+                                      surahInfo={surahName}
+                                      ayahNum={ayahNum}
+                                      isReversed={item.isReversed}
+                                      type="quranic"
+                                      variant="icon-only"
+                                    />
+                                  </div>
+                                </div>
+
+                                {isExpanded && (
+                                  <div className="p-3 bg-white/90 dark:bg-stone-900/90 space-y-2.5 animate-in fade-in zoom-in-95 duration-150 border-t border-amber-100 dark:border-amber-900">
+                                    <div className="flex items-center justify-between text-2xs">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="px-2 py-0.5 rounded-md font-semibold text-2xs bg-amber-600 text-white">
+                                          سورة {surahName} — الآية [{ayahNum}]
+                                        </span>
+                                        {item.meta.occurrences > 0 && (
+                                          <span className="text-stone-500 text-3xs">
+                                            (تكرار اللفظ: {item.meta.occurrences} مرة في القرآن)
+                                          </span>
+                                        )}
+                                        {item.meta.matchRule && (
+                                          <span className="text-amber-700 dark:text-amber-300 text-3xs font-medium">
+                                            • {item.meta.matchRule}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {fullAyahText ? (
+                                      <div className="font-quran text-base sm:text-lg leading-loose text-center text-stone-900 dark:text-stone-100 p-3 rounded-xl bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 select-text">
+                                        {highlightWordInAyah(
+                                          fullAyahText,
+                                          targetWord,
+                                          'bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100 border border-amber-400'
+                                        )}
+                                        <span className="text-amber-600 dark:text-amber-400 font-bold ms-1.5">
+                                          ﴿{ayahNum}﴾
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-stone-500 text-center py-2">
+                                        المفردة واردة في سورة {surahName} الآية {ayahNum}
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-200/60 dark:border-stone-800 text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        {fullAyahText && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopy(fullAyahText, `ayah_${itemKey}`)}
+                                            onMouseEnter={() => setHintText('نسخ نص الآية الكريمة كاملة')}
+                                            onMouseLeave={clearHint}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer text-2xs font-medium"
+                                            title="نسخ الآية الكريمة كاملة"
+                                          >
+                                            {isCopiedAyah ? <Check className="w-3 h-3 text-amber-600" /> : <Copy className="w-3 h-3" />}
+                                            <span>{isCopiedAyah ? 'تم نسخ الآية' : 'نسخ الآية'}</span>
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onMouseEnter={() => setHintText('عرض الآية الكريمة في المصحف الإلكتروني')}
+                                        onMouseLeave={clearHint}
+                                        className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:underline text-2xs font-medium"
+                                        title="عرض الآية في المصحف الإلكتروني"
+                                      >
+                                        <span>عرض في المصحف</span>
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    </div>
+                                  </div>
                                 )}
-                                {isCopied && <Check className="w-2.5 h-2.5 text-emerald-600 shrink-0" />}
                               </div>
                             );
                           })}
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Priority 3: Confirmed Arabic Lexicon Matches */}
-                  {encArabicDictionaryMatches.length > 0 && (
-                    <div className="space-y-1 pt-1.5 border-t border-stone-100 dark:border-stone-800">
-                      <h4 className="text-2xs font-normal text-stone-600 dark:text-stone-400 flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                          <span>معجمية ({encArabicDictionaryMatches.length})</span>
-                        </div>
-                      </h4>
-                      <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1 rounded-md bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800">
-                        {encArabicDictionaryMatches.slice(0, 40).map((item, idx) => (
-                          <div
-                            key={`enc_dict_${item.word}_${idx}`}
-                            className="px-1.5 py-0.5 rounded bg-amber-50/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/60 text-xs font-normal hover:scale-102 transition-all inline-flex items-center gap-1"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(item.word, `enc_d_${idx}`)}
-                              className="inline-flex items-center gap-0.5 cursor-pointer font-quran text-xs font-normal"
-                              title="انقر لنسخ الكلمة"
-                            >
-                              <span>{item.word}</span>
-                              {item.isReversed && (
-                                <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
-                              )}
-                              {copiedText === `enc_d_${idx}` ? <Check className="w-2.5 h-2.5 text-amber-600" /> : null}
-                            </button>
-                            <a
-                              href={getArabicDictSearchUrl(item.word)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-stone-400 hover:text-amber-600 dark:hover:text-amber-300 p-0.5"
-                              title={`البحث عن "${item.word}" في Google`}
-                            >
-                              <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
-                            </a>
-                          </div>
-                        ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                </div>
-              )}
-            </div>
-          )}
+                    {/* Priority 2: Nearest Quranic Vocabulary with Accordion */}
+                    {encNearestQuranicMatches.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                        <button
+                          type="button"
+                          onClick={toggleNearestQuranicOpen}
+                          onMouseEnter={() => setHintText(`أقرب الألفاظ القرآنية شبهاً بنواتج التشفير (${encNearestQuranicMatches.length} مفردة) مع نسبة التقارب والسياق`)}
+                          onMouseLeave={clearHint}
+                          className="w-full flex items-center justify-between py-1 px-1 rounded-lg hover:bg-stone-100/70 dark:hover:bg-stone-800/60 transition-colors cursor-pointer text-start"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                            <h4 className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                              أقرب المفردات القرآنية شبهاً ({encNearestQuranicMatches.length})
+                            </h4>
+                          </div>
+                          {isNearestQuranicOpen ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-stone-400" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
 
-          {/* Column 3: Gematria Results (الجُمَّل - Emerald Theme) */}
-          {(viewMode === 'both' || viewMode === 'gematria') && (
-            <div className="w-full">
-              <GematriaResultsCard
-                query={submittedText}
-                onNavigateToGematria={onNavigateToGematria}
-                onNavigateToMatcher={onNavigateToMatcher}
-                onSelectWord={(w) => {
-                  setInputText(w);
-                  setSubmittedText(w);
-                  addToHistory(w);
-                }}
-              />
-            </div>
-          )}
+                        {isNearestQuranicOpen && (
+                          <div className="space-y-1.5 pt-1">
+                            {encNearestQuranicMatches.map((item, idx) => {
+                              const itemKey = `enc_near_${idx}`;
+                              const isExpanded = expandedQuranicKey === itemKey;
+                              const isCopied = copiedText === itemKey;
+                              const ayahInfo = quranicDictionary.getAyahForWord(item.nearest.word, item.nearest.surahName, item.nearest.ayahNum);
+                              const fullAyahText = ayahInfo?.ayahText || item.nearest.ayahText || item.nearest.sampleAyahText || '';
+                              const surahName = ayahInfo?.surahName || item.nearest.surahName || 'القرآن الكريم';
+                              const ayahNum = ayahInfo?.ayahNum || item.nearest.ayahNum || 1;
+                              const isCopiedAyah = copiedText === `ayah_${itemKey}`;
+                              const url = getQuranTopWordUrl(item.nearest.word, item.nearest.surahNumber, ayahNum);
+
+                              return (
+                                <div
+                                  key={`enc_near_${item.combo}_${idx}`}
+                                  onMouseEnter={() => setHintText(`لفظ قرآني قريب: [${item.nearest.word}] بنسبة تطابق ${Math.round(item.nearest.similarity)}% (${item.combo} = ${item.nearest.word}) - انقر لفتح الآية الكريمة`)}
+                                  onMouseLeave={clearHint}
+                                  className="flex flex-col rounded-xl border border-sky-200/70 dark:border-sky-800/60 bg-sky-50/40 dark:bg-sky-950/30 overflow-hidden shadow-2xs transition-all"
+                                >
+                                  <div
+                                    onClick={() => toggleQuranicAccordion(itemKey)}
+                                    className={`px-3 py-1.5 flex items-center justify-between gap-1.5 cursor-pointer transition-colors select-none ${
+                                      isExpanded
+                                        ? 'bg-sky-100/90 dark:bg-sky-900/60 border-b border-sky-200 dark:border-sky-800'
+                                        : 'hover:bg-sky-100/50 dark:hover:bg-sky-900/40'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-3xs font-mono font-bold px-1.5 py-0.5 rounded bg-sky-200/80 dark:bg-sky-900/80 text-sky-900 dark:text-sky-200 shrink-0">
+                                        {Math.round(item.nearest.similarity)}%
+                                      </span>
+                                      <span className="font-bold font-quran text-stone-900 dark:text-stone-100 text-xs sm:text-sm tracking-wide">
+                                        {item.combo} = {item.nearest.word}
+                                      </span>
+                                      {isCopied && (
+                                        <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-normal">
+                                          تم النسخ
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      {item.isReversed && (
+                                        <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس" />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleQuranicAccordion(itemKey)}
+                                        onMouseEnter={() => setHintText(isExpanded ? 'إغلاق الآية' : 'عرض نص وسياق الآية الكريمة')}
+                                        onMouseLeave={clearHint}
+                                        className="p-1 rounded text-sky-700 dark:text-sky-300 hover:bg-sky-200/60 dark:hover:bg-sky-800/60 transition-colors cursor-pointer"
+                                        title={isExpanded ? "إغلاق الآية" : "عرض الآية الكريمة"}
+                                      >
+                                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy(item.nearest.word, itemKey)}
+                                        onMouseEnter={() => setHintText(`نسخ اللفظ [${item.nearest.word}]`)}
+                                        onMouseLeave={clearHint}
+                                        className="p-0.5 text-stone-400 hover:text-sky-600 transition-colors"
+                                        title="نسخ الكلمة"
+                                      >
+                                        {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {isExpanded && (
+                                    <div className="p-3 bg-white/90 dark:bg-stone-900/90 space-y-2 animate-in fade-in zoom-in-95 duration-150 border-t border-sky-100 dark:border-sky-900">
+                                      <div className="flex items-center justify-between text-2xs">
+                                        <span className="px-2 py-0.5 rounded font-semibold text-2xs bg-sky-600 text-white">
+                                          سورة {surahName} [الآية {ayahNum}] — تقارب {item.nearest.similarity}%
+                                        </span>
+                                      </div>
+
+                                      {fullAyahText ? (
+                                        <div className="font-quran text-sm sm:text-base leading-relaxed text-center text-stone-900 dark:text-stone-100 p-2.5 rounded-lg bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 select-text">
+                                          {highlightWordInAyah(
+                                            fullAyahText,
+                                            item.nearest.word,
+                                            'bg-sky-200 dark:bg-sky-900 text-sky-950 dark:text-sky-100 border border-sky-400'
+                                          )}
+                                          <span className="text-amber-600 dark:text-amber-400 font-bold ms-1">
+                                            ﴿{ayahNum}﴾
+                                          </span>
+                                        </div>
+                                      ) : null}
+
+                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-200/60 dark:border-stone-800 text-2xs">
+                                        {fullAyahText && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopy(fullAyahText, `ayah_${itemKey}`)}
+                                            onMouseEnter={() => setHintText('نسخ نص الآية الكريمة')}
+                                            onMouseLeave={clearHint}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 font-medium"
+                                          >
+                                            {isCopiedAyah ? <Check className="w-2.5 h-2.5 text-sky-600" /> : <Copy className="w-2.5 h-2.5" />}
+                                            <span>{isCopiedAyah ? 'تم النسخ' : 'نسخ الآية'}</span>
+                                          </button>
+                                        )}
+                                        <a
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onMouseEnter={() => setHintText('عرض موقع المفردة في المصحف الإلكتروني')}
+                                          onMouseLeave={clearHint}
+                                          className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                                        >
+                                          <span>عرض في المصحف</span>
+                                          <ExternalLink className="w-2.5 h-2.5" />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Priority 3: Confirmed Arabic Lexicon Matches */}
+                    {encArabicDictionaryMatches.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                        <h4
+                          onMouseEnter={() => setHintText(`المطابقات المعجمية العربية لنواتج التشفير (${encArabicDictionaryMatches.length} مفردة) مع الجذور`)}
+                          onMouseLeave={clearHint}
+                          className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between gap-1 cursor-default"
+                        >
+                          <div className="flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>مطابقات معجمية ({encArabicDictionaryMatches.length})</span>
+                          </div>
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/60 dark:border-stone-800">
+                          {encArabicDictionaryMatches.slice(0, 50).map((item, idx) => (
+                            <div
+                              key={`enc_dict_${item.word}_${idx}`}
+                              onMouseEnter={() => setHintText(`مفردة معجمية: [${item.word}] - الجذر: [${item.meta?.root || '—'}]`)}
+                              onMouseLeave={clearHint}
+                              className="px-2 py-1 rounded-lg bg-amber-50/70 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/60 text-xs font-normal hover:scale-102 transition-all inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(item.word, `enc_d_${idx}`)}
+                                className="inline-flex items-center gap-1 cursor-pointer font-quran text-xs font-medium"
+                                title="انقر لنسخ الكلمة"
+                              >
+                                <span>{item.word}</span>
+                                {item.meta?.root && (
+                                  <span className="text-3xs text-amber-700 dark:text-amber-300 font-sans opacity-80">
+                                    ({item.meta.root})
+                                  </span>
+                                )}
+                                {item.isReversed && (
+                                  <RotateCcw className="w-2.5 h-2.5 text-rose-500 dark:text-rose-400 shrink-0" title="معكوس الكلمة" />
+                                )}
+                                {copiedText === `enc_d_${idx}` ? <Check className="w-3 h-3 text-amber-600" /> : null}
+                              </button>
+                              <a
+                                href={getArabicDictSearchUrl(item.word)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onMouseEnter={() => setHintText(`البحث عن جذر ومعنى "${item.word}" في معجم المعاني الجامع`)}
+                                onMouseLeave={clearHint}
+                                className="text-stone-400 hover:text-amber-600 dark:hover:text-amber-300 p-0.5"
+                                title={`البحث عن "${item.word}" في المعاجم`}
+                              >
+                                <ExternalLink className="w-2.5 h-2.5 opacity-70 hover:opacity-100" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       )}

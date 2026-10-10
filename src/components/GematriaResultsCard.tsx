@@ -35,10 +35,8 @@ interface GematriaResultsCardProps {
 export const SYSTEM_TOOLTIPS = {
   mashriqi: 'النموذج المشرقي: حساب الجُمَّل التقليدي وفق الترتيب الأبجدي الشائع (أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ)',
   maghribi: 'النموذج المغربي: حساب الجُمَّل الأصيل (أبجد هوز حطي كلمن صعفض قرست ثخذ ظغش حيث ص=60، ض=90، س=300، ش=1000، ظ=800، غ=900)',
-  jafr_mashriqi: 'الجفر الشرقي (جفر ش): جعل كل حرف مقطعاً بذاته مبسوطاً بأسمائه (مثلاً: ع-ل-م = عين لام ميم) ثم حسابها على المشرقي',
-  jafr_maghribi: 'الجفر المغربي (جفر غ): بسط الحروف لأسماء حروفها (عين لام ميم) وحساب قيمها ومجموعها على المغربي',
-  bayat_mashriqi: 'البيات الشرقي (بيات ش): بسط الحروف مع حذف الحرف الأول من كل اسم (العين تصبح ين، لام تصبح ام، ميم تصبح يم) وحسابها على المشرقي',
-  bayat_maghribi: 'البيات المغربي (بيات غ): بسط الحروف مع حذف الحرف الأول من كل اسم (ين، ام، يم) وحساب قيمها ومجموعها على المغربي',
+  gematria_srqd_3: 'جُمَّل الأرض 3 الدوري: حساب الجُمَّل بالأحرف النورانية الـ 14 بوزنها (ر=1 .. ك=50) وباقي الأحرف بقيمة 0',
+  gematria_srqm_1: 'جُمَّل الأرض 4 المتناظر: حساب الجُمَّل بالأحرف النورانية الـ 14 بوزنها (ر=1 .. ك=50) وباقي الأحرف بقيمة 0',
   amiriyyah: 'الطريقة العامرية: بسط الحروف لأسمائها؛ أخذ الحرف 1 من اسم الحرف الأول، والحرف 2 من اسم الحرف الثاني، والحرف الأخير من باقي الأسماء (مثل: علم -> عام، محمد -> مامل)',
 };
 
@@ -60,16 +58,16 @@ export function GematriaResultsCard({
   } = useGematria();
 
   const [quranFilter, setQuranFilter] = useState<
-    'all' | 'mashriqi' | 'maghribi' | 'jafr_mash' | 'jafr_magh' | 'bayat_mash' | 'bayat_magh' | 'noorani'
+    'all' | 'mashriqi' | 'maghribi' | 'srqd3' | 'srqm1' | 'noorani'
   >('all');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'primary' | 'jafr_bayat' | 'amiriyyah'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'primary' | 'earth' | 'amiriyyah'>('all');
 
   const cleanWord = useMemo(() => (word || query || '').trim(), [word, query]);
   const isDirectNumber = useMemo(() => /^[0-9]+$/.test(cleanWord), [cleanWord]);
 
-  // 1. Calculations across 6 Systems
+  // 1. Calculations across 4 Systems
   const mashriqiValue = useMemo(() => {
     if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
     return calculateWordGematria(cleanWord, 'mashriqi');
@@ -80,24 +78,14 @@ export function GematriaResultsCard({
     return calculateWordGematria(cleanWord, 'maghribi');
   }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  const jafrMashriqiValue = useMemo(() => {
+  const srqd3Value = useMemo(() => {
     if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
-    return calculateWordGematria(cleanWord, 'jafr_mashriqi');
+    return calculateWordGematria(cleanWord, 'gematria_srqd_3');
   }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
-  const jafrMaghribiValue = useMemo(() => {
+  const srqm1Value = useMemo(() => {
     if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
-    return calculateWordGematria(cleanWord, 'jafr_maghribi');
-  }, [cleanWord, isDirectNumber, calculateWordGematria]);
-
-  const bayatMashriqiValue = useMemo(() => {
-    if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
-    return calculateWordGematria(cleanWord, 'bayat_mashriqi');
-  }, [cleanWord, isDirectNumber, calculateWordGematria]);
-
-  const bayatMaghribiValue = useMemo(() => {
-    if (isDirectNumber) return parseInt(cleanWord, 10) || 0;
-    return calculateWordGematria(cleanWord, 'bayat_maghribi');
+    return calculateWordGematria(cleanWord, 'gematria_srqm_1');
   }, [cleanWord, isDirectNumber, calculateWordGematria]);
 
   // Al-Amiriyyah derived result
@@ -107,8 +95,7 @@ export function GematriaResultsCard({
   }, [cleanWord, isDirectNumber]);
 
   const isIdenticalPrimary = mashriqiValue === maghribiValue;
-  const isIdenticalJafr = jafrMashriqiValue === jafrMaghribiValue;
-  const isIdenticalBayat = bayatMashriqiValue === bayatMaghribiValue;
+  const isIdenticalEarth = srqd3Value === srqm1Value;
 
   // Breakdowns
   const breakdownMashriqi = useMemo(() => {
@@ -121,24 +108,14 @@ export function GematriaResultsCard({
     return getLetterBreakdown(cleanWord, 'maghribi');
   }, [cleanWord, isDirectNumber, getLetterBreakdown]);
 
-  const breakdownJafrMashriqi = useMemo(() => {
+  const breakdownSrqd3 = useMemo(() => {
     if (isDirectNumber || !cleanWord) return [];
-    return getLetterBreakdown(cleanWord, 'jafr_mashriqi');
+    return getLetterBreakdown(cleanWord, 'gematria_srqd_3');
   }, [cleanWord, isDirectNumber, getLetterBreakdown]);
 
-  const breakdownJafrMaghribi = useMemo(() => {
+  const breakdownSrqm1 = useMemo(() => {
     if (isDirectNumber || !cleanWord) return [];
-    return getLetterBreakdown(cleanWord, 'jafr_maghribi');
-  }, [cleanWord, isDirectNumber, getLetterBreakdown]);
-
-  const breakdownBayatMashriqi = useMemo(() => {
-    if (isDirectNumber || !cleanWord) return [];
-    return getLetterBreakdown(cleanWord, 'bayat_mashriqi');
-  }, [cleanWord, isDirectNumber, getLetterBreakdown]);
-
-  const breakdownBayatMaghribi = useMemo(() => {
-    if (isDirectNumber || !cleanWord) return [];
-    return getLetterBreakdown(cleanWord, 'bayat_maghribi');
+    return getLetterBreakdown(cleanWord, 'gematria_srqm_1');
   }, [cleanWord, isDirectNumber, getLetterBreakdown]);
 
   // Differing letters
@@ -167,42 +144,30 @@ export function GematriaResultsCard({
     return findQuranicMatches(maghribiValue, { filterType: 'all', maxResults: 100 });
   }, [maghribiValue, isIdenticalPrimary, findQuranicMatches]);
 
-  const matchesJafrMash = useMemo(() => {
-    if (!jafrMashriqiValue || jafrMashriqiValue <= 0) return [];
-    return findQuranicMatches(jafrMashriqiValue, { filterType: 'all', maxResults: 100 });
-  }, [jafrMashriqiValue, findQuranicMatches]);
+  const matchesSrqd3 = useMemo(() => {
+    if (!srqd3Value || srqd3Value <= 0) return [];
+    return findQuranicMatches(srqd3Value, { filterType: 'all', maxResults: 100 });
+  }, [srqd3Value, findQuranicMatches]);
 
-  const matchesJafrMagh = useMemo(() => {
-    if (!jafrMaghribiValue || jafrMaghribiValue <= 0 || isIdenticalJafr) return [];
-    return findQuranicMatches(jafrMaghribiValue, { filterType: 'all', maxResults: 100 });
-  }, [jafrMaghribiValue, isIdenticalJafr, findQuranicMatches]);
-
-  const matchesBayatMash = useMemo(() => {
-    if (!bayatMashriqiValue || bayatMashriqiValue <= 0) return [];
-    return findQuranicMatches(bayatMashriqiValue, { filterType: 'all', maxResults: 100 });
-  }, [bayatMashriqiValue, findQuranicMatches]);
-
-  const matchesBayatMagh = useMemo(() => {
-    if (!bayatMaghribiValue || bayatMaghribiValue <= 0 || isIdenticalBayat) return [];
-    return findQuranicMatches(bayatMaghribiValue, { filterType: 'all', maxResults: 100 });
-  }, [bayatMaghribiValue, isIdenticalBayat, findQuranicMatches]);
+  const matchesSrqm1 = useMemo(() => {
+    if (!srqm1Value || srqm1Value <= 0 || isIdenticalEarth) return [];
+    return findQuranicMatches(srqm1Value, { filterType: 'all', maxResults: 100 });
+  }, [srqm1Value, isIdenticalEarth, findQuranicMatches]);
 
   const displayedQuranMatches = useMemo(() => {
     if (quranFilter === 'mashriqi') return matchesMashriqi;
     if (quranFilter === 'maghribi') return matchesMaghribi;
-    if (quranFilter === 'jafr_mash') return matchesJafrMash;
-    if (quranFilter === 'jafr_magh') return matchesJafrMagh;
-    if (quranFilter === 'bayat_mash') return matchesBayatMash;
-    if (quranFilter === 'bayat_magh') return matchesBayatMagh;
+    if (quranFilter === 'srqd3') return matchesSrqd3;
+    if (quranFilter === 'srqm1') return matchesSrqm1;
     if (quranFilter === 'noorani') {
       const mashNoorani = matchesMashriqi.filter((m) => m.isNooraniOnly);
       const magNoorani = matchesMaghribi.filter((m) => m.isNooraniOnly);
       const seen = new Set<string>();
       const combined = [...mashNoorani];
-      mashNoorani.forEach((m) => seen.add(m.text));
+      mashNoorani.forEach((m) => seen.add(m.word));
       magNoorani.forEach((m) => {
-        if (!seen.has(m.text)) {
-          seen.add(m.text);
+        if (!seen.has(m.word)) {
+          seen.add(m.word);
           combined.push(m);
         }
       });
@@ -212,25 +177,25 @@ export function GematriaResultsCard({
     // Default 'all'
     const seen = new Set<string>();
     const combined: typeof matchesMashriqi = [];
-    matchesMashriqi.forEach((m) => {
-      seen.add(m.text);
-      combined.push(m);
-    });
-    matchesMaghribi.forEach((m) => {
-      if (!seen.has(m.text)) {
-        seen.add(m.text);
-        combined.push(m);
-      }
-    });
+    const addItems = (list: typeof matchesMashriqi) => {
+      list.forEach((m) => {
+        if (!seen.has(m.text)) {
+          seen.add(m.text);
+          combined.push(m);
+        }
+      });
+    };
+    addItems(matchesMashriqi);
+    addItems(matchesMaghribi);
+    addItems(matchesSrqd3);
+    addItems(matchesSrqm1);
     return combined;
   }, [
     quranFilter,
     matchesMashriqi,
     matchesMaghribi,
-    matchesJafrMash,
-    matchesJafrMagh,
-    matchesBayatMash,
-    matchesBayatMagh,
+    matchesSrqd3,
+    matchesSrqm1,
   ]);
 
   const handleCopy = (text: string, id: string) => {
@@ -356,7 +321,7 @@ export function GematriaResultsCard({
             </span>
           </h3>
 
-          {/* Sub-Tabs: عرض الكل / المشرقي والمغربي / الجفر والبيات / الطريقة العامرية */}
+          {/* Sub-Tabs: عرض الكل / شرقي وغربي / أرضي / العامرية */}
           <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800 p-0.5 rounded text-3xs font-medium">
             <button
               type="button"
@@ -367,7 +332,7 @@ export function GematriaResultsCard({
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
-              الكل (6 جداول)
+              الكل (4 جداول)
             </button>
             <button
               type="button"
@@ -382,14 +347,14 @@ export function GematriaResultsCard({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('jafr_bayat')}
+              onClick={() => setActiveTab('earth')}
               className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
-                activeTab === 'jafr_bayat'
-                  ? 'bg-fuchsia-600 text-white shadow-2xs font-bold'
+                activeTab === 'earth'
+                  ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                   : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
-              جفر وبيات (ش وغ)
+              أرضي (3 و 4)
             </button>
             <button
               type="button"
@@ -421,14 +386,10 @@ export function GematriaResultsCard({
                   ? 'شرقي'
                   : activeTable.id === 'maghribi'
                   ? 'غربي'
-                  : activeTable.id === 'jafr_mashriqi'
-                  ? 'جفر ش'
-                  : activeTable.id === 'jafr_maghribi'
-                  ? 'جفر غ'
-                  : activeTable.id === 'bayat_mashriqi'
-                  ? 'بيات ش'
-                  : activeTable.id === 'bayat_maghribi'
-                  ? 'بيات غ'
+                  : activeTable.id === 'gematria_srqd_3'
+                  ? 'أرض 3'
+                  : activeTable.id === 'gematria_srqm_1'
+                  ? 'أرض 4'
                   : activeTable.name.replace(/\(.*\)/, '').replace('النموذج', '').trim()}
               </span>
               <ChevronDown className="w-2.5 h-2.5 opacity-70" />
@@ -442,14 +403,10 @@ export function GematriaResultsCard({
                       ? 'الشرقي التقليدي'
                       : tbl.id === 'maghribi'
                       ? 'المغربي (صعفض)'
-                      : tbl.id === 'jafr_mashriqi'
-                      ? 'جفر ش (بسط شرقي)'
-                      : tbl.id === 'jafr_maghribi'
-                      ? 'جفر غ (بسط مغربي)'
-                      : tbl.id === 'bayat_mashriqi'
-                      ? 'بيات ش (إسقاط شرقي)'
-                      : tbl.id === 'bayat_maghribi'
-                      ? 'بيات غ (إسقاط مغربي)'
+                      : tbl.id === 'gematria_srqd_3'
+                      ? 'جُمَّل الأرض 3 الدوري'
+                      : tbl.id === 'gematria_srqm_1'
+                      ? 'جُمَّل الأرض 4 المتناظر'
                       : tbl.name.replace(/\(.*\)/, '').replace('النموذج', '').trim();
                   return (
                     <button
@@ -529,53 +486,33 @@ export function GematriaResultsCard({
             SYSTEM_TOOLTIPS.maghribi
           )}
 
-        {/* 3. JAFR MASHRIQI */}
-        {(activeTab === 'all' || activeTab === 'jafr_bayat') &&
+        {/* 3. EARTH 3 (CYCLIC) */}
+        {(activeTab === 'all' || activeTab === 'earth') &&
           renderSystemStrip(
-            'حساب الجفر الشرقي (بسط الحروف ش)',
-            'جفر ش',
-            jafrMashriqiValue,
-            breakdownJafrMashriqi,
+            'جُمَّل الأرض 3 الدوري (رصمق - حسنع)',
+            'أرض 3',
+            srqd3Value,
+            breakdownSrqd3,
             {
-              bg: 'bg-fuchsia-50/70 dark:bg-fuchsia-950/30',
-              border: 'border-fuchsia-300 dark:border-fuchsia-800/80',
-              btnBg: 'bg-fuchsia-600 hover:bg-fuchsia-700',
-              btnBorder: 'border-fuchsia-700',
-              titleColor: 'text-fuchsia-950 dark:text-fuchsia-200',
-              pillActiveBg: 'bg-fuchsia-600',
+              bg: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+              border: 'border-emerald-300 dark:border-emerald-800/80',
+              btnBg: 'bg-emerald-600 hover:bg-emerald-700',
+              btnBorder: 'border-emerald-700',
+              titleColor: 'text-emerald-950 dark:text-emerald-200',
+              pillActiveBg: 'bg-emerald-600',
               pillActiveText: 'text-white',
-              pillValueBg: 'bg-fuchsia-200/80 dark:bg-fuchsia-950 text-fuchsia-950 dark:text-fuchsia-100',
+              pillValueBg: 'bg-emerald-200/80 dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100',
             },
-            SYSTEM_TOOLTIPS.jafr_mashriqi
+            SYSTEM_TOOLTIPS.gematria_srqd_3
           )}
 
-        {/* 4. JAFR MAGHRIBI */}
-        {(activeTab === 'all' || activeTab === 'jafr_bayat') &&
+        {/* 4. EARTH 4 (SYMMETRICAL) */}
+        {(activeTab === 'all' || activeTab === 'earth') &&
           renderSystemStrip(
-            'حساب الجفر المغربي (بسط الحروف غ)',
-            'جفر غ',
-            jafrMaghribiValue,
-            breakdownJafrMaghribi,
-            {
-              bg: 'bg-purple-50/70 dark:bg-purple-950/30',
-              border: 'border-purple-300 dark:border-purple-800/80',
-              btnBg: 'bg-purple-600 hover:bg-purple-700',
-              btnBorder: 'border-purple-700',
-              titleColor: 'text-purple-950 dark:text-purple-200',
-              pillActiveBg: 'bg-purple-600',
-              pillActiveText: 'text-white',
-              pillValueBg: 'bg-purple-200/80 dark:bg-purple-950 text-purple-950 dark:text-purple-100',
-            },
-            SYSTEM_TOOLTIPS.jafr_maghribi
-          )}
-
-        {/* 5. BAYAT MASHRIQI */}
-        {(activeTab === 'all' || activeTab === 'jafr_bayat') &&
-          renderSystemStrip(
-            'حساب البيات الشرقي (بيات ش)',
-            'بيات ش',
-            bayatMashriqiValue,
-            breakdownBayatMashriqi,
+            'جُمَّل الأرض 4 المتناظر (رصمق - حسنع)',
+            'أرض 4',
+            srqm1Value,
+            breakdownSrqm1,
             {
               bg: 'bg-teal-50/70 dark:bg-teal-950/30',
               border: 'border-teal-300 dark:border-teal-800/80',
@@ -586,30 +523,10 @@ export function GematriaResultsCard({
               pillActiveText: 'text-white',
               pillValueBg: 'bg-teal-200/80 dark:bg-teal-950 text-teal-950 dark:text-teal-100',
             },
-            SYSTEM_TOOLTIPS.bayat_mashriqi
+            SYSTEM_TOOLTIPS.gematria_srqm_1
           )}
 
-        {/* 6. BAYAT MAGHRIBI */}
-        {(activeTab === 'all' || activeTab === 'jafr_bayat') &&
-          renderSystemStrip(
-            'حساب البيات المغربي (بيات غ)',
-            'بيات غ',
-            bayatMaghribiValue,
-            breakdownBayatMaghribi,
-            {
-              bg: 'bg-cyan-50/70 dark:bg-cyan-950/30',
-              border: 'border-cyan-300 dark:border-cyan-800/80',
-              btnBg: 'bg-cyan-600 hover:bg-cyan-700',
-              btnBorder: 'border-cyan-700',
-              titleColor: 'text-cyan-950 dark:text-cyan-200',
-              pillActiveBg: 'bg-cyan-600',
-              pillActiveText: 'text-white',
-              pillValueBg: 'bg-cyan-200/80 dark:bg-cyan-950 text-cyan-950 dark:text-cyan-100',
-            },
-            SYSTEM_TOOLTIPS.bayat_maghribi
-          )}
-
-        {/* 7. AL-AMIRIYYAH DEDICATED PANEL */}
+        {/* 5. AL-AMIRIYYAH DEDICATED PANEL */}
         {(activeTab === 'all' || activeTab === 'amiriyyah') && amiriyyahResult && (
           <div
             className="p-2 rounded-lg bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-emerald-500/10 border border-amber-300/80 dark:border-amber-700/80 space-y-1.5 shadow-2xs"
@@ -740,57 +657,29 @@ export function GematriaResultsCard({
 
               <button
                 type="button"
-                onClick={() => setQuranFilter('jafr_mash')}
+                onClick={() => setQuranFilter('srqd3')}
                 className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
-                  quranFilter === 'jafr_mash'
-                    ? 'bg-fuchsia-600 text-white shadow-2xs font-bold'
-                    : 'text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100'
+                  quranFilter === 'srqd3'
+                    ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                    : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
                 }`}
-                title={`مفردات مطابقة لوزن الجفر الشرقي (= ${jafrMashriqiValue})\n${SYSTEM_TOOLTIPS.jafr_mashriqi}`}
+                title={`مفردات مطابقة لوزن الأرض 3 الدوري (= ${srqd3Value})\n${SYSTEM_TOOLTIPS.gematria_srqd_3}`}
               >
-                جفر ش ({matchesJafrMash.length})
+                أرض 3 ({matchesSrqd3.length})
               </button>
 
-              {!isIdenticalJafr && (
+              {!isIdenticalEarth && (
                 <button
                   type="button"
-                  onClick={() => setQuranFilter('jafr_magh')}
+                  onClick={() => setQuranFilter('srqm1')}
                   className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
-                    quranFilter === 'jafr_magh'
-                      ? 'bg-purple-600 text-white shadow-2xs font-bold'
-                      : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100'
+                    quranFilter === 'srqm1'
+                      ? 'bg-teal-600 text-white shadow-2xs font-bold'
+                      : 'text-teal-700 dark:text-teal-300 hover:bg-teal-100'
                   }`}
-                  title={`مفردات مطابقة لوزن الجفر المغربي (= ${jafrMaghribiValue})\n${SYSTEM_TOOLTIPS.jafr_maghribi}`}
+                  title={`مفردات مطابقة لوزن الأرض 4 المتناظر (= ${srqm1Value})\n${SYSTEM_TOOLTIPS.gematria_srqm_1}`}
                 >
-                  جفر غ ({matchesJafrMagh.length})
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setQuranFilter('bayat_mash')}
-                className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
-                  quranFilter === 'bayat_mash'
-                    ? 'bg-teal-600 text-white shadow-2xs font-bold'
-                    : 'text-teal-700 dark:text-teal-300 hover:bg-teal-100'
-                }`}
-                title={`مفردات مطابقة لوزن البيات الشرقي (= ${bayatMashriqiValue})\n${SYSTEM_TOOLTIPS.bayat_mashriqi}`}
-              >
-                بيات ش ({matchesBayatMash.length})
-              </button>
-
-              {!isIdenticalBayat && (
-                <button
-                  type="button"
-                  onClick={() => setQuranFilter('bayat_magh')}
-                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
-                    quranFilter === 'bayat_magh'
-                      ? 'bg-cyan-600 text-white shadow-2xs font-bold'
-                      : 'text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100'
-                  }`}
-                  title={`مفردات مطابقة لوزن البيات المغربي (= ${bayatMaghribiValue})\n${SYSTEM_TOOLTIPS.bayat_maghribi}`}
-                >
-                  بيات غ ({matchesBayatMagh.length})
+                  أرض 4 ({matchesSrqm1.length})
                 </button>
               )}
 

@@ -10,6 +10,9 @@ import {
 interface UseNooraniClassifierOptions {
   targetMashriqi: number;
   targetMaghribi: number;
+  targetSrqm1?: number;
+  targetSrqd3?: number;
+  targetSrtg4?: number;
   algorithmId: NooraniAlgorithmId;
   uniqueNooraniOnly: boolean;
   queryText?: string;
@@ -35,6 +38,9 @@ const formulaCache = new Map<string, MergedNooraniFormulaItem[]>();
 export function useNooraniClassifier({
   targetMashriqi,
   targetMaghribi,
+  targetSrqm1 = 0,
+  targetSrqd3 = 0,
+  targetSrtg4 = 0,
   algorithmId,
   uniqueNooraniOnly,
   queryText = '',
@@ -83,7 +89,7 @@ export function useNooraniClassifier({
         abortControllerRef.current = null;
       }
 
-      if (targetMashriqi <= 0 && targetMaghribi <= 0) {
+      if (targetMashriqi <= 0 && targetMaghribi <= 0 && targetSrqm1 <= 0 && targetSrqd3 <= 0 && targetSrtg4 <= 0) {
         setMergedNooraniFormulas([]);
         setIsCalculating(false);
         setProgress(0);
@@ -93,7 +99,7 @@ export function useNooraniClassifier({
       }
 
       const cleanQuery = (queryText || '').trim();
-      const cacheKey = `${targetMashriqi}_${targetMaghribi}_${algorithmId}_${uniqueNooraniOnly}_${excludedKey}_${onlyRepeated}_${cleanQuery}_${maxResults}`;
+      const cacheKey = `${targetMashriqi}_${targetMaghribi}_${targetSrqm1}_${targetSrqd3}_${targetSrtg4}_${algorithmId}_${uniqueNooraniOnly}_${excludedKey}_${onlyRepeated}_${cleanQuery}_${maxResults}`;
 
       if (!forceBypassCache && formulaCache.has(cacheKey)) {
         const cached = formulaCache.get(cacheKey)!;
@@ -119,6 +125,9 @@ export function useNooraniClassifier({
           targetMashriqi,
           targetMaghribi,
           {
+            targetSrqm1,
+            targetSrqd3,
+            targetSrtg4,
             uniqueLettersOnly: uniqueNooraniOnly,
             maxResults,
             algorithmId,
