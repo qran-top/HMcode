@@ -63,6 +63,58 @@ export const NOORANI_FAWATIH_FREQUENCIES: Record<string, number> = {
 };
 
 /**
+ * The 14 Noorani Letters arranged in the exact order and layers of the current tables:
+ * ر ص م ق ح س ن ع ي ل ه ا ط ك
+ * Across the 7 heavens / layers (السماوات والطبقات السبع):
+ * 1. ر ص | 2. م ق | 3. ح س | 4. ن ع | 5. ي ل | 6. هـ ا | 7. ط ك
+ */
+export const NOORANI_14_CURRENT_TABLES_ORDER = [
+  { char: 'ر', layer: 1, tableValue: 1, freq: 6, name: 'راء', layerName: 'سماء 1' },
+  { char: 'ص', layer: 1, tableValue: 2, freq: 3, name: 'صاد', layerName: 'سماء 1' },
+  { char: 'م', layer: 2, tableValue: 3, freq: 17, name: 'ميم', layerName: 'سماء 2' },
+  { char: 'ق', layer: 2, tableValue: 4, freq: 2, name: 'قاف', layerName: 'سماء 2' },
+  { char: 'ح', layer: 3, tableValue: 5, freq: 7, name: 'حاء', layerName: 'سماء 3' },
+  { char: 'س', layer: 3, tableValue: 6, freq: 5, name: 'سين', layerName: 'سماء 3' },
+  { char: 'ن', layer: 4, tableValue: 7, freq: 1, name: 'نون', layerName: 'سماء 4' },
+  { char: 'ع', layer: 4, tableValue: 8, freq: 2, name: 'عين', layerName: 'سماء 4' },
+  { char: 'ي', layer: 5, tableValue: 9, freq: 2, name: 'ياء', layerName: 'سماء 5' },
+  { char: 'ل', layer: 5, tableValue: 10, freq: 13, name: 'لام', layerName: 'سماء 5' },
+  { char: 'هـ', layer: 6, tableValue: 20, freq: 2, name: 'هاء', layerName: 'سماء 6' },
+  { char: 'ا', layer: 6, tableValue: 30, freq: 13, name: 'ألف', layerName: 'سماء 6' },
+  { char: 'ط', layer: 7, tableValue: 40, freq: 4, name: 'طاء', layerName: 'سماء 7' },
+  { char: 'ك', layer: 7, tableValue: 50, freq: 1, name: 'كاف', layerName: 'سماء 7' },
+];
+
+/**
+ * Gematria values mapping for current tables (صرقم 1 / جدول السماء: ر=1 .. ك=50)
+ */
+export const CURRENT_TABLES_VALUES: Record<string, number> = {
+  'ر': 1,
+  'ص': 2,
+  'م': 3,
+  'ق': 4,
+  'ح': 5,
+  'س': 6,
+  'ن': 7,
+  'ع': 8,
+  'ي': 9, 'ى': 9, 'ئ': 9,
+  'ل': 10,
+  'ه': 20, 'هـ': 20, 'ة': 20,
+  'ا': 30, 'أ': 30, 'إ': 30, 'آ': 30, 'ء': 30, 'ٱ': 30,
+  'ط': 40,
+  'ك': 50,
+};
+
+/**
+ * Gets the current table Gematria value for a character (or 0 if non-Noorani)
+ */
+export function getCurrentTableCharValue(char: string): number {
+  if (!char) return 0;
+  const normalized = normalizeAbjadChar(char);
+  return CURRENT_TABLES_VALUES[char] ?? CURRENT_TABLES_VALUES[normalized] ?? 0;
+}
+
+/**
  * Canonical 14 Noorani letters ordered by frequency descending
  */
 export const NOORANI_14_FREQ_ORDER = [
@@ -125,9 +177,12 @@ export interface NooraniFreqCalculationResult {
 }
 
 /**
- * Calculates Gematria total and breakdown using Noorani letter frequencies
+ * Calculates Gematria total and breakdown using either current tables (صرقم 1 / جدول السماء) or Noorani letter frequencies
  */
-export function calculateNooraniFreqGematria(text: string): NooraniFreqCalculationResult {
+export function calculateNooraniFreqGematria(
+  text: string,
+  calculationMode: 'current_tables' | 'frequency' = 'current_tables'
+): NooraniFreqCalculationResult {
   if (!text || !text.trim()) {
     return {
       text: '',
@@ -156,7 +211,7 @@ export function calculateNooraniFreqGematria(text: string): NooraniFreqCalculati
 
     for (const c of chars) {
       const norm = normalizeAbjadChar(c);
-      const val = getNooraniFreqCharValue(c);
+      const val = calculationMode === 'current_tables' ? getCurrentTableCharValue(c) : getNooraniFreqCharValue(c);
       const isNoor = isNooraniChar(c);
 
       wordVal += val;
@@ -234,7 +289,7 @@ export interface NooraniSearchHistoryItem {
 }
 
 /**
- * Searches the Quran for matches having the given Noorani Frequency Gematria value
+ * Searches the Quran for matches having the given Gematria value
  * with asynchronous chunked scanning and real-time progress callbacks.
  */
 export async function searchQuranByNooraniValue(
@@ -243,6 +298,7 @@ export async function searchQuranByNooraniValue(
     maxResults?: number;
     surahFilter?: number;
     matchScope?: 'all' | 'single_words' | 'phrases';
+    calculationMode?: 'current_tables' | 'frequency';
     onProgress?: (progress: NooraniScannerProgress) => void;
     abortSignal?: AbortSignal;
   }
@@ -252,6 +308,7 @@ export async function searchQuranByNooraniValue(
   const maxResults = options?.maxResults ?? 50000;
   const surahFilter = options?.surahFilter ?? 0;
   const matchScope = options?.matchScope ?? 'all';
+  const calculationMode = options?.calculationMode ?? 'current_tables';
   const onProgress = options?.onProgress;
   const abortSignal = options?.abortSignal;
 
@@ -293,7 +350,7 @@ export async function searchQuranByNooraniValue(
     const n = rawWords.length;
     if (n === 0) continue;
 
-    // Fast pre-calculation: compute clean words and Noorani letter sums for each word once!
+    // Fast pre-calculation: compute clean words and letter sums for each word once!
     const cleanWords: string[] = new Array(n);
     const wordValues: number[] = new Array(n);
 
@@ -302,7 +359,7 @@ export async function searchQuranByNooraniValue(
       cleanWords[wIdx] = cw;
       let wVal = 0;
       for (let cIdx = 0; cIdx < cw.length; cIdx++) {
-        wVal += getNooraniFreqCharValue(cw[cIdx]);
+        wVal += calculationMode === 'current_tables' ? getCurrentTableCharValue(cw[cIdx]) : getNooraniFreqCharValue(cw[cIdx]);
       }
       wordValues[wIdx] = wVal;
     }
@@ -337,7 +394,7 @@ export async function searchQuranByNooraniValue(
           if (seenPhrases.has(dedupeKey)) continue;
           seenPhrases.add(dedupeKey);
 
-          const calc = calculateNooraniFreqGematria(cleanPhrase);
+          const calc = calculateNooraniFreqGematria(cleanPhrase, calculationMode);
 
           let mType: 'full_ayah' | 'verse_chain' | 'single_word' = 'verse_chain';
           let mTypeLabel = 'سلسلة كلمات';

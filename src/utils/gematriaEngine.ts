@@ -196,7 +196,7 @@ export const ABJAD_VALUES: Record<string, number> = {
   'غ': 1000,
 };
 
-export const NOORANI_14_LETTERS = ['ا', 'ل', 'م', 'ص', 'ر', 'ك', 'ه', 'ي', 'ع', 'ط', 'س', 'ح', 'ق', 'ن'];
+export const NOORANI_14_LETTERS = ['ر', 'ص', 'م', 'ق', 'ح', 'س', 'ن', 'ع', 'ي', 'ل', 'ه', 'ا', 'ط', 'ك'];
 export const NOORANI_14_SET = new Set(NOORANI_14_LETTERS);
 
 export const ZULMANI_14_LETTERS = ['ب', 'ت', 'ث', 'ج', 'خ', 'د', 'ذ', 'ز', 'ش', 'ض', 'ظ', 'غ', 'ف', 'و'];

@@ -4,7 +4,14 @@ import { useFontSize } from '../context/FontSizeContext';
 import { useNotebook } from '../context/NotebookContext';
 import { useHint } from '../context/HintContext';
 
-export type HeaderTabType = 'gematria' | 'fawatih_gematria' | 'search' | 'fawatih_scale' | 'settings' | 'info';
+export type HeaderTabType =
+  | 'gematria'
+  | 'fawatih_gematria'
+  | 'fawatih_scale'
+  | 'permutations'
+  | 'search'
+  | 'settings'
+  | 'info';
 
 interface HeaderProps {
   activeTab: HeaderTabType;
@@ -14,6 +21,26 @@ interface HeaderProps {
   onOpenHelp?: () => void;
   isWideMode?: boolean;
   toggleWideMode?: () => void;
+}
+
+function getHijriDateString(date: Date = new Date()): string {
+  try {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date);
+  } catch {
+    try {
+      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(date);
+    } catch {
+      return '1448 هـ';
+    }
+  }
 }
 
 export function Header({
@@ -37,12 +64,13 @@ export function Header({
   const { openDrawer, entries, savedSystems } = useNotebook();
   const { isHintEnabled, toggleHint, hintText, setHintText, clearHint } = useHint();
 
-  // Real-time Live DOS Clock & Date (pure ASCII, zero emojis)
+  // Real-time Live DOS Clock & Date with Hijri Calendar
   const [currentDateTime, setCurrentDateTime] = useState(() => {
     const now = new Date();
     return {
       time: now.toLocaleTimeString('en-GB', { hour12: false }),
       date: now.toISOString().slice(0, 10),
+      hijri: getHijriDateString(now),
     };
   });
 
@@ -52,6 +80,7 @@ export function Header({
       setCurrentDateTime({
         time: now.toLocaleTimeString('en-GB', { hour12: false }),
         date: now.toISOString().slice(0, 10),
+        hijri: getHijriDateString(now),
       });
     }, 1000);
     return () => clearInterval(timer);
@@ -90,32 +119,39 @@ export function Header({
       dir="rtl"
       aria-label="شريط أوامر ونظام دوس MS-DOS"
     >
-      {/* 1. Top DOS Title & Pure ASCII Clock/Date Row */}
+      {/* 1. Top DOS Title & Hijri Date & Pure ASCII Clock/Date Row */}
       <div
         style={{ backgroundColor: 'var(--dos-header)', borderColor: 'var(--dos-border)' }}
         className="text-[#ffffff] px-2 py-1 border-b flex items-center justify-between gap-1 sm:gap-2 flex-wrap text-xs font-bold"
       >
-        {/* Left/Start side: Title & DOS System Label */}
+        {/* Left/Start side: Title, MS-DOS System Label & Hijri Date */}
         <div
-          className="flex items-center gap-1.5 shrink-0 cursor-default"
-          onMouseEnter={() => setHintText('نظام التشفير وحساب الجُمّل القرآني الشامل (MS-DOS 6.22 Retro Edition)')}
+          className="flex items-center gap-1 sm:gap-1.5 shrink-0 cursor-default flex-wrap"
+          onMouseEnter={() => setHintText(`نظام التشفير وحساب الجُمّل القرآني الشامل (MS-DOS 6.22 Retro Edition) | التاريخ الهجري: ${currentDateTime.hijri}`)}
           onMouseLeave={clearHint}
         >
           <span className="bg-[#00aaaa] text-black px-1 font-black text-2xs shadow-xs">[■]</span>
           <span className="text-[#ffff55] tracking-wide font-black text-xs sm:text-sm">
             C:\QURAN\CIPHER.EXE
           </span>
-          <span className="text-[#55ffff] text-3xs hidden md:inline border-r border-[#55ffff]/50 pr-1.5 mr-1">
+          <span className="text-[#55ffff] text-3xs hidden sm:inline border-r border-[#55ffff]/50 pr-1.5 mr-1">
             MS-DOS 6.22
+          </span>
+          {/* Hijri Date placed directly beside MS-DOS / System title */}
+          <span
+            className="text-[#ffbb33] bg-black/80 border border-[#ffaa33]/70 px-1.5 py-0.5 text-2xs font-mono font-bold shadow-xs whitespace-nowrap"
+            title={`التاريخ الهجري: ${currentDateTime.hijri}`}
+          >
+            [هجري: {currentDateTime.hijri}]
           </span>
         </div>
 
-        {/* Center: Live DOS Clock & Date (Pure ASCII, No Emojis) */}
+        {/* Right/End side: Live DOS Clock & Date (Pure ASCII, No Emojis) */}
         <div
-          onMouseEnter={() => setHintText(`ساعة وتاريخ نظام DOS المباشرة: [${currentDateTime.date} ${currentDateTime.time}]`)}
+          onMouseEnter={() => setHintText(`ساعة وتاريخ نظام DOS المباشرة: [ميلادي: ${currentDateTime.date} | وقت: ${currentDateTime.time} | هجري: ${currentDateTime.hijri}]`)}
           onMouseLeave={clearHint}
           className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/90 border border-[#55ffff]/70 text-2xs font-mono font-bold shadow-xs select-none shrink-0"
-          title="ساعة وتاريخ النظام المباشرة"
+          title={`ساعة وتاريخ النظام: ميلادي ${currentDateTime.date} | وقت ${currentDateTime.time} | هجري ${currentDateTime.hijri}`}
         >
           <span className="text-[#ffff55] font-black">TIME: {currentDateTime.time}</span>
           <span className="text-stone-500">|</span>
@@ -280,7 +316,7 @@ export function Header({
         style={{ backgroundColor: 'var(--dos-bg)', borderColor: 'var(--dos-header)' }}
         className="px-1.5 py-1 flex items-center justify-between gap-1 flex-wrap border-b"
       >
-        <nav className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 w-full" aria-label="أقسام نظام DOS">
+        <nav className="grid grid-cols-2 sm:grid-cols-7 gap-1.5 w-full" aria-label="أقسام نظام DOS">
           <button
             type="button"
             onClick={() => handleTabClick('gematria')}
@@ -331,6 +367,22 @@ export function Header({
 
           <button
             type="button"
+            onClick={() => handleTabClick('permutations')}
+            onMouseEnter={() => setHintText('تقاليب الأحرف وتباديل الكلمات: توليد كافة التباديل الرياضية لأي كلمة واستخراج شواهدها من المصحف')}
+            onMouseLeave={clearHint}
+            style={
+              activeTab === 'permutations'
+                ? { backgroundColor: '#ffff55', color: '#000000', borderColor: '#ffffff' }
+                : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
+            }
+            className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
+            title="تقاليب الأحرف وتباديل الكلمات في القرآن الكريم (F4)"
+          >
+            [<span className={activeTab === 'permutations' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] تباديل الحروف
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleTabClick('search')}
             onMouseEnter={() => setHintText('باحث الأوامر والمترجم: تشفير وفك تشفير النصوص بحساب الجُمّل')}
             onMouseLeave={clearHint}
@@ -340,9 +392,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="باحث الأوامر والمترجم المزدوج والتشفير (F4)"
+            title="باحث الأوامر والمترجم المزدوج والتشفير (F5)"
           >
-            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F4</span>] الباحث
+            [<span className={activeTab === 'search' ? 'text-black' : 'text-[#ffff55] font-black'}>F5</span>] الباحث
           </button>
 
           <button
@@ -356,9 +408,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="تخصيص قواعد الحساب والجداول المرجعية (F5)"
+            title="تخصيص قواعد الحساب والجداول المرجعية (F6)"
           >
-            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F5</span>] الجداول
+            [<span className={activeTab === 'settings' ? 'text-black' : 'text-[#ffff55] font-black'}>F6</span>] الجداول
           </button>
 
           <button
@@ -372,9 +424,9 @@ export function Header({
                 : { backgroundColor: 'var(--dos-panel)', color: 'var(--dos-text)', borderColor: 'var(--dos-border)' }
             }
             className="px-1.5 py-1 text-xs font-bold cursor-pointer transition-none border shadow-xs text-center truncate w-full"
-            title="دليل النظام وتوثيق حساب الجمل القرآني (F6)"
+            title="دليل النظام وتوثيق حساب الجمل القرآني (F7)"
           >
-            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F6</span>] الدليل
+            [<span className={activeTab === 'info' ? 'text-black' : 'text-[#ffff55] font-black'}>F7</span>] الدليل
           </button>
         </nav>
       </div>

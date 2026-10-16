@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import {
   NOORANI_14_FREQ_ORDER,
+  NOORANI_14_CURRENT_TABLES_ORDER,
+  CURRENT_TABLES_VALUES,
+  getCurrentTableCharValue,
   calculateNooraniFreqGematria,
   searchQuranByNooraniValue,
   NooraniQuranMatch,
@@ -46,29 +49,38 @@ interface FawatihGematriaViewProps {
 
 export interface FawatihPresetItem {
   text: string;
-  value: number;
+  value: number; // Value in current tables (صرقم 1 / جدول السماء: ر=1 .. ك=50)
+  currentTableValue: number;
+  freqValue: number;
+  layer: number;
+  layerLabel: string;
+  mushafSurah: string;
+  surahNumber: number;
 }
 
 /**
- * All 14 unique Fawatih Al-Suwar formulas in the Quran, sorted ascending by Noorani frequency value
+ * All 14 unique Fawatih Al-Suwar formulas in the Quran,
+ * arranged according to the current tables (صرقم 1 / جدول السماء: ر=1 .. ك=50)
  */
-export const ALL_14_FAWATIH_SORTED: FawatihPresetItem[] = [
-  { text: 'ن', value: 1 },
-  { text: 'ق', value: 2 },
-  { text: 'ص', value: 3 },
-  { text: 'طه', value: 6 },
-  { text: 'يس', value: 7 },
-  { text: 'طس', value: 9 },
-  { text: 'عسق', value: 9 },
-  { text: 'كهيعص', value: 10 },
-  { text: 'حم', value: 24 },
-  { text: 'طسم', value: 26 },
-  { text: 'الر', value: 32 },
-  { text: 'حم عسق', value: 33 },
-  { text: 'الم', value: 43 },
-  { text: 'المص', value: 46 },
-  { text: 'المر', value: 49 },
+export const ALL_14_FAWATIH_PRESETS: FawatihPresetItem[] = [
+  { text: 'ص', value: 2, currentTableValue: 2, freqValue: 3, layer: 1, layerLabel: 'سماء 1 (ر ص)', mushafSurah: 'سورة ص', surahNumber: 38 },
+  { text: 'ق', value: 4, currentTableValue: 4, freqValue: 2, layer: 2, layerLabel: 'سماء 2 (م ق)', mushafSurah: 'سورة ق', surahNumber: 50 },
+  { text: 'ن', value: 7, currentTableValue: 7, freqValue: 1, layer: 4, layerLabel: 'سماء 4 (ن ع)', mushafSurah: 'سورة القلم', surahNumber: 68 },
+  { text: 'حم', value: 8, currentTableValue: 8, freqValue: 24, layer: 3, layerLabel: 'سماء 3 + 2 (ح س + م ق)', mushafSurah: 'الحواميم السبع (40-46)', surahNumber: 40 },
+  { text: 'يس', value: 15, currentTableValue: 15, freqValue: 7, layer: 5, layerLabel: 'سماء 5 + 3 (ي ل + ح س)', mushafSurah: 'سورة يس', surahNumber: 36 },
+  { text: 'عسق', value: 18, currentTableValue: 18, freqValue: 9, layer: 4, layerLabel: 'سماء 4 + 3 + 2', mushafSurah: 'سورة الشورى (آية 2)', surahNumber: 42 },
+  { text: 'حم عسق', value: 26, currentTableValue: 26, freqValue: 33, layer: 3, layerLabel: 'سماء 3 + 2 + 4 + 3 + 2', mushafSurah: 'سورة الشورى (آية 1 و 2)', surahNumber: 42 },
+  { text: 'الر', value: 41, currentTableValue: 41, freqValue: 32, layer: 6, layerLabel: 'سماء 6 + 5 + 1', mushafSurah: 'الر الخماسية (10-15)', surahNumber: 10 },
+  { text: 'الم', value: 43, currentTableValue: 43, freqValue: 43, layer: 6, layerLabel: 'سماء 6 + 5 + 2', mushafSurah: 'الم الست (2..32)', surahNumber: 2 },
+  { text: 'المر', value: 44, currentTableValue: 44, freqValue: 49, layer: 6, layerLabel: 'سماء 6 + 5 + 2 + 1', mushafSurah: 'سورة الرعد', surahNumber: 13 },
+  { text: 'المص', value: 45, currentTableValue: 45, freqValue: 46, layer: 6, layerLabel: 'سماء 6 + 5 + 2 + 1', mushafSurah: 'سورة الأعراف', surahNumber: 7 },
+  { text: 'طس', value: 46, currentTableValue: 46, freqValue: 9, layer: 7, layerLabel: 'سماء 7 + 3', mushafSurah: 'سورة النمل', surahNumber: 27 },
+  { text: 'طسم', value: 49, currentTableValue: 49, freqValue: 26, layer: 7, layerLabel: 'سماء 7 + 3 + 2', mushafSurah: 'الشعراء والقصص', surahNumber: 26 },
+  { text: 'طه', value: 60, currentTableValue: 60, freqValue: 6, layer: 7, layerLabel: 'سماء 7 + 6', mushafSurah: 'سورة طه', surahNumber: 20 },
+  { text: 'كهيعص', value: 89, currentTableValue: 89, freqValue: 10, layer: 7, layerLabel: 'سماء 7 + 6 + 5 + 4 + 1', mushafSurah: 'سورة مريم', surahNumber: 19 },
 ];
+
+export const ALL_14_FAWATIH_SORTED = ALL_14_FAWATIH_PRESETS;
 
 const STORAGE_KEY_NOORANI_HISTORY = 'noorani_fawatih_gematria_history_v1';
 
@@ -96,6 +108,9 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
 
   const [query, setQuery] = useState<string>(initialQuery || 'الم');
   const [matchScope, setMatchScope] = useState<'all' | 'single_words' | 'phrases'>('all');
+  const [calcMode, setCalcMode] = useState<'current_tables' | 'frequency'>('current_tables');
+  const [formulaSortMode, setFormulaSortMode] = useState<'current_tables' | 'layers' | 'frequency' | 'mushaf'>('current_tables');
+  const [lettersOrderMode, setLettersOrderMode] = useState<'current_tables' | 'frequency'>('current_tables');
 
   // Multi-select Surah filter
   const [selectedSurahIds, setSelectedSurahIds] = useState<Set<number>>(new Set());
@@ -126,10 +141,10 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
   const [progress, setProgress] = useState<NooraniScannerProgress | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // 1. Calculate input gematria value
+  // 1. Calculate input gematria value according to active calculation mode
   const calculation: NooraniFreqCalculationResult = useMemo(() => {
-    return calculateNooraniFreqGematria(query);
-  }, [query]);
+    return calculateNooraniFreqGematria(query, calcMode);
+  }, [query, calcMode]);
 
   // Set of active letters present in current input query text to light up the 14 square cards
   const activeQueryLetters = useMemo(() => {
@@ -161,6 +176,25 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
     }
     return set;
   }, [query]);
+
+  // Dynamic sorting of the 14 Fawatih formulas
+  const displayedFawatihPresets = useMemo(() => {
+    const list = ALL_14_FAWATIH_PRESETS.map((p) => ({
+      ...p,
+      value: calcMode === 'current_tables' ? p.currentTableValue : p.freqValue,
+    }));
+
+    if (formulaSortMode === 'current_tables') {
+      list.sort((a, b) => a.currentTableValue - b.currentTableValue);
+    } else if (formulaSortMode === 'layers') {
+      list.sort((a, b) => (a.layer !== b.layer ? a.layer - b.layer : a.currentTableValue - b.currentTableValue));
+    } else if (formulaSortMode === 'frequency') {
+      list.sort((a, b) => b.freqValue - a.freqValue);
+    } else if (formulaSortMode === 'mushaf') {
+      list.sort((a, b) => a.surahNumber - b.surahNumber);
+    }
+    return list;
+  }, [calcMode, formulaSortMode]);
 
   // Save history helper
   const saveToHistory = useCallback((item: Omit<NooraniSearchHistoryItem, 'id' | 'timestamp'>) => {
@@ -221,6 +255,7 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
         maxResults: 50000,
         surahFilter: 0, // scan all 114 surahs completely
         matchScope: 'all', // scan all single words & chains into memory so UI scope filters are instant!
+        calculationMode: calcMode,
         abortSignal: abortController.signal,
         onProgress: (p) => {
           setProgress(p);
@@ -535,42 +570,138 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
           </div>
         </div>
 
-        <p className="text-2xs text-[#55ffff] leading-relaxed">
-          حساب مباشر ومستقل: يُعطى كل حرف نوراني وزنه بناءً على **عدد تكراره في فواتح السور الـ 29**، بينما يُعطى باقي الأحرف **القيمة صفر**.
-        </p>
+        {/* Mode Selector and Description */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#00aaaa]/30 pb-2">
+          <p className="text-2xs text-[#55ffff] leading-relaxed">
+            {calcMode === 'current_tables'
+              ? 'حساب الجُمَّل وفق الجداول الحالية (صرقم 1 / جدول السماء): يُعطى كل حرف نوراني وزنه بحسب ترتيب طبقات السماء السبع (ر=1 .. ك=50)، وباقي الأحرف = 0.'
+              : 'حساب مباشر ومستقل: يُعطى كل حرف نوراني وزنه بناءً على عدد تكراره في فواتح السور الـ 29، وباقي الأحرف = 0.'}
+          </p>
+
+          <div className="flex items-center gap-1 text-3xs font-bold shrink-0">
+            <span className="text-stone-300">نظام الحساب:</span>
+            <button
+              type="button"
+              onClick={() => setCalcMode('current_tables')}
+              className={`px-2 py-1 rounded border cursor-pointer transition-none ${
+                calcMode === 'current_tables'
+                  ? 'bg-[#ffff55] text-black font-black border-white'
+                  : 'bg-[#0000a8] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+              }`}
+              title="اعتماد قيم الجداول الحالية (صرقم 1 / جدول السماء: ر=1 .. ك=50)"
+            >
+              الجداول الحالية (صرقم 1)
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalcMode('frequency')}
+              className={`px-2 py-1 rounded border cursor-pointer transition-none ${
+                calcMode === 'frequency'
+                  ? 'bg-[#ffff55] text-black font-black border-white'
+                  : 'bg-[#0000a8] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+              }`}
+              title="اعتماد عدد تكرارات الحروف في فواتح السور الـ 29 (م=17 .. ن=1)"
+            >
+              تكرار الفواتح (29)
+            </button>
+          </div>
+        </div>
 
         {/* 14 Noorani Letters Grid Weights (Small Squares that light up when present in input) */}
-        <div className="bg-black/80 border border-[#55ffff]/60 p-2 rounded shadow-inner">
-          <div className="text-3xs font-bold text-[#ffff55] mb-1.5 flex items-center justify-between flex-wrap gap-1">
-            <span>أوزان الحروف النورانية الـ 14 (تضيء المربعات التابعة للأحرف الموجودة بالعبارة):</span>
-            <span className="text-stone-400">باقي الأحرف = 0</span>
+        <div className="bg-black/80 border border-[#55ffff]/60 p-2.5 rounded shadow-inner space-y-2">
+          <div className="text-3xs font-bold text-[#ffff55] flex items-center justify-between flex-wrap gap-1">
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-[#ffff55]" />
+              تراتيب الأحرف المقطعة الـ 14 (حسب جداول السماء والطبقات السبع):
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setLettersOrderMode((prev) => (prev === 'current_tables' ? 'frequency' : 'current_tables'))}
+                className="text-stone-400 hover:text-[#ffff55] underline cursor-pointer text-3xs"
+              >
+                {lettersOrderMode === 'current_tables' ? 'عرض بترتيب التكرار' : 'عرض بترتيب طبقات السماء (ر ص مق...)'}
+              </button>
+              <span className="text-stone-500">|</span>
+              <span className="text-stone-400">باقي الأحرف = 0</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap justify-start">
-            {NOORANI_14_FREQ_ORDER.map((item) => {
-              const isActive =
-                activeQueryLetters.has(item.char) ||
-                activeQueryLetters.has(normalizeAbjadChar(item.char));
 
-              return (
-                <div
-                  key={item.char}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-md border flex flex-col items-center justify-center transition-all duration-150 cursor-default font-mono ${
-                    isActive
-                      ? 'bg-[#0d382b] border-[#00e676] text-[#00e676] shadow-[0_0_12px_rgba(0,230,118,0.5)] ring-2 ring-[#00e676] scale-105 z-10'
-                      : 'bg-[#0000a8] border-[#55ffff]/40 text-[#ffff55] opacity-85 hover:opacity-100'
-                  }`}
-                  title={`${item.name}: تكرر ${item.freq} مرة في الفواتح ${isActive ? '(موجود بالعبارة المدخلة ✨)' : ''}`}
-                >
-                  <span className={`text-xs sm:text-sm font-black leading-none ${isActive ? 'text-[#00e676]' : 'text-[#ffff55]'}`}>
-                    {item.char}
-                  </span>
-                  <span className={`text-[9px] font-mono font-bold leading-tight mt-0.5 ${isActive ? 'text-[#00e676]' : 'text-[#55ff55]'}`}>
-                    ={item.freq}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {lettersOrderMode === 'current_tables' ? (
+            /* 7 Layers Display: 2 Letters per Heaven in exact sequence */
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
+              {[1, 2, 3, 4, 5, 6, 7].map((layerNum) => {
+                const layerLetters = NOORANI_14_CURRENT_TABLES_ORDER.filter((l) => l.layer === layerNum);
+                return (
+                  <div
+                    key={layerNum}
+                    className="bg-[#000066]/70 border border-[#00aaaa]/50 rounded p-1.5 flex flex-col items-center gap-1 shadow-xs"
+                  >
+                    <span className="text-[10px] font-bold text-[#55ffff] font-mono">
+                      السماء {layerNum}
+                    </span>
+                    <div className="flex items-center justify-center gap-1 w-full">
+                      {layerLetters.map((item) => {
+                        const isActive =
+                          activeQueryLetters.has(item.char) ||
+                          activeQueryLetters.has(normalizeAbjadChar(item.char));
+                        const displayVal = calcMode === 'current_tables' ? item.tableValue : item.freq;
+
+                        return (
+                          <div
+                            key={item.char}
+                            className={`flex-1 py-1 px-0.5 rounded border flex flex-col items-center justify-center transition-all duration-150 cursor-default font-mono ${
+                              isActive
+                                ? 'bg-[#0d382b] border-[#00e676] text-[#00e676] shadow-[0_0_12px_rgba(0,230,118,0.5)] ring-2 ring-[#00e676] scale-105 z-10'
+                                : 'bg-[#0000a8] border-[#55ffff]/40 text-[#ffff55] opacity-85 hover:opacity-100'
+                            }`}
+                            title={`${item.name} (السماء ${item.layer}): قيمة الجداول=${item.tableValue} | تكرار الفواتح=${item.freq} ${isActive ? '(موجود بالعبارة المدخلة ✨)' : ''}`}
+                          >
+                            <span className={`text-xs sm:text-sm font-black leading-none ${isActive ? 'text-[#00e676]' : 'text-[#ffff55]'}`}>
+                              {item.char}
+                            </span>
+                            <span className={`text-[9px] font-mono font-bold leading-tight mt-0.5 ${isActive ? 'text-[#00e676]' : 'text-[#55ff55]'}`}>
+                              ={displayVal}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Frequency Order List */
+            <div className="flex items-center gap-1.5 flex-wrap justify-start">
+              {NOORANI_14_FREQ_ORDER.map((item) => {
+                const isActive =
+                  activeQueryLetters.has(item.char) ||
+                  activeQueryLetters.has(normalizeAbjadChar(item.char));
+                const currentTableItem = NOORANI_14_CURRENT_TABLES_ORDER.find((c) => c.char === item.char);
+                const displayVal = calcMode === 'current_tables' ? (currentTableItem?.tableValue ?? item.freq) : item.freq;
+
+                return (
+                  <div
+                    key={item.char}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-md border flex flex-col items-center justify-center transition-all duration-150 cursor-default font-mono ${
+                      isActive
+                        ? 'bg-[#0d382b] border-[#00e676] text-[#00e676] shadow-[0_0_12px_rgba(0,230,118,0.5)] ring-2 ring-[#00e676] scale-105 z-10'
+                        : 'bg-[#0000a8] border-[#55ffff]/40 text-[#ffff55] opacity-85 hover:opacity-100'
+                    }`}
+                    title={`${item.name}: تكرر ${item.freq} مرة في الفواتح | قيمة الجداول=${currentTableItem?.tableValue ?? 0} ${isActive ? '(موجود بالعبارة المدخلة ✨)' : ''}`}
+                  >
+                    <span className={`text-xs sm:text-sm font-black leading-none ${isActive ? 'text-[#00e676]' : 'text-[#ffff55]'}`}>
+                      {item.char}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold leading-tight mt-0.5 ${isActive ? 'text-[#00e676]' : 'text-[#55ff55]'}`}>
+                      ={displayVal}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Optional 29 Fawatih Suwar Drawer */}
@@ -709,32 +840,93 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
           </div>
         </div>
 
-        {/* All 14 Unique Fawatih Formulas Buttons Sorted Ascending by Value */}
-        <div className="flex items-center gap-1.5 flex-wrap text-2xs pt-1 border-t border-[#00aaaa]/30">
-          <span className="text-[#ffff55] font-black shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-[#ffff55]" />
-            صيغ فواتح السور الـ 14 المقطعة (مرتبة تصاعدياً حسب القيمة):
-          </span>
-          {ALL_14_FAWATIH_SORTED.map((preset) => (
-            <button
-              key={preset.text}
-              type="button"
-              onClick={() => {
-                setQuery(preset.text);
-                if (playDosBeep) playDosBeep(800, 20);
-                setTimeout(() => {
-                  executeSearch();
-                }, 50);
-              }}
-              className="bg-[#000088] hover:bg-[#00aaaa] text-white hover:text-black border border-[#00aaaa] px-2 py-1 rounded cursor-pointer font-bold transition-none inline-flex items-center gap-1 shadow-xs active:scale-95"
-              title={`انقر لبحث الصيغة «${preset.text}» وحساب قيمتها (${preset.value}) بالمصحف`}
-            >
-              <span className="font-black text-[#ffff55] hover:text-black">{preset.text}</span>
-              <span className="text-3xs font-mono font-bold text-[#55ff55] hover:text-black bg-black/60 px-1 py-0.2 rounded">
-                ={preset.value}
-              </span>
-            </button>
-          ))}
+        {/* All 14 Unique Fawatih Formulas Buttons Sorted by Current Tables / Layers */}
+        <div className="pt-2 border-t border-[#00aaaa]/30 space-y-1.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[#ffff55] font-black text-2xs flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-[#ffff55]" />
+              صيغ فواتح السور الـ 14 المقطعة (مرتبة حسب الجداول الحالية):
+            </span>
+
+            {/* Sort Controls */}
+            <div className="flex items-center gap-1 text-3xs font-bold flex-wrap">
+              <span className="text-stone-300">ترتيب الصيغ:</span>
+              <button
+                type="button"
+                onClick={() => setFormulaSortMode('current_tables')}
+                className={`px-1.5 py-0.5 rounded border transition-none cursor-pointer ${
+                  formulaSortMode === 'current_tables'
+                    ? 'bg-[#ffff55] text-black font-black border-white'
+                    : 'bg-[#000088] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+                }`}
+                title="ترتيب الصيغ تصاعدياً وفق قيمة الجداول الحالية (صرقم 1 / جدول السماء: ص=2 .. كهيعص=89)"
+              >
+                الجداول الحالية (صرقم 1)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormulaSortMode('layers')}
+                className={`px-1.5 py-0.5 rounded border transition-none cursor-pointer ${
+                  formulaSortMode === 'layers'
+                    ? 'bg-[#ffff55] text-black font-black border-white'
+                    : 'bg-[#000088] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+                }`}
+                title="ترتيب الصيغ حسب تسلسل طبقات السماء السبع (سماء 1 إلى سماء 7)"
+              >
+                طبقات السماء (1-7)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormulaSortMode('mushaf')}
+                className={`px-1.5 py-0.5 rounded border transition-none cursor-pointer ${
+                  formulaSortMode === 'mushaf'
+                    ? 'bg-[#ffff55] text-black font-black border-white'
+                    : 'bg-[#000088] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+                }`}
+                title="ترتيب الصيغ حسب ورودها في المصحف الشريف (البقرة ← القلم)"
+              >
+                المصحف الشريف
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormulaSortMode('frequency')}
+                className={`px-1.5 py-0.5 rounded border transition-none cursor-pointer ${
+                  formulaSortMode === 'frequency'
+                    ? 'bg-[#ffff55] text-black font-black border-white'
+                    : 'bg-[#000088] text-[#55ffff] border-[#00aaaa] hover:bg-[#00aaaa] hover:text-black'
+                }`}
+                title="ترتيب الصيغ حسب تكرار حروفها في الفواتح"
+              >
+                التكرار
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap text-2xs">
+            {displayedFawatihPresets.map((preset) => (
+              <button
+                key={preset.text}
+                type="button"
+                onClick={() => {
+                  setQuery(preset.text);
+                  if (playDosBeep) playDosBeep(800, 20);
+                  setTimeout(() => {
+                    executeSearch();
+                  }, 50);
+                }}
+                className="bg-[#000088] hover:bg-[#00aaaa] text-white hover:text-black border border-[#00aaaa] px-2 py-1 rounded cursor-pointer font-bold transition-none inline-flex items-center gap-1 shadow-xs active:scale-95 group"
+                title={`انقر لبحث الصيغة «${preset.text}» (${preset.mushafSurah}) | ${preset.layerLabel} | القيمة = ${preset.value}`}
+              >
+                <span className="font-black text-[#ffff55] group-hover:text-black text-xs font-quran">{preset.text}</span>
+                <span className="text-3xs font-mono font-bold text-[#55ff55] group-hover:text-black bg-black/60 px-1 py-0.2 rounded">
+                  ={preset.value}
+                </span>
+                <span className="text-4xs text-[#55ffff] group-hover:text-black font-normal opacity-85">
+                  [{preset.layerLabel.split(' ')[0]} {preset.layer}]
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -753,7 +945,9 @@ export function FawatihGematriaView({ initialQuery = 'الم' }: FawatihGematria
             </div>
 
             <div className="bg-black/90 border-2 border-[#ffff55] px-3 py-1.5 rounded text-center shadow-md shrink-0">
-              <span className="text-3xs text-stone-400 block font-bold">قيمة فواتح السور</span>
+              <span className="text-3xs text-stone-400 block font-bold">
+                {calcMode === 'current_tables' ? 'قيمة الجداول الحالية (صرقم 1)' : 'تكرار فواتح السور الـ 29'}
+              </span>
               <span className="text-xl sm:text-2xl font-black text-[#55ff55] font-mono">
                 {calculation.totalValue}
               </span>

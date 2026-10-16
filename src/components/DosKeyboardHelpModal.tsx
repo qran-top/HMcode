@@ -86,7 +86,7 @@ export function DosKeyboardHelpModal({ isOpen, onClose }: DosKeyboardHelpModalPr
 
             <div className="bg-[#000080] border border-[#55ffff] p-2 flex items-center justify-between">
               <span className="bg-[#ffff55] text-[#000000] font-bold px-1.5 py-0.5">F4</span>
-              <span className="text-[#ffffff]">الانتقال: البحث بالأوامر والتشفير</span>
+              <span className="text-[#ffffff]">الانتقال: تباديل الحروف والتقاليب بالمصحف</span>
             </div>
 
             <div className="bg-[#000080] border border-[#55ffff] p-2 flex items-center justify-between">

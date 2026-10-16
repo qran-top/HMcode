@@ -29,7 +29,6 @@ import {
   EyeOff,
   Scissors,
   Scale,
-  Moon,
   Calendar,
   Wand2,
 } from 'lucide-react';
@@ -305,7 +304,6 @@ export function QuranicChainMatcher({
   // 'jabir_pyramid' = ميزان جابر هرمي صعود وهبوط (1 ← M ← 1)
   // 'jabir_valley' = ميزان جابر قمعي هبوط وصعود (M ← 1 ← M)
   // 'lunar_scale' = الميزان القمري الزماني (تزايد النور في النصف الأول 1-14 والمحو في النصف الثاني 15-28)
-  const todayHijriInfo = useMemo(() => getCurrentHijriLunarDay(), []);
   type NooraniQueryCalcMode =
     | 'standard'
     | 'noorani_only'
@@ -1711,11 +1709,6 @@ export function QuranicChainMatcher({
               <span className="bg-[#00aaaa] text-black px-1.5 py-0.5 font-black text-xs shadow-xs">[►]</span>
               <span className="text-[#ffff55] font-black text-sm sm:text-base tracking-wide font-mono">
                 {(committedQuery || inputQuery).trim() || 'نظام مطابقة السلاسل القرآنية'}
-              </span>
-              {/* Hijri Date Display with Moon Icon */}
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-3xs font-mono font-bold border border-stone-200 dark:border-stone-700 shadow-2xs">
-                <Moon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>التاريخ الهجري: {todayHijriInfo.formattedHijriDate}</span>
               </span>
             </div>
 

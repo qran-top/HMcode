@@ -807,41 +807,42 @@ export function getDecryptionCombinations(
 // Quranic Initials / Noorani Letters & Words Dictionary
 // -------------------------------------------------------------------
 
-// The 14 unique Noorani / Quranic Initial Letters: (نص حكيم قاطع له سر)
+// The 14 unique Noorani / Quranic Initial Letters arranged by current tables (ر ص م ق ح س ن ع ي ل ه ا ط ك):
 export const NOORANI_LETTERS = [
-  "ن",
+  "ر",
   "ص",
-  "ح",
-  "ك",
-  "ي",
   "م",
   "ق",
-  "ا",
-  "ط",
+  "ح",
+  "س",
+  "ن",
   "ع",
+  "ي",
   "ل",
   "ه",
-  "س",
-  "ر",
+  "ا",
+  "ط",
+  "ك",
 ];
 export const NOORANI_LETTERS_SET = new Set(NOORANI_LETTERS);
 
-// The 14 Quranic Opening Words / Combinations (الفواتح القرآنية المقطعة):
+// The 14 Quranic Opening Words / Combinations (الفواتح القرآنية المقطعة) arranged by current tables (صرقم 1 / جدول السماء):
 export const QURANIC_WORDS = [
-  "الم",
-  "المص",
-  "الر",
-  "المر",
-  "كهيعص",
-  "طه",
-  "طسم",
-  "طس",
-  "يس",
   "ص",
-  "حم",
-  "عسق",
   "ق",
   "ن",
+  "حم",
+  "يس",
+  "عسق",
+  "حم عسق",
+  "الر",
+  "الم",
+  "المر",
+  "المص",
+  "طس",
+  "طسم",
+  "طه",
+  "كهيعص",
 ];
 
 export const QURANIC_WORDS_SET = new Set(QURANIC_WORDS);

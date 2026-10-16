@@ -92,20 +92,21 @@ export function useDosKeyboardNavigation({
       }
 
       // 3. F3: Switch to Gematria Tab (البحث بالجمل)
+      // 3. F3: Switch to Fawatih Scale Tab (ميزان الفواتح)
       if (e.key === 'F3') {
         e.preventDefault();
         playDosBeep(750, 35);
-        setActiveTab('gematria');
-        setLastKeyPressed('F3: السلاسل');
+        setActiveTab('fawatih_scale');
+        setLastKeyPressed('F3: ميزان الفواتح');
         return;
       }
 
-      // 4. F4: Switch to Fawatih Scale Tab (ميزان الفواتح)
+      // 4. F4: Switch to Permutations Tab (تباديل الحروف والتقاليب القرآنية)
       if (e.key === 'F4' && !e.altKey) {
         e.preventDefault();
         playDosBeep(820, 35);
-        setActiveTab('fawatih_scale');
-        setLastKeyPressed('F4: ميزان الفواتح');
+        setActiveTab('permutations');
+        setLastKeyPressed('F4: تباديل الحروف');
         return;
       }
 

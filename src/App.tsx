@@ -7,6 +7,7 @@ import { PWAPrompt } from './components/PWAPrompt';
 import { QuranicChainMatcher } from './components/QuranicChainMatcher';
 import { FawatihScaleView } from './components/FawatihScaleView';
 import { FawatihGematriaView } from './components/FawatihGematriaView';
+import { QuranicPermutationsView } from './components/QuranicPermutationsView';
 import { SettingsView } from './components/SettingsView';
 import { InfoView } from './components/InfoView';
 import { DosKeyboardHelpModal } from './components/DosKeyboardHelpModal';
@@ -99,7 +100,19 @@ export function App() {
           />
         </div>
 
-        {/* Tab 3: Unified Command Search & Dual Translator / Cipher Hub (F3) */}
+        {/* Tab 4: Letter Permutations & Quranic Anagrams (F4) */}
+        <div className={activeTab === 'permutations' ? 'block' : 'hidden'}>
+          <QuranicPermutationsView
+            initialWord="لحم"
+            isWideMode={isWideMode}
+            onNavigateToGematria={(text) => {
+              setSharedText(text);
+              setActiveTab('gematria');
+            }}
+          />
+        </div>
+
+        {/* Tab 5: Unified Command Search & Dual Translator / Cipher Hub (F5) */}
         <div className={activeTab === 'search' ? 'block' : 'hidden'}>
           <DualTranslator
             mode="both"

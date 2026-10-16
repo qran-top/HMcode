@@ -1,7 +1,14 @@
 import React from 'react';
-import { Search, Sparkles, Scale } from 'lucide-react';
+import { Search, Sparkles, Scale, Shuffle } from 'lucide-react';
 
-export type AppTabType = 'gematria' | 'fawatih_gematria' | 'search' | 'fawatih_scale' | 'settings' | 'info';
+export type AppTabType =
+  | 'gematria'
+  | 'fawatih_gematria'
+  | 'fawatih_scale'
+  | 'permutations'
+  | 'search'
+  | 'settings'
+  | 'info';
 
 interface MobileBottomNavProps {
   activeTab: AppTabType;
@@ -18,7 +25,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     id: 'gematria',
-    label: 'السلاسل والجُمّل',
+    label: 'السلاسل',
     icon: Sparkles,
     activeColor: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50',
   },
@@ -35,8 +42,14 @@ const NAV_ITEMS: NavItem[] = [
     activeColor: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50',
   },
   {
+    id: 'permutations',
+    label: 'تباديل الحروف',
+    icon: Shuffle,
+    activeColor: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50',
+  },
+  {
     id: 'search',
-    label: 'الباحث والمترجم',
+    label: 'الباحث',
     icon: Search,
     activeColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50',
   },
@@ -49,7 +62,7 @@ export function MobileBottomNav({ activeTab, setActiveTab }: MobileBottomNavProp
       aria-label="التنقل السفلي للهاتف"
       dir="rtl"
     >
-      <div className="grid grid-cols-2 h-15 max-w-md mx-auto px-2 items-stretch">
+      <div className="grid grid-cols-5 h-15 max-w-md mx-auto px-1 items-stretch">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
